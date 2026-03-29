@@ -36,6 +36,12 @@ class TestGetFailureModes:
         assert len(data["failure_modes"]) == 5
 
     @pytest.mark.anyio
+    async def test_transformer_returns_hardcoded(self):
+        data = await call_tool(mcp, "get_failure_modes", {"asset_name": "Smart Grid Transformer"})
+        assert "failure_modes" in data
+        assert len(data["failure_modes"]) == 9
+
+    @pytest.mark.anyio
     async def test_empty_asset_name_returns_error(self):
         data = await call_tool(mcp, "get_failure_modes", {"asset_name": ""})
         assert "error" in data
