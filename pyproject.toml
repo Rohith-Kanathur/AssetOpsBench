@@ -24,6 +24,7 @@ dependencies = [
     "litellm>=1.0",
     "python-dotenv>=1.0",
     "scipy>=1.10.0",
+    "scikit-learn>=1.8.0",
 ]
 
 [project.scripts]
