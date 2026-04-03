@@ -22,8 +22,8 @@ from .prompts import (
 
 # Reuse existing llm setup
 from llm.litellm import LiteLLMBackend
-from workflow.executor import Executor
-from workflow.cli import _DEFAULT_MODEL
+from agent.plan_execute.executor import Executor
+from agent.cli import _DEFAULT_MODEL
 
 _log = logging.getLogger(__name__)
 
