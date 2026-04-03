@@ -1,6 +1,6 @@
 """Tests for the Planner and parse_plan()."""
 
-from workflow.planner import Planner, parse_plan
+from agent.plan_execute.planner import Planner, parse_plan
 
 _TWO_STEP = """\
 #Task1: List all available IoT sites

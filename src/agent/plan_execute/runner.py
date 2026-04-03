@@ -1,4 +1,4 @@
-"""Entry-point runner for the plan-execute workflow using MCP servers.
+"""Plan-and-execute agent runner using MCP servers as tool providers.
 
 Replaces AgentHive's combination of PlanningWorkflow + SequentialWorkflow with
 an MCP-native implementation:
@@ -17,11 +17,12 @@ from pathlib import Path
 
 from llm import LLMBackend
 
-_log = logging.getLogger(__name__)
-
 from .executor import Executor
-from .models import OrchestratorResult
 from .planner import Planner
+from ..models import OrchestratorResult
+from ..runner import AgentRunner
+
+_log = logging.getLogger(__name__)
 
 _SUMMARIZE_PROMPT = """\
 You are summarizing the results of a multi-step task execution for an \
@@ -37,12 +38,12 @@ above. Do not repeat the individual steps — just give the final answer.
 """
 
 
-class PlanExecuteRunner:
+class PlanExecuteRunner(AgentRunner):
     """Entry-point for plan-and-execute workflows using MCP servers as tool providers.
 
     Usage::
 
-        from plan_execute import PlanExecuteRunner
+        from agent import PlanExecuteRunner
         from llm import LiteLLMBackend
 
         runner = PlanExecuteRunner(llm=LiteLLMBackend("watsonx/meta-llama/llama-3-3-70b-instruct"))
@@ -62,7 +63,7 @@ class PlanExecuteRunner:
         llm: LLMBackend,
         server_paths: dict[str, Path | str] | None = None,
     ) -> None:
-        self._llm = llm
+        super().__init__(llm, server_paths)
         self._planner = Planner(llm)
         self._executor = Executor(llm, server_paths)
 

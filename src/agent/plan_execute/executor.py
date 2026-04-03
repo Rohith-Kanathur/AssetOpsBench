@@ -18,8 +18,7 @@ from .models import Plan, PlanStep, StepResult
 
 _log = logging.getLogger(__name__)
 
-_MCP_ROOT = Path(__file__).parent.parent
-_REPO_ROOT = _MCP_ROOT.parent
+_REPO_ROOT = Path(__file__).parent.parent.parent.parent
 
 # Maps agent names to either a uv entry-point name (str) or a script Path.
 # Entry-point names are invoked as ``uv run <name>``; Paths fall back to

@@ -65,13 +65,3 @@ class StepResult:
     @property
     def success(self) -> bool:
         return self.error is None
-
-
-@dataclass
-class OrchestratorResult:
-    """Final result from the plan-execute orchestrator."""
-
-    question: str
-    answer: str
-    plan: Plan
-    history: list[StepResult]
