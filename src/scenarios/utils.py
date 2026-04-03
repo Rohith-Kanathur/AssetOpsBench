@@ -30,6 +30,7 @@ def fetch_arxiv_studies(search_queries: str | list[str], max_results_per_query: 
         metadata_out['returned_entries'] = 0
         metadata_out['pdf_urls'] = []
         metadata_out['query_to_pdf'] = {}
+        metadata_out['results_summary'] = [] # List of (title, url)
 
     seen_ids = set()
     studies_text = []
@@ -101,6 +102,10 @@ def fetch_arxiv_studies(search_queries: str | list[str], max_results_per_query: 
                         _log.warning(f"Failed to fetch or parse PDF from {pdf_url}: {e}")
                         pdf_text = f"[PDF Extraction Failed: {e}]"
                 
+                if pdf_url:
+                    if metadata_out is not None:
+                        metadata_out['results_summary'].append({"title": t_text, "url": pdf_url})
+                        
                 if pdf_url and pdf_text and "[PDF Extraction Failed" not in pdf_text:
                     if metadata_out is not None:
                         metadata_out['pdf_urls'].append(pdf_url)

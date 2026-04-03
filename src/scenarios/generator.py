@@ -260,7 +260,19 @@ class ScenarioGeneratorAgent:
             
         # 1.2 Fetch studies using multi-query logic
         studies = fetch_arxiv_studies(queries, metadata_out=metadata)
-        self._write_log("arxiv_results", studies)
+        
+        # Format a summary header with titles and links
+        header = f"Asset: {asset_name}\n"
+        header += f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        header += f"Total Entries: {len(metadata.get('results_summary', []))}\n\n"
+        header += "========================================\n"
+        header += "  SOURCES (TITLES & PDF LINKS)\n"
+        header += "========================================\n"
+        for i, res in enumerate(metadata.get('results_summary', []), 1):
+            header += f"{i}. {res['title']}\n   -> {res['url']}\n"
+        header += "========================================\n\n"
+        
+        self._write_log("arxiv_results", header + studies)
         
         if self.show_workflow:
             status_summary = ", ".join(f"HTTP {s}" for s in metadata.get('status_codes', []))
