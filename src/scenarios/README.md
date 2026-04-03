@@ -139,7 +139,7 @@ For each subagent with a non-zero budget:
 3. A `VALIDATE_REPAIR_PROMPT` validates and repairs each scenario for schema correctness and tool alignment.
 4. Changed scenarios are diffed and written to log files (if `--log` is enabled).
 
-**Valid `category` values per subagent:**
+**Valid `category` values per subagent:** (extracted from HF examples)
 
 | Subagent | Allowed Categories |
 |---|---|
@@ -223,4 +223,3 @@ Logs are numbered sequentially in pipeline order, making it straightforward to t
 
 - **ArXiv** — Academic literature fetched live at runtime via `fetch_arxiv_studies()` in `utils.py`. Queries are LLM-generated, respecting ArXiv's 3-second rate limit.
 - **HuggingFace** — Few-shot examples loaded from `ibm-research/AssetOpsBench` via `fetch_hf_fewshot()`. If the dataset is unavailable, a mock fallback is used automatically.
-- **Local files** — Place domain-specific PDFs or text files in `src/scenarios/local/` for future integration (see `local/readme.md`).
