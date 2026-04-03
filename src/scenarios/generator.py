@@ -396,6 +396,13 @@ class ScenarioGeneratorAgent:
         parsed, parse_err = _parse_llm_json(response)
         
         if isinstance(parsed, list):
+            if len(parsed) > len(scenarios):
+                _log.warning(
+                    "validate_and_repair returned %d scenarios but only %d were submitted — "
+                    "truncating to prevent count inflation.",
+                    len(parsed), len(scenarios),
+                )
+                parsed = parsed[:len(scenarios)]
             return parsed
         self._handle_parse_failure("validate_repair", response, parse_err)
         return scenarios
