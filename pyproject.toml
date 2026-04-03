@@ -26,6 +26,8 @@ dependencies = [
     "python-dotenv>=1.0",
     "scipy>=1.10.0",
     "scikit-learn>=1.8.0",
+    "datasets>=4.8.4",
+    "pypdf>=6.9.2",
 ]
 
 [project.scripts]
