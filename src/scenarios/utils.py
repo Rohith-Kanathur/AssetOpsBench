@@ -1,15 +1,52 @@
+import json
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
 import logging
+from typing import Any
 
 _log = logging.getLogger(__name__)
 
-def fetch_arxiv_studies(search_queries: str | list[str], max_results_per_query: int = 2, metadata_out: dict = None) -> str:
-    """Fetch relevant studies from ArXiv using their public API.
-    
-    If search_queries is a list, it will execute each search and combine unique results.
-    """
+
+def parse_llm_json(raw: str) -> tuple[Any, str | None]:
+    """Parse an LLM response containing a JSON object or array."""
+    text = raw.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        inner = lines[1:-1] if lines and lines[-1].strip() == "```" else lines[1:]
+        text = "\n".join(inner)
+        if text.lower().startswith("json"):
+            text = text[4:]
+
+    text = text.strip()
+    try:
+        return json.loads(text), None
+    except json.JSONDecodeError as exc:
+        start_obj = text.find("{")
+        start_arr = text.find("[")
+        if start_obj == -1 and start_arr == -1:
+            return None, f"No JSON start character found. Error: {exc}"
+
+        start = (
+            start_obj
+            if start_arr == -1 or (start_obj != -1 and start_obj < start_arr)
+            else start_arr
+        )
+        end_char = "}" if start == start_obj else "]"
+        end = text.rfind(end_char) + 1
+
+        if start != -1 and end > start:
+            try:
+                return json.loads(text[start:end]), None
+            except json.JSONDecodeError as inner_exc:
+                return None, f"Failed to parse inner JSON block. Error: {inner_exc}"
+    return None, "Unknown parsing error."
+
+def fetch_arxiv_studies(
+    search_queries: str | list[str],
+    max_results_per_query: int = 2,
+    metadata_out: dict | None = None,
+) -> str:
     import time
     import ssl
 
@@ -30,13 +67,12 @@ def fetch_arxiv_studies(search_queries: str | list[str], max_results_per_query: 
         metadata_out['returned_entries'] = 0
         metadata_out['pdf_urls'] = []
         metadata_out['query_to_pdf'] = {}
-        metadata_out['results_summary'] = [] # List of (title, url)
+        metadata_out['results_summary'] = []
 
     seen_ids = set()
     studies_text = []
 
     for i, q in enumerate(queries):
-        # Respect ArXiv 3-second rule if doing multiple queries
         if i > 0:
             time.sleep(3.1)
 
@@ -79,33 +115,32 @@ def fetch_arxiv_studies(search_queries: str | list[str], max_results_per_query: 
                     try:
                         import io
                         from pypdf import PdfReader
-                        
-                        # PDF extraction also has a 3-second rule
+
                         time.sleep(3.2)
-                        
+
                         pdf_req = urllib.request.Request(pdf_url, headers=headers)
                         with urllib.request.urlopen(pdf_req, timeout=15, context=ctx) as pdf_resp:
                             pdf_bytes = pdf_resp.read()
-                            
+
                         reader = PdfReader(io.BytesIO(pdf_bytes))
                         extracted = []
                         for j, page in enumerate(reader.pages):
-                            if j > 4: break
+                            if j > 4:
+                                break
                             page_text = page.extract_text()
                             if page_text:
                                 extracted.append(page_text)
-                                
+
                         pdf_text = "\n".join(extracted)
                         if len(pdf_text) > 10000:
                             pdf_text = pdf_text[:10000] + "\n...[TRUNCATED]"
                     except Exception as e:
                         _log.warning(f"Failed to fetch or parse PDF from {pdf_url}: {e}")
-                        pdf_text = f"[PDF Extraction Failed: {e}]"
+                        pdf_text = ""
                 
-                if pdf_url:
-                    if metadata_out is not None:
-                        metadata_out['results_summary'].append({"title": t_text, "url": pdf_url})
-                        
+                if pdf_url and metadata_out is not None:
+                    metadata_out['results_summary'].append({"title": t_text, "url": pdf_url})
+
                 if pdf_url and pdf_text and "[PDF Extraction Failed" not in pdf_text:
                     if metadata_out is not None:
                         metadata_out['pdf_urls'].append(pdf_url)
@@ -124,50 +159,43 @@ def fetch_arxiv_studies(search_queries: str | list[str], max_results_per_query: 
 
     if metadata_out is not None:
         metadata_out['returned_entries'] = len(studies_text)
-        
+
     return "\n\n".join(studies_text) if studies_text else "No recent studies found via ArXiv."
 
-
-
-def fetch_hf_fewshot(dataset_id: str = "ibm-research/AssetOpsBench", split: str = "scenarios", target_type: str = None, fallback_if_missing: bool = True) -> list[dict]:
-    """Fetch few-shot scenarios from HuggingFace dataset."""
+def fetch_hf_fewshot(
+    dataset_id: str = "ibm-research/AssetOpsBench",
+    split: str = "scenarios",
+    target_type: str | None = None,
+    fallback_if_missing: bool = True,
+) -> list[dict]:
     try:
         from datasets import load_dataset
         ds = load_dataset(dataset_id, split)
-        
+
         examples = []
         if "train" in ds:
             train_ds = ds["train"]
         else:
             train_ds = ds
-            
+
         for item in train_ds:
-            if target_type:
-                if str(item.get("type", "")).lower() == target_type.lower():
-                    examples.append(item)
-            else:
+            if target_type is None or str(item.get("type", "")).lower() == target_type.lower():
                 examples.append(item)
-                
+
             if len(examples) >= 3:
                 break
-                
-        # Return only the relevant keys to keep context size manageable
-        clean_examples = []
-        for e in examples:
-            clean_examples.append({
+
+        return [
+            {
                 "text": e.get("text", ""),
                 "category": e.get("category", ""),
-                "characteristic_form": e.get("characteristic_form", "")
-            })
-            
-        return clean_examples
+                "characteristic_form": e.get("characteristic_form", ""),
+            }
+            for e in examples
+        ]
     except ImportError:
-        _log.warning("HuggingFace 'datasets' library is not installed. Returning empty few-shots.")
-        if fallback_if_missing:
-            return [{"text": "Mock query", "category": "Knowledge Query", "characteristic_form": "Mock characteristic"}]
+        _log.warning("HuggingFace 'datasets' library is not installed.")
         return []
     except Exception as e:
         _log.warning(f"Failed to load HuggingFace dataset: {e}")
-        if fallback_if_missing:
-            return [{"text": "Mock query", "category": "Knowledge Query", "characteristic_form": f"Mock. Error: {e}"}]
         return []
