@@ -53,6 +53,9 @@ _FAILURE_MODES_FILE = Path(__file__).parent / "failure_modes.yaml"
 with _FAILURE_MODES_FILE.open() as _f:
     _ASSET_FAILURE_MODES: dict[str, list[str]] = yaml.safe_load(_f)
 
+_ASSET_FAILURE_MODE_ALIASES = {
+    "transformer": "smart grid transformer",
+}
 
 # ── Prompt templates ──────────────────────────────────────────────────────────
 
@@ -82,6 +85,27 @@ def _parse_numbered_list(text: str) -> list[str]:
         if m:
             items.append(m.group(1).strip())
     return items
+
+
+def _normalize_asset_key(asset_name: str) -> str:
+    """Normalize an asset name for curated failure-mode lookup."""
+    normalized = re.sub(r"\d+", "", asset_name or "").strip().lower()
+    normalized = re.sub(r"[^a-z0-9]+", " ", normalized).strip()
+    return normalized
+
+
+def _resolve_failure_mode_asset_key(asset_name: str) -> str:
+    """Resolve an asset name to a curated failure-mode key when possible."""
+    asset_key = _normalize_asset_key(asset_name)
+    if asset_key in _ASSET_FAILURE_MODES:
+        return asset_key
+    if asset_key in _ASSET_FAILURE_MODE_ALIASES:
+        return _ASSET_FAILURE_MODE_ALIASES[asset_key]
+
+    for known_key in _ASSET_FAILURE_MODES:
+        if asset_key and (asset_key in known_key or known_key in asset_key):
+            return known_key
+    return asset_key
 
 
 def _parse_relevancy(text: str) -> dict:
@@ -387,7 +411,7 @@ mcp = FastMCP("fmsr", instructions="Failure mode and sensor reasoning: get failu
 def get_failure_modes(asset_name: str) -> Union[FailureModesResult, ErrorResult]:
     """Returns a list of known failure modes for the given asset.
     For chillers and AHUs returns a curated list. For other assets queries the LLM."""
-    asset_key = re.sub(r"\d+", "", asset_name).strip().lower()
+    asset_key = _resolve_failure_mode_asset_key(asset_name)
     if not asset_key or asset_key == "none":
         return ErrorResult(error="asset_name is required")
 
@@ -434,6 +458,15 @@ def get_failure_mode_sensor_mapping(
     full_relevancy: List[RelevancyEntry] = []
     fm2sensor: Dict[str, List[str]] = {}
     sensor2fm: Dict[str, List[str]] = {}
+
+    total_calls = len(failure_modes) * len(sensors)
+    logger.info(
+        "Starting FM-sensor mapping for asset '%s' with %d failure modes and %d sensors (%d total calls)",
+        asset_name,
+        len(failure_modes),
+        len(sensors),
+        total_calls,
+    )
 
     try:
         pairs = [(s, fm) for s in sensors for fm in failure_modes]

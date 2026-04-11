@@ -42,6 +42,8 @@ mcp = FastMCP("iot", instructions="IoT sensor data: browse sites, assets, sensor
 # Static site as per original requirement
 SITES = ["MAIN"]
 
+_ASSET_META_FIELDS = {"_id", "_rev", "asset_id", "timestamp", "site_name"}
+
 
 class ErrorResult(BaseModel):
     error: str
@@ -129,6 +131,109 @@ def get_sensor_list(asset_id: str) -> List[str]:
     except Exception as e:
         logger.error(f"Error fetching sensors for {asset_id}: {e}")
         return []
+
+
+def get_asset_time_range(asset_id: str) -> Dict[str, Any]:
+    """Return start/end timestamps and observation count for an asset.
+
+    Uses the static ``SITES`` list (single-site benchmark); rows are not filtered by
+    a per-document site field.
+    """
+    if not db:
+        return {"start": None, "end": None, "total_observations": 0}
+
+    try:
+        res = db.find(
+            {"asset_id": asset_id, "timestamp": {"$exists": True}},
+            fields=["timestamp"],
+            limit=100000,
+        )
+        timestamps = sorted(
+            doc["timestamp"]
+            for doc in res.get("docs", [])
+            if isinstance(doc, dict) and doc.get("timestamp") is not None
+        )
+        if not timestamps:
+            return {"start": None, "end": None, "total_observations": 0}
+        return {
+            "start": timestamps[0],
+            "end": timestamps[-1],
+            "total_observations": len(timestamps),
+        }
+    except Exception as e:
+        logger.error(f"Error fetching time range for {asset_id}: {e}")
+        return {"start": None, "end": None, "total_observations": 0}
+
+
+def get_asset_coverage() -> List[Dict[str, Any]]:
+    """Return discovered IoT coverage for all assets.
+
+    Uses ``SITES[0]`` as the site label (single static site); documents are not read
+    for a site field.
+    """
+    if not db:
+        return []
+
+    effective_site = SITES[0]
+
+    try:
+        res = db.find({"asset_id": {"$exists": True}}, limit=100000)
+    except Exception as e:
+        logger.error(f"Error fetching asset coverage: {e}")
+        return []
+
+    grouped: Dict[tuple[str, str], Dict[str, Any]] = {}
+    for doc in res.get("docs", []):
+        if not isinstance(doc, dict):
+            continue
+        asset_id = str(doc.get("asset_id", "")).strip()
+        if not asset_id:
+            continue
+
+        key = (effective_site, asset_id)
+        group = grouped.setdefault(
+            key,
+            {
+                "site_name": effective_site,
+                "asset_id": asset_id,
+                "sensors": set(),
+                "timestamps": [],
+            },
+        )
+        group["sensors"].update(
+            key for key in doc.keys() if key not in _ASSET_META_FIELDS
+        )
+        timestamp = doc.get("timestamp")
+        if timestamp is None:
+            continue
+        if isinstance(timestamp, str):
+            if timestamp.strip():
+                group["timestamps"].append(timestamp.strip())
+        elif hasattr(timestamp, "isoformat"):
+            group["timestamps"].append(timestamp.isoformat())
+        else:
+            group["timestamps"].append(str(timestamp))
+
+    coverage: List[Dict[str, Any]] = []
+    for (_site_name, asset_id), group in grouped.items():
+        timestamps = sorted(group["timestamps"])
+        coverage.append(
+            {
+                "site_name": group["site_name"],
+                "asset_id": asset_id,
+                "sensors": sorted(group["sensors"]),
+                "time_range": {
+                    "start": timestamps[0] if timestamps else None,
+                    "end": timestamps[-1] if timestamps else None,
+                    "total_observations": len(timestamps),
+                },
+            }
+        )
+
+    return sorted(
+        coverage,
+        key=lambda item: (item["site_name"].lower(), item["asset_id"].lower()),
+    )
 
 
 @mcp.tool(title="List Sites")
