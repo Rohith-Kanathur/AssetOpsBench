@@ -153,6 +153,7 @@ name = "assetopsbench-mcp"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "certifi" },
     { name = "claude-agent-sdk" },
     { name = "couchdb3" },
     { name = "datasets" },
@@ -184,6 +185,7 @@ tsfm = [
 
 [package.metadata]
 requires-dist = [
+    { name = "certifi", specifier = ">=2024.8.30" },
     { name = "claude-agent-sdk", specifier = ">=0.0.14" },
     { name = "couchdb3", specifier = ">=2.0.2" },
     { name = "datasets", specifier = ">=4.8.4" },
