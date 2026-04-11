@@ -31,14 +31,19 @@ class LiteLLMBackend(LLMBackend):
     def __init__(self, model_id: str) -> None:
         self._model_id = model_id
 
-    def generate(self, prompt: str, temperature: float = 0.0) -> str:
+    def generate(
+        self,
+        prompt: str,
+        temperature: float = 0.0,
+        max_tokens: int | None = None,
+    ) -> str:
         import litellm
 
         kwargs: dict = {
             "model": self._model_id,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": temperature,
-            "max_tokens": 2048,
+            "max_tokens": max_tokens or 2048,
         }
 
         if self._model_id.startswith("watsonx/"):
