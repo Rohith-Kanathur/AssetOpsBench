@@ -1,149 +1,39 @@
+"""LLM-orchestrated evidence retrieval using ArXiv."""
+
 from __future__ import annotations
 
-import io
 import json
-import logging
 import re
-import ssl
-import time
-import urllib.error
-import urllib.parse
-import urllib.request
-import xml.etree.ElementTree as ET
 from typing import Callable
 
 from llm import LLMBackend
 
-from .models import (
+from ..models import (
     EvidenceBundle,
     EvidenceCandidate,
     EvidenceSnippet,
     RetrievalAction,
-    RetrievalDiagnostics,
 )
-from .prompts import RETRIEVAL_METADATA_JUDGE_PROMPT, RETRIEVAL_QUERY_PLAN_PROMPT
-from .utils import parse_llm_json
+from ..prompts import RETRIEVAL_METADATA_JUDGE_PROMPT, RETRIEVAL_QUERY_PLAN_PROMPT
+from ..text import collapse_whitespace_lower
+from ..utils import parse_llm_json
+from .arxiv import (
+    _ARXIV_COOLDOWN_SECONDS,
+    _ArxivExecutor,
+    _DIAGNOSTIC_KEYWORDS,
+    _ML_NEGATIVE_KEYWORDS,
+    _OFF_TARGET_KEYWORDS,
+    _OFF_TARGET_REASON_MARKERS,
+    _PHYSICAL_REASON_MARKERS,
+    _STANDARD_KEYWORDS,
+    _STOPWORDS,
+)
 
-_log = logging.getLogger(__name__)
-
-_ARXIV_COOLDOWN_SECONDS = 3.1
-_ARXIV_BASE_URL = "http://export.arxiv.org/api/query?"
-_ARXIV_HEADERS = {"User-Agent": "AssetOpsBench/1.0 (mailto:admin@example.com)"}
 _MAX_STEPS = 5
 _MAX_QUERIES_PER_STEP = 2
-_MAX_METADATA_RESULTS = 6
 _MAX_CANDIDATE_POOL = 8
 _TOP_PDF_DOWNLOADS = 3
-_MAX_PDF_PAGES = 5
 _MAX_SNIPPETS_PER_DOC = 3
-
-_STOPWORDS = {
-    "a",
-    "an",
-    "and",
-    "asset",
-    "class",
-    "equipment",
-    "for",
-    "in",
-    "industrial",
-    "machine",
-    "of",
-    "on",
-    "or",
-    "plant",
-    "system",
-    "the",
-    "to",
-}
-
-_DIAGNOSTIC_KEYWORDS = [
-    "condition monitoring",
-    "diagnostic",
-    "diagnostics",
-    "fault",
-    "fault diagnosis",
-    "failure",
-    "failure analysis",
-    "degradation",
-    "health",
-    "inspection",
-    "maintenance",
-    "monitoring",
-    "prognostic",
-    "prognostics",
-    "reliability",
-]
-
-_STANDARD_KEYWORDS = [
-    "iec",
-    "ieee",
-    "iso",
-    "condition assessment",
-    "maintenance strategy",
-    "reliability centered maintenance",
-]
-
-_ML_NEGATIVE_KEYWORDS = [
-    "attention mechanism",
-    "bert",
-    "deep learning",
-    "federated learning",
-    "foundation model",
-    "language model",
-    "llm",
-    "mamba",
-    "neural network",
-    "nlp",
-    "time series transformer",
-    "transformer architecture",
-    "vision transformer",
-]
-
-_OFF_TARGET_KEYWORDS = [
-    "communications",
-    "control system",
-    "control systems",
-    "cyber attack",
-    "cyber security",
-    "cyberattack",
-    "cybersecurity",
-    "data architecture",
-    "false data injection",
-    "market",
-    "networking",
-    "smart grid",
-]
-
-_PHYSICAL_REASON_MARKERS = [
-    "physical asset focused",
-    "physical equipment focused",
-]
-
-_OFF_TARGET_REASON_MARKERS = [
-    "not physical asset focused",
-    "communications",
-    "control system",
-    "cyberattack",
-    "cybersecurity",
-    "data architecture",
-    "generic ml",
-    "indirect relevance",
-    "market",
-    "networking",
-    "not directly",
-    "not entirely physical asset focused",
-    "other asset family",
-    "somewhat indirect",
-    "somewhat relevant",
-    "smart-grid",
-    "system paper",
-    "transformer architecture",
-]
-
-
-def _normalise_text(text: str) -> str:
-    return re.sub(r"\s+", " ", text.strip().lower())
 
 
 def _tokenise(text: str) -> list[str]:
@@ -151,7 +41,7 @@ def _tokenise(text: str) -> list[str]:
 
 
 def _default_canonical_asset_name(asset_name: str) -> str:
-    return _normalise_text(asset_name.replace("_", " "))
+    return collapse_whitespace_lower(asset_name.replace("_", " "))
 
 
 def _unique_preserve_order(items: list[str]) -> list[str]:
@@ -170,115 +60,6 @@ def _asset_tokens(asset_name: str) -> list[str]:
         token
         for token in _tokenise(asset_name)
         if len(token) > 2 and token not in _STOPWORDS
-    ]
-
-
-class _ArxivExecutor:
-    """Single-entry executor that enforces a cooldown before every ArXiv request."""
-
-    def __init__(self, cooldown_seconds: float = _ARXIV_COOLDOWN_SECONDS) -> None:
-        self.cooldown_seconds = cooldown_seconds
-        self._last_request_at: float | None = None
-        self.metadata_requests = 0
-        self.pdf_requests = 0
-        self._ctx = ssl.create_default_context()
-        self._ctx.check_hostname = False
-        self._ctx.verify_mode = ssl.CERT_NONE
-
-    def _wait_for_cooldown(self) -> None:
-        if self._last_request_at is None:
-            return
-        elapsed = time.monotonic() - self._last_request_at
-        if elapsed < self.cooldown_seconds:
-            time.sleep(self.cooldown_seconds - elapsed)
-
-    def _open(self, url: str, timeout: int) -> bytes:
-        self._wait_for_cooldown()
-        req = urllib.request.Request(url, headers=_ARXIV_HEADERS)
-        with urllib.request.urlopen(req, timeout=timeout, context=self._ctx) as response:
-            data = response.read()
-        self._last_request_at = time.monotonic()
-        return data
-
-    def fetch_metadata(
-        self,
-        query: str,
-        max_results: int = _MAX_METADATA_RESULTS,
-    ) -> list[EvidenceCandidate]:
-        safe_query = urllib.parse.quote(query)
-        url = f"{_ARXIV_BASE_URL}search_query={safe_query}&start=0&max_results={max_results}"
-        self.metadata_requests += 1
-
-        try:
-            data = self._open(url, timeout=10)
-        except urllib.error.HTTPError as exc:
-            _log.warning("HTTP error fetching ArXiv metadata for %r: %s", query, exc)
-            return []
-        except Exception as exc:  # noqa: BLE001
-            _log.warning("Failed to fetch ArXiv metadata for %r: %s", query, exc)
-            return []
-
-        try:
-            root = ET.fromstring(data)
-        except ET.ParseError as exc:
-            _log.warning("Failed to parse ArXiv XML for %r: %s", query, exc)
-            return []
-
-        ns = {"atom": "http://www.w3.org/2005/Atom"}
-        candidates: list[EvidenceCandidate] = []
-        for entry in root.findall("atom:entry", ns):
-            raw_id = entry.findtext("atom:id", default="", namespaces=ns).strip()
-            arxiv_id = raw_id.rsplit("/", 1)[-1] if raw_id else ""
-            title = entry.findtext("atom:title", default="No Title", namespaces=ns)
-            summary = entry.findtext("atom:summary", default="No Summary", namespaces=ns)
-            published = entry.findtext("atom:published", default="", namespaces=ns).strip() or None
-
-            pdf_url = None
-            for link in entry.findall("atom:link", ns):
-                href = link.attrib.get("href")
-                if link.attrib.get("title") == "pdf" or link.attrib.get("type") == "application/pdf":
-                    pdf_url = href
-                    if pdf_url and not pdf_url.endswith(".pdf"):
-                        pdf_url += ".pdf"
-                    break
-
-            candidates.append(
-                EvidenceCandidate(
-                    arxiv_id=arxiv_id or title.strip(),
-                    title=title.strip().replace("\n", " "),
-                    summary=summary.strip().replace("\n", " "),
-                    query=query,
-                    pdf_url=pdf_url,
-                    published=published,
-                )
-            )
-        return candidates
-
-    def fetch_pdf_text(self, pdf_url: str, max_pages: int = _MAX_PDF_PAGES) -> str:
-        self.pdf_requests += 1
-        try:
-            pdf_bytes = self._open(pdf_url, timeout=15)
-            from pypdf import PdfReader
-
-            reader = PdfReader(io.BytesIO(pdf_bytes))
-            pages: list[str] = []
-            for index, page in enumerate(reader.pages):
-                if index >= max_pages:
-                    break
-                page_text = page.extract_text()
-                if page_text:
-                    pages.append(page_text)
-            return "\n".join(pages)
-        except Exception as exc:  # noqa: BLE001
-            _log.warning("Failed to fetch or parse ArXiv PDF %s: %s", pdf_url, exc)
-            return ""
-
-
-def _default_queries(canonical_asset_name: str) -> list[str]:
-    canonical = _default_canonical_asset_name(canonical_asset_name)
-    return [
-        f"{canonical} condition monitoring",
-        f"{canonical} fault diagnosis",
     ]
 
 
@@ -311,38 +92,26 @@ def _summarise_metadata_for_judge(candidates: list[EvidenceCandidate]) -> str:
     return json.dumps(payload, indent=2, ensure_ascii=True)
 
 
-def _coerce_action(
-    parsed: object,
-    asset_name: str,
-    canonical_asset_name: str,
-    step_number: int,
-    has_candidates: bool,
-) -> RetrievalAction:
-    fallback_canonical = canonical_asset_name or _default_canonical_asset_name(asset_name)
-    fallback_queries = _default_queries(fallback_canonical)
-
+def _coerce_action(parsed: object) -> RetrievalAction:
     if not isinstance(parsed, dict):
-        if has_candidates and step_number > 1:
-            return RetrievalAction(
-                action="finish",
-                reason="Fallback finish because the retrieval action could not be parsed.",
-                canonical_asset_name=fallback_canonical,
-            )
-        return RetrievalAction(
-            action="search",
-            reason="Fallback search because the retrieval action could not be parsed.",
-            canonical_asset_name=fallback_canonical,
-            queries=fallback_queries,
-        )
+        raise ValueError("Retrieval planner response could not be parsed as an object.")
 
-    action = str(parsed.get("action", "search")).strip().lower()
+    action = str(parsed.get("action", "")).strip().lower()
     if action not in {"search", "finish"}:
-        action = "finish" if has_candidates and step_number > 1 else "search"
+        raise ValueError(f"Retrieval planner returned invalid action: {action!r}")
+
+    reason = str(parsed.get("reason", "")).strip()
+    if not reason:
+        raise ValueError("Retrieval planner is missing required non-empty field: 'reason'")
+
+    canonical = str(parsed.get("canonical_asset_name", "")).strip()
+    if not canonical:
+        raise ValueError("Retrieval planner is missing required non-empty field: 'canonical_asset_name'")
 
     action_obj = RetrievalAction(
         action=action,
-        reason=str(parsed.get("reason", "")).strip() or "No reason provided.",
-        canonical_asset_name=str(parsed.get("canonical_asset_name") or fallback_canonical).strip() or fallback_canonical,
+        reason=reason,
+        canonical_asset_name=canonical,
         queries=[
             str(query).strip()
             for query in parsed.get("queries", [])
@@ -355,9 +124,6 @@ def _coerce_action(
         ],
     )
 
-    if action_obj.action == "search" and not action_obj.queries:
-        action_obj.queries = fallback_queries
-
     if action_obj.action == "finish":
         action_obj.queries = []
 
@@ -368,8 +134,8 @@ def _judge_fallback(
     candidate: EvidenceCandidate,
     canonical_asset_name: str,
 ) -> tuple[int, str]:
-    text = _normalise_text(f"{candidate.title} {candidate.summary}")
-    asset_phrase = _normalise_text(canonical_asset_name)
+    text = collapse_whitespace_lower(f"{candidate.title} {candidate.summary}")
+    asset_phrase = collapse_whitespace_lower(canonical_asset_name)
     asset_tokens = _asset_tokens(canonical_asset_name)
 
     score = 2
@@ -488,7 +254,7 @@ def _fallback_retry_queries(
 
 
 def _candidate_reason_flags(reason: str) -> tuple[bool, bool]:
-    normalized = _normalise_text(reason)
+    normalized = collapse_whitespace_lower(reason)
     is_off_target = any(marker in normalized for marker in _OFF_TARGET_REASON_MARKERS)
     is_physical = (
         not is_off_target
@@ -550,7 +316,7 @@ def _extract_snippet_text(text: str, canonical_asset_name: str) -> str:
     lowered = compact.lower()
     windows: list[tuple[int, int]] = []
     for keyword in keywords:
-        norm = _normalise_text(keyword)
+        norm = collapse_whitespace_lower(keyword)
         if not norm:
             continue
         idx = lowered.find(norm)
@@ -661,11 +427,6 @@ def _render_final_log(
     lines = [
         f"Asset: {bundle.asset_name}",
         f"Canonical Asset: {bundle.canonical_asset_name}",
-        f"Steps Run: {bundle.diagnostics.steps_run}",
-        f"Finish Reason: {bundle.diagnostics.finish_reason}",
-        f"Metadata Requests: {bundle.diagnostics.metadata_requests}",
-        f"PDF Requests: {bundle.diagnostics.pdf_requests}",
-        f"Cooldown: {bundle.diagnostics.cooldown_seconds:.1f}s",
         f"Physical Asset Focused: {'yes' if focused else 'no'}",
         "",
         "Query History:",
@@ -713,10 +474,8 @@ def retrieve_asset_evidence(
     candidate_pool: dict[str, EvidenceCandidate] = {}
     finish_reason = "Finished after reaching the step limit."
     selected_ids: list[str] = []
-    steps_run = 0
 
     for step_number in range(1, _MAX_STEPS + 1):
-        steps_run = step_number
         current_summary = _render_results_summary(_sorted_candidates(candidate_pool))
         previous_queries = _render_queries(query_history)
         prompt = RETRIEVAL_QUERY_PLAN_PROMPT.format(
@@ -730,14 +489,8 @@ def retrieve_asset_evidence(
         )
         response = llm.generate(prompt)
         parsed, _ = parse_llm_json(response)
-        action = _coerce_action(
-            parsed=parsed,
-            asset_name=asset_name,
-            canonical_asset_name=canonical_asset_name,
-            step_number=step_number,
-            has_candidates=bool(candidate_pool),
-        )
-        canonical_asset_name = action.canonical_asset_name or canonical_asset_name
+        action = _coerce_action(parsed)
+        canonical_asset_name = action.canonical_asset_name
 
         if action.action == "finish" and candidate_pool:
             pool_focused, focus_reason = _evaluate_candidate_pool(
@@ -752,7 +505,7 @@ def retrieve_asset_evidence(
                 selected_ids = action.selected_ids
                 if log_writer:
                     log_writer(
-                        f"retrieval_step_{step_number:02d}",
+                        f"02_retrieval/steps/step_{step_number:02d}.txt",
                         _render_step_log(
                             step_number=step_number,
                             action=action,
@@ -777,30 +530,30 @@ def retrieve_asset_evidence(
             if query not in query_history
         ][: _MAX_QUERIES_PER_STEP]
 
-        if action.action == "search" and not new_queries:
-            new_queries = _fallback_retry_queries(canonical_asset_name, query_history)
-
         if not new_queries:
             if candidate_pool:
                 finish_reason = action.reason or "No new queries remained; keeping the best-so-far pool."
-                if log_writer:
-                    log_writer(
-                        f"retrieval_step_{step_number:02d}",
-                        _render_step_log(
-                            step_number=step_number,
-                            action=RetrievalAction(
-                                action="finish",
-                                reason=finish_reason,
-                                canonical_asset_name=canonical_asset_name,
-                            ),
-                            new_queries=[],
-                            fetched_candidates=[],
-                            pool=candidate_pool,
+            else:
+                finish_reason = action.reason or (
+                    "No new queries from planner and no evidence pool yet; proceeding with empty evidence."
+                )
+            if log_writer:
+                log_writer(
+                    f"02_retrieval/steps/step_{step_number:02d}.txt",
+                    _render_step_log(
+                        step_number=step_number,
+                        action=RetrievalAction(
+                            action="finish",
+                            reason=finish_reason,
                             canonical_asset_name=canonical_asset_name,
                         ),
-                    )
-                break
-            new_queries = _default_queries(canonical_asset_name)
+                        new_queries=[],
+                        fetched_candidates=[],
+                        pool=candidate_pool,
+                        canonical_asset_name=canonical_asset_name,
+                    ),
+                )
+            break
 
         query_history.extend(new_queries)
         fetched_candidates: list[EvidenceCandidate] = []
@@ -817,7 +570,7 @@ def retrieve_asset_evidence(
 
         if log_writer:
             log_writer(
-                f"retrieval_step_{step_number:02d}",
+                f"02_retrieval/steps/step_{step_number:02d}.txt",
                 _render_step_log(
                     step_number=step_number,
                     action=action,
@@ -863,16 +616,9 @@ def retrieve_asset_evidence(
         selected_candidate_ids=selected_candidate_ids,
         candidates=top_candidates,
         snippets=snippets,
-        diagnostics=RetrievalDiagnostics(
-            steps_run=steps_run,
-            finish_reason=finish_reason,
-            metadata_requests=executor.metadata_requests,
-            pdf_requests=executor.pdf_requests,
-            cooldown_seconds=_ARXIV_COOLDOWN_SECONDS,
-        ),
     )
 
     if log_writer:
-        log_writer("retrieval_summary", _render_final_log(bundle, selected_candidates))
+        log_writer("02_retrieval/summary.txt", _render_final_log(bundle, selected_candidates))
 
     return bundle

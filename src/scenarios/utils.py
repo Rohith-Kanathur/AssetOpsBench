@@ -1,11 +1,56 @@
+"""Scenario-generation utilities shared across pipeline stages."""
+
+from __future__ import annotations
+
 import json
-import urllib.request
-import urllib.parse
-import xml.etree.ElementTree as ET
 import logging
+import random
+import re
+from pathlib import Path
 from typing import Any
 
+from .text import normalize_example_fingerprint
+
 _log = logging.getLogger(__name__)
+
+_SCENARIOS_ROOT = Path(__file__).resolve().parent
+
+_HF = _SCENARIOS_ROOT / "huggingface"
+_ALL_UTTERANCE = _HF / "scenarios" / "all_utterance.jsonl"
+_FAILURE_MAPPING = _HF / "task" / "failure_mapping_senarios.jsonl"
+_RULE_MONITORING = _HF / "task" / "rule_monitoring_scenarios.jsonl"
+_COMPRESSOR = _HF / "asset" / "compressor_utterance.jsonl"
+_HYDRAULIC_PUMP = _HF / "asset" / "hydrolicpump_utterance.jsonl"
+_LOCAL_VIBRATION = _SCENARIOS_ROOT / "local" / "vibration_utterance.json"
+
+_ASSET_KEYWORD_SUBSTRINGS = (
+    "chiller",
+    "ahu",
+    "wind turbine",
+    "equipment",
+)
+_ASSET_ID_PATTERN = re.compile(r"\b[A-Z]{2,6}\d{4,}\b")
+
+# Generic benchmark queries to exclude from all_utterance (substring match, lowercased).
+_GENERIC_UTTERANCE_DENYLIST = (
+    "what iot sites are available",
+    "can you list the iot sites",
+    "list the iot sites",
+    "is lstm model supported",
+    "lstm model supported in tsfm",
+    "what sites are available",
+)
+
+_TSFM_ENTITY_ORDER = (
+    "Chiller",
+    "CRAC",
+    "Boiler",
+    "AHU",
+    "Cooling Tower",
+    "HXU",
+    "Pump",
+    "SVL",
+)
 
 
 def parse_llm_json(raw: str) -> tuple[Any, str | None]:
@@ -35,167 +80,248 @@ def parse_llm_json(raw: str) -> tuple[Any, str | None]:
         end_char = "}" if start == start_obj else "]"
         end = text.rfind(end_char) + 1
 
-        if start != -1 and end > start:
+        if start != -1 and end > 0:
             try:
                 return json.loads(text[start:end]), None
             except json.JSONDecodeError as inner_exc:
                 return None, f"Failed to parse inner JSON block. Error: {inner_exc}"
     return None, "Unknown parsing error."
 
-def fetch_arxiv_studies(
-    search_queries: str | list[str],
-    max_results_per_query: int = 2,
-    metadata_out: dict | None = None,
-) -> str:
-    import time
-    import ssl
 
-    if isinstance(search_queries, str):
-        queries = [search_queries]
-    else:
-        queries = search_queries
-
-    base_url = "http://export.arxiv.org/api/query?"
-    headers = {'User-Agent': 'AssetOpsBench/1.0 (mailto:admin@example.com)'}
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-
-    if metadata_out is not None:
-        metadata_out['queries'] = queries
-        metadata_out['status_codes'] = []
-        metadata_out['returned_entries'] = 0
-        metadata_out['pdf_urls'] = []
-        metadata_out['query_to_pdf'] = {}
-        metadata_out['results_summary'] = []
-
-    seen_ids = set()
-    studies_text = []
-
-    for i, q in enumerate(queries):
-        if i > 0:
-            time.sleep(3.1)
-
-        safe_query = urllib.parse.quote(q)
-        url = f"{base_url}search_query={safe_query}&start=0&max_results={max_results_per_query}"
-        
+def _load_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        _log.warning("Few-shot file missing: %s", path)
+        return []
+    rows: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
         try:
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=10, context=ctx) as response:
-                status = response.getcode()
-                if metadata_out is not None:
-                    metadata_out['status_codes'].append(status)
-                data = response.read()
-            
-            root = ET.fromstring(data)
-            ns = {'atom': 'http://www.w3.org/2005/Atom'}
-            
-            for entry in root.findall('atom:entry', ns):
-                arxiv_id = entry.find('atom:id', ns).text
-                if arxiv_id in seen_ids:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError as exc:
+            _log.warning("Skip bad JSONL line in %s: %s", path, exc)
+    return rows
+
+
+def _load_local_vibration_list() -> list[dict[str, Any]]:
+    if not _LOCAL_VIBRATION.exists():
+        return []
+    try:
+        raw = json.loads(_LOCAL_VIBRATION.read_text(encoding="utf-8"))
+    except Exception as exc:
+        _log.warning("Failed to load local vibration few-shot file: %s", exc)
+        return []
+    items = raw if isinstance(raw, list) else raw.get("train", [])
+    return [dict(item) for item in items] if isinstance(items, list) else []
+
+
+def _is_asset_specific_utterance(text: str) -> bool:
+    """Filter for all_utterance: asset-specific vs generic site/capability questions."""
+    tl = text.lower()
+    for phrase in _GENERIC_UTTERANCE_DENYLIST:
+        if phrase in tl:
+            return False
+    if any(k in tl for k in _ASSET_KEYWORD_SUBSTRINGS):
+        return True
+    if _ASSET_ID_PATTERN.search(text):
+        return True
+    return False
+
+
+# Failure-mapping few-shot: one example per utterance shape (covers all rows in the JSONL).
+_FMSR_FEWSHOT_BUCKET_ORDER: tuple[str, ...] = (
+    "list_all",  # "List all failure modes of …"
+    "for_list_all",  # "For a compressor, list all the failure modes …"
+    "what",  # "What sensors can be …", "What are the failure modes …", etc.
+    "which",  # "Which failure modes …", "Which sensors are most …" (sentence starts with Which)
+    "for_which",  # "For an aero gas turbine, which failure modes …" (For …, which …)
+)
+
+
+def _failure_mapping_bucket(text: str) -> str | None:
+    """Classify failure_mapping_senarios.jsonl rows by question prefix / shape."""
+    s = text.strip()
+    sl = s.lower()
+    if sl.startswith("list all"):
+        return "list_all"
+    if sl.startswith("for ") and "list all" in sl:
+        return "for_list_all"
+    if sl.startswith("what "):
+        return "what"
+    if sl.startswith("which "):
+        return "which"
+    if sl.startswith("for ") and re.search(r"\bwhich\b", sl):
+        return "for_which"
+    return None
+
+
+def _pick_failure_mapping_examples(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    buckets: dict[str, list[dict[str, Any]]] = {key: [] for key in _FMSR_FEWSHOT_BUCKET_ORDER}
+    for row in rows:
+        text = str(row.get("text", ""))
+        b = _failure_mapping_bucket(text)
+        if b and b in buckets:
+            buckets[b].append(row)
+    out: list[dict[str, Any]] = []
+    for key in _FMSR_FEWSHOT_BUCKET_ORDER:
+        if buckets[key]:
+            out.append(random.choice(buckets[key]))
+    return out
+
+
+def _pick_rule_monitoring_diverse(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One row per target asset class (entity field or SVL in text)."""
+    picked: list[dict[str, Any]] = []
+    used_ids: set[int | str] = set()
+
+    for target in _TSFM_ENTITY_ORDER:
+        candidates: list[dict[str, Any]] = []
+        if target == "SVL":
+            for row in rows:
+                rid = row.get("id")
+                if rid in used_ids:
                     continue
-                seen_ids.add(arxiv_id)
+                t = str(row.get("text", ""))
+                if re.search(r"\bSVL\b", t, re.IGNORECASE):
+                    candidates.append(row)
+        else:
+            for row in rows:
+                rid = row.get("id")
+                if rid in used_ids:
+                    continue
+                if str(row.get("entity", "")).strip() == target:
+                    candidates.append(row)
+        if candidates:
+            choice = random.choice(candidates)
+            picked.append(choice)
+            used_ids.add(choice.get("id"))
+    return picked
 
-                title = entry.find('atom:title', ns)
-                summary = entry.find('atom:summary', ns)
-                
-                t_text = title.text.strip().replace('\n', ' ') if title is not None else "No Title"
-                s_text = summary.text.strip().replace('\n', ' ') if summary is not None else "No Summary"
-                
-                pdf_url = None
-                for link in entry.findall('atom:link', ns):
-                    if link.attrib.get('title') == 'pdf' or link.attrib.get('type') == 'application/pdf':
-                        pdf_url = link.attrib.get('href')
-                        if pdf_url and not pdf_url.endswith('.pdf'):
-                            pdf_url += '.pdf'
-                        break
-                        
-                pdf_text = ""
-                if pdf_url:
-                    try:
-                        import io
-                        from pypdf import PdfReader
 
-                        time.sleep(3.2)
+def _normalize_fewshot_row(
+    row: dict[str, Any], source_config: str
+) -> dict[str, Any]:
+    text = str(row.get("text", "")).strip()
+    category = str(row.get("category", "")).strip() or "Knowledge Query"
+    characteristic_form = str(row.get("characteristic_form", "")).strip()
+    return {
+        "id": row.get("id"),
+        "text": text,
+        "category": category,
+        "characteristic_form": characteristic_form,
+        "entity": str(row.get("entity", "") or "").strip(),
+        "group": str(row.get("group", "") or "").strip(),
+        "note": str(row.get("note", "") or "").strip(),
+        "hint": str(row.get("hint", "") or "").strip(),
+        "source_config": source_config,
+        "source_type": str(row.get("type", "") or "").strip(),
+    }
 
-                        pdf_req = urllib.request.Request(pdf_url, headers=headers)
-                        with urllib.request.urlopen(pdf_req, timeout=15, context=ctx) as pdf_resp:
-                            pdf_bytes = pdf_resp.read()
 
-                        reader = PdfReader(io.BytesIO(pdf_bytes))
-                        extracted = []
-                        for j, page in enumerate(reader.pages):
-                            if j > 4:
-                                break
-                            page_text = page.extract_text()
-                            if page_text:
-                                extracted.append(page_text)
+def _to_prompt_dict(example: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "text": example.get("text", ""),
+        "category": example.get("category", ""),
+        "characteristic_form": example.get("characteristic_form", ""),
+        "source_config": example.get("source_config", ""),
+    }
 
-                        pdf_text = "\n".join(extracted)
-                        if len(pdf_text) > 10000:
-                            pdf_text = pdf_text[:10000] + "\n...[TRUNCATED]"
-                    except Exception as e:
-                        _log.warning(f"Failed to fetch or parse PDF from {pdf_url}: {e}")
-                        pdf_text = ""
-                
-                if pdf_url and metadata_out is not None:
-                    metadata_out['results_summary'].append({"title": t_text, "url": pdf_url})
 
-                if pdf_url and pdf_text and "[PDF Extraction Failed" not in pdf_text:
-                    if metadata_out is not None:
-                        metadata_out['pdf_urls'].append(pdf_url)
-                        if q not in metadata_out['query_to_pdf']:
-                            metadata_out['query_to_pdf'][q] = []
-                        metadata_out['query_to_pdf'][q].append(pdf_url)
-                
-                studies_text.append(f"Title: {t_text}\nSummary: {s_text}\n\nPDF Content Extracted (First 5 pages):\n{pdf_text}")
+def _build_candidate_pool(
+    focus: str,
+) -> list[dict[str, Any]]:
+    focus_lower = (focus or "").lower()
+    if focus_lower == "iot":
+        rows = _load_jsonl(_ALL_UTTERANCE)
+        pool: list[dict[str, Any]] = []
+        for row in rows:
+            if str(row.get("type", "")).strip() != "IoT":
+                continue
+            text = str(row.get("text", ""))
+            if not _is_asset_specific_utterance(text):
+                continue
+            pool.append(_normalize_fewshot_row(row, "all_utterance_iot"))
+        return pool
 
-        except urllib.error.HTTPError as e:
-            if metadata_out is not None:
-                metadata_out['status_codes'].append(e.code)
-            _log.warning(f"HTTP Error {e.code} fetching ArXiv query '{q}': {e}")
-        except Exception as e:
-            _log.warning(f"Failed to fetch ArXiv query '{q}': {e}")
+    if focus_lower == "fmsr":
+        rows = _load_jsonl(_FAILURE_MAPPING)
+        picked = _pick_failure_mapping_examples(rows)
+        return [_normalize_fewshot_row(r, "failure_mapping") for r in picked]
 
-    if metadata_out is not None:
-        metadata_out['returned_entries'] = len(studies_text)
+    if focus_lower == "tsfm":
+        rows = _load_jsonl(_RULE_MONITORING)
+        picked = _pick_rule_monitoring_diverse(rows)
+        return [_normalize_fewshot_row(r, "rule_monitoring") for r in picked]
 
-    return "\n\n".join(studies_text) if studies_text else "No recent studies found via ArXiv."
+    if focus_lower == "wo":
+        rows = _load_jsonl(_ALL_UTTERANCE)
+        pool = []
+        for row in rows:
+            if str(row.get("type", "")).strip() != "Workorder":
+                continue
+            text = str(row.get("text", ""))
+            if not _is_asset_specific_utterance(text):
+                continue
+            pool.append(_normalize_fewshot_row(row, "all_utterance_wo"))
+        return pool
+
+    if focus_lower == "vibration":
+        items = _load_local_vibration_list()
+        return [
+            _normalize_fewshot_row(dict(item), "local_vibration") for item in items
+        ]
+
+    if focus_lower == "multiagent":
+        pool = []
+        for path, tag in (
+            (_COMPRESSOR, "compressor_utterance"),
+            (_HYDRAULIC_PUMP, "hydrolicpump_utterance"),
+        ):
+            for row in _load_jsonl(path):
+                pool.append(_normalize_fewshot_row(row, tag))
+        for row in _load_jsonl(_ALL_UTTERANCE):
+            if str(row.get("type", "")).strip() != "multiagent":
+                continue
+            text = str(row.get("text", ""))
+            if not _is_asset_specific_utterance(text):
+                continue
+            pool.append(_normalize_fewshot_row(row, "all_utterance_multiagent"))
+        return pool
+
+    _log.warning("Unknown focus %r for few-shot; returning empty pool.", focus)
+    return []
+
 
 def fetch_hf_fewshot(
-    dataset_id: str = "ibm-research/AssetOpsBench",
-    split: str = "scenarios",
-    target_type: str | None = None,
-    fallback_if_missing: bool = True,
+    focus: str | None = None,
+    max_examples: int = 6,
+    seed: int | None = None,
 ) -> list[dict]:
-    try:
-        from datasets import load_dataset
-        ds = load_dataset(dataset_id, split)
-
-        examples = []
-        if "train" in ds:
-            train_ds = ds["train"]
-        else:
-            train_ds = ds
-
-        for item in train_ds:
-            if target_type is None or str(item.get("type", "")).lower() == target_type.lower():
-                examples.append(item)
-
-            if len(examples) >= 3:
-                break
-
-        return [
-            {
-                "text": e.get("text", ""),
-                "category": e.get("category", ""),
-                "characteristic_form": e.get("characteristic_form", ""),
-            }
-            for e in examples
-        ]
-    except ImportError:
-        _log.warning("HuggingFace 'datasets' library is not installed.")
+    if max_examples <= 0:
         return []
-    except Exception as e:
-        _log.warning(f"Failed to load HuggingFace dataset: {e}")
+
+    if seed is not None:
+        random.seed(seed)
+
+    pool = _build_candidate_pool(focus)
+    if not pool:
+        _log.info("No few-shot examples were available for focus %r.", focus)
         return []
+
+    # Dedupe by normalized text fingerprint
+    seen: set[str] = set()
+    unique: list[dict[str, Any]] = []
+    for example in pool:
+        fp = normalize_example_fingerprint(example.get("text", ""))
+        if not fp or fp in seen:
+            continue
+        seen.add(fp)
+        unique.append(example)
+
+    random.shuffle(unique)
+    selected = unique[:max_examples]
+    return [_to_prompt_dict(ex) for ex in selected]
+
+
+__all__ = ["fetch_hf_fewshot", "parse_llm_json"]

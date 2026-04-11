@@ -1,225 +1,342 @@
 # Scenario Generator
 
-Automated LLM-driven pipeline that generates evaluation scenarios for AssetOpsBench. Given an asset name (e.g. `"Smart Grid Transformer"`), it produces a set of richly-typed benchmark scenarios covering IoT queries, failure-mode reasoning, time-series analysis, work-order decisions, and complex multi-agent workflows.
+LLM-driven pipeline for generating AssetOpsBench scenarios from an asset class such as `"Motor"`, `"Transformer"`, or `"Hydrolic Pump"`.
 
----
+The generator works in two modes:
 
-## Directory Structure
+- `closed_form`: self-contained scenarios where the query itself provides the needed values, rules, summaries, or dataset references.
+- `open_form`: grounded scenarios that use live CouchDB-backed identifiers discovered from IoT and vibration coverage.
 
-```
-src/scenarios/
-├── generator.py      # Main orchestrator — ScenarioGeneratorAgent + CLI entry point
-├── models.py         # Pydantic models: AssetProfile, ScenarioBudget, Scenario
-├── prompts.py        # All LLM prompt templates (6 prompts)
-├── utils.py          # ArXiv fetch + HuggingFace few-shot helpers
-├── local/            # Place custom local study PDFs / text files here
-└── huggingface/      # HuggingFace dataset integration notes
-```
+> **Open-form disclaimer:** For grounded `open_form` runs (`--data-in-couchdb`), configure `.env` (or the process environment) so **`IOT_DBNAME`**, **`WO_DBNAME`**, and **`VIBRATION_DBNAME`** each point to live CouchDB databases that actually contain data relevant to the **asset name** you pass on the CLI (for example `"Transformer"` or `"Motor"`). If these names point at the wrong or empty databases, IoT, work-order, and vibration grounding will be misleading or sparse for that asset.
 
----
 
-## Prerequisites
+>  For **new asset classes**, add or update **`_ASSET_FAILURE_MODE_ALIASES`** in [`src/servers/fmsr/main.py`](../servers/fmsr/main.py) when the CLI-facing name should map to a different curated failure-mode key in [`failure_modes.yaml`](../servers/fmsr/failure_modes.yaml); otherwise FMSR may fall back to LLM-only failure lists. See **Asset class → curated FMSR failure modes** below for the full picture.
 
-Install project dependencies (from repo root):
+The run writes a JSON **array** of scenarios. Each object has this shape:
 
-```bash
-uv sync
-```
-
-Set required environment variables in a `.env` file at the repo root:
-
-```bash
-# .env
-LITELLM_MODEL=gpt-4o          # or any LiteLLM-compatible model ID
-OPENAI_API_KEY=sk-...          # or whichever provider key your model needs
-```
-
-> The generator reuses the same `LiteLLMBackend` and `Executor` as `plan-execute`, so any model already working with that CLI will work here.
-
----
-
-## Running the Generator
-
-The generator is invoked as a Python module from the **repo root**:
-
-```bash
-python -m scenarios.generator "<Asset Name>" [options]
-```
-
-### Minimum viable run
-
-```bash
-python -m scenarios.generator "Smart Grid Transformer"
-```
-
-Generates 50 scenarios and writes them to `generated_scenarios.json`.
-
----
-
-## CLI Reference
-
-| Flag | Default | Description |
-|---|---|---|
-| `asset_name` *(positional)* | — | Name of the physical asset to generate scenarios for (e.g. `"Chiller"`, `"Wind Turbine"`, `"Smart Grid Transformer"`) |
-| `--num-scenarios N` | `50` | Total number of scenarios to generate |
-| `--output PATH` | `generated_scenarios.json` | Output file path for the resulting JSON |
-| `--model-id MODEL` | project default | LiteLLM model ID override (e.g. `gpt-4o`, `claude-3-5-sonnet`) |
-| `--show-workflow` | off | Print granular phase-by-phase progress to the terminal |
-| `--log` | off | Dump raw prompts + LLM responses to a timestamped `logs/` directory |
-
-### Examples
-
-```bash
-# Generate 20 scenarios with verbose workflow output
-python -m scenarios.generator "Chiller" --num-scenarios 20 --show-workflow
-
-# Use a specific model and save to a custom path
-python -m scenarios.generator "Wind Turbine" --model-id claude-3-5-sonnet-latest --output wind_turbine_scenarios.json
-
-# Full debug run: workflow + raw log files
-python -m scenarios.generator "Smart Grid Transformer" --show-workflow --log
-
-# Minimal silent run (for CI/scripting)
-python -m scenarios.generator "Pump" --num-scenarios 10 --output pump_eval.json
-```
-
----
-
-## Generation Pipeline
-
-The generator runs 5 sequential phases:
-
-```
-Phase 1 → Asset Profile Construction
-Phase 2 → Scenario Budget Allocation
-Phase 3 → Individual Agent Generation & Validation  (iot / fmsr / tsfm / wo)
-Phase 4 → Multi-Agent Scenario Construction
-         → Output JSON
-```
-
-### Phase 1 — Asset Profile Construction
-
-1. An LLM generates 3 targeted ArXiv search queries using the canonical academic name for the asset.
-2. The ArXiv API is queried; PDFs are fetched and the first 5 pages of each are extracted.
-3. A `PROFILE_BUILDER_PROMPT` synthesises an `AssetProfile` from the literature and the available MCP tool descriptions.
-
-**Output model (`AssetProfile`):**
 ```json
 {
-  "asset_name": "Smart Grid Transformer",
-  "description": "...",
-  "sensor_mappings": { "oil_temp": "Top-oil temperature sensor" },
-  "known_failure_modes": ["insulation breakdown", "partial discharge"],
-  "relevant_tools": { "iot": [{"name": "get_sensor_reading", "reason": "..."}] },
-  "iso_standards": ["ISO 14224", "IEC 60076"]
+  "id": "transformer_scenario_01",
+  "type": "fmsr",
+  "text": "…",
+  "category": "Diagnostic Assessment",
+  "characteristic_form": "…"
 }
 ```
 
-> **Critical:** If this phase fails to parse an `AssetProfile`, the process exits immediately with a fatal error. There is no fallback.
+Allowed `type` values: `iot`, `fmsr`, `tsfm`, `wo`, `vibration`, `multiagent`. Few-shot source JSONL files under [`huggingface/`](huggingface/) still use their own `type` column labels (e.g. `IoT`, `Workorder`) when filtering examples; generated `scenarios.json` uses the canonical keys above. See [`models.py`](models.py) (`Scenario`, `ScenarioTypeKey`).
 
-### Phase 2 — Scenario Budget Allocation
+## CLI
 
-An LLM analyses the `AssetProfile` and distributes the `--num-scenarios` budget across 5 subagent categories:
+From the **repository root**, use [uv](https://docs.astral.sh/uv/) so imports resolve for `scenarios`, `agent`, `llm`, and `servers` (same layout as `tool.pytest.ini_options.pythonpath` in `pyproject.toml`):
 
-| Category | Focus |
-|---|---|
-| `iot` | Sensor data queries and telemetry |
-| `fmsr` | Failure modes and structural reliability |
-| `tsfm` | Time-series analysis and forecasting |
-| `wo` | Work-order decision support |
-| `multiagent` | Complex multi-step orchestration (capped at 50% of total) |
-
-> **Critical:** If budget allocation fails, the process exits immediately.
-
-### Phase 3 — Individual Agent Generation & Validation
-
-For each subagent with a non-zero budget:
-1. **Few-shot examples** are fetched from `ibm-research/AssetOpsBench` on HuggingFace (filtered by `type`).
-2. A `SCENARIO_GENERATOR_PROMPT` produces a JSON array of scenario dicts.
-3. A `VALIDATE_REPAIR_PROMPT` validates and repairs each scenario for schema correctness and tool alignment.
-4. Changed scenarios are diffed and written to log files (if `--log` is enabled).
-
-**Valid `category` values per subagent:** (extracted from HF examples)
-
-| Subagent | Allowed Categories |
-|---|---|
-| `iot` | Data Query, Knowledge Query |
-| `fmsr` | Knowledge Query |
-| `tsfm` | Knowledge Query, Anomaly Detection Query, Tuning Query, Inference Query, Complex Query |
-| `wo` | Decision Support, Prediction, Knowledge Query |
-
-### Phase 4 — Multi-Agent Scenario Construction
-
-Uses up to 10 previously-generated single-agent scenarios as seed material to construct complex cross-agent workflows (e.g. detect anomaly via IoT → confirm history via FMSR → schedule via WO).
-
----
-
-## Output Schema
-
-The output JSON is an array of `Scenario` objects:
-
-```json
-[
-  {
-    "id": "smart_grid_transformer_iot_01",
-    "type": "iot",
-    "text": "What is the current oil temperature reading for transformer T-42?",
-    "category": "Data Query",
-    "characteristic_form": "The agent should call get_sensor_reading with asset_id='T-42' and sensor='oil_temp', then return the value with its unit."
-  }
-]
+```bash
+uv run python -m scenarios.generator "<Asset Class>" [options]
 ```
 
-| Field | Type | Description |
+Key flags:
+
+| Flag | Default | Description |
 |---|---|---|
-| `id` | `str` | Auto-assigned: `{asset}_{type}_{n:02d}` |
-| `type` | `str` | Subagent category: `iot`, `fmsr`, `tsfm`, `wo`, `multiagent` |
-| `text` | `str` | The natural-language query presented to the agent |
-| `category` | `str` | Scenario category (see table above) |
-| `characteristic_form` | `str` | Natural-language description of the expected agent response/tool flow |
+| `asset_name` | required | Asset class name, for example `"Motor"` or `"Transformer"` |
+| `--num-scenarios N` | `50` | Total number of scenarios to generate |
+| `--model-id MODEL` | project default | LiteLLM model override |
+| `--data-in-couchdb` | off | Enable grounded open-form generation when live IoT inventory exists (requires `.env` DB names; see open-form disclaimer above) |
+| `--show-workflow` | off | Print phase-by-phase progress, including live repair counts |
+| `--log` | off | Write prompts and responses under `logs/` next to `scenarios.json` (same run folder) |
 
----
+Output is always `generated/scenarios/<asset_slug>_scenarios_<YYYYMMDD_HHMMSS>/scenarios.json` (not configurable; slug from [`text.slugify_asset_name`](text.py)).
 
-## Log Files (`--log`)
+Examples:
 
-When `--log` is passed, a timestamped directory is created:
+```bash
+# Run from the repository root
+# Closed-form, self-contained scenarios only
+uv run python -m scenarios.generator "Transformer" --num-scenarios 20
 
-```
-logs/gen_<asset_name>_<YYYYMMDD_HHMMSS>/
-├── 01_research_queries_prompt.txt
-├── 02_research_queries_response.txt
-├── 03_arxiv_results.txt
-├── 04_asset_profile_prompt.txt
-├── 05_asset_profile_response.txt
-├── 06_asset_profile_<asset>_json.txt
-├── 07_budget_allocation_prompt.txt
-├── 08_budget_allocation_response.txt
-├── 09_iot_generation_prompt.txt
-├── 10_iot_generation_response.txt
-├── 11_validate_repair_prompt.txt
-├── 12_validate_repair_response.txt
-├── 13_iot_validation_changes.txt    ← diffs for changed scenarios
-...
+# Grounded open-form with CouchDB-backed IoT data, workflow output, and run logs
+uv run python -m scenarios.generator "Transformer" --log --data-in-couchdb
+
+# Grounded open-form with verbose workflow (no --log)
+uv run python -m scenarios.generator "Motor" --data-in-couchdb --show-workflow
+
+# Debug run with raw logs (hydraulic pump asset class)
+uv run python -m scenarios.generator "Hydrolic Pump" --data-in-couchdb --show-workflow --log
 ```
 
-Logs are numbered sequentially in pipeline order, making it straightforward to trace exactly what the LLM received and returned at each step.
+## Code layout
 
----
+Tree is rooted at `src/scenarios/` (this package). Comments describe each part.
 
-## Troubleshooting
+```text
+scenarios/
+├── generator/
+│   ├── __main__.py
+│   ├── cli.py                 # entry for python -m scenarios.generator
+│   ├── agent.py               # ScenarioGeneratorAgent
+│   └── prompt_helpers.py      # prompt fragments, default paths, workflow printing
+├── grounding.py               # IoT inventory, vibration overlay, FMSR mapping; optional failure_mapping/ cache
+├── retrieval/
+│   ├── arxiv.py               # ArXiv fetch
+│   └── pipeline.py            # LLM-ranked evidence; public API retrieve_asset_evidence
+├── constraints/
+│   ├── policies.py            # focus policies for prompts
+│   └── validation.py          # deterministic validation / repair loop
+├── prompts/
+│   ├── asset_profile.py
+│   ├── budget.py
+│   ├── generation.py
+│   └── retrieval.py
+├── huggingface/
+│   ├── scenarios/             # e.g. all_utterance.jsonl
+│   ├── asset/                 # e.g. compressor / hydrolic pump utterances
+│   └── task/                  # e.g. failure mapping, rule monitoring JSONL
+├── local/
+│   └── vibration_utterance.json   # few-shot examples for vibration focus only
+├── failure_mapping/           # on-disk FMSR fm2sensor / sensor2fm cache (e.g. <slug>.json)
+├── models.py                  # AssetProfile, GroundingBundle, Scenario, …
+├── utils.py                   # fetch_hf_fewshot, parse_llm_json
+└── text.py                    # slugs, text normalization for dedup and prompts
+```
 
-| Symptom | Likely Cause | Fix |
-|---|---|---|
-| `[FATAL ERROR] Critical failure: Could not construct AssetProfile` | LLM returned unparseable JSON in Phase 1 | Run with `--log` and inspect `asset_profile_response.txt`; try a more capable model |
-| `[FATAL ERROR] Critical failure: Could not dynamically allocate scenario budget` | Phase 2 parse failure | Same as above — check `budget_allocation_response.txt` |
-| `[WARNING] No scenarios were successfully generated` | All subagent generation rounds returned empty | Check HuggingFace connectivity; run with `--show-workflow --log` |
-| ArXiv fetch slow / hanging | ArXiv rate-limiting (3s between requests enforced) | Normal — each query + PDF fetch takes ~6–10s per paper |
-| `datasets` ImportError | HuggingFace `datasets` library missing | Run `uv sync` from repo root |
-| `pypdf` ImportError | PDF extraction library missing | Run `uv sync` from repo root |
+## High-level flow
 
----
+```mermaid
+flowchart TD
+    A["CLI Input<br/>asset class + flags"] --> B{"--data-in-couchdb?"}
+    B -->|No| C["Closed-form mode"]
+    B -->|Yes| D["Grounded discovery"]
 
-## Data Sources
+    D --> D1["IoT asset coverage<br/>sites, asset ids, sensors, time ranges"]
+    D --> D2["Vibration asset coverage<br/>asset ids, sensors, time ranges"]
+    D --> D3["FMSR grounding<br/>failure modes + failure/sensor mappings"]
 
-- **ArXiv** — Academic literature fetched live at runtime via `fetch_arxiv_studies()` in `utils.py`. Queries are LLM-generated, respecting ArXiv's 3-second rate limit.
-- **HuggingFace** — Few-shot examples loaded from `ibm-research/AssetOpsBench` via `fetch_hf_fewshot()`. If the dataset is unavailable, a mock fallback is used automatically.
+    D1 --> E{"IoT inventory present?"}
+    D2 --> E
+    D3 --> E
+
+    E -->|No| C
+    E -->|Yes| F["Open-form mode"]
+
+    C --> G["ArXiv retrieval + evidence ranking"]
+    F --> G
+
+    G --> H["Asset profile synthesis<br/>description, grounded instances, tasks,<br/>failure mappings, relevant tools, standards"]
+    H --> I["Budget allocation<br/>iot / fmsr / tsfm / wo / vibration / multiagent"]
+    I --> J["Few-shot retrieval<br/>HF JSONL pools + local vibration supplement"]
+
+    J --> K["Focused scenario generation"]
+    K --> K1["Closed-form rules:<br/>embed values, rules, summaries, or datasets inline"]
+    K --> K2["Open-form rules:<br/>use only grounded identifiers"]
+
+    K1 --> L["Deterministic validation + repair"]
+    K2 --> L
+
+    L --> M["Multiagent composition"]
+    M --> N["Final JSON output<br/>id, type, text, category, characteristic_form"]
+```
+
+## Pipeline
+
+### 1. Grounded discovery
+
+Runs when `--data-in-couchdb` is enabled.
+
+- Enumerates IoT assets via the IoT server (`get_asset_list`, sensors, time ranges).
+- Joins vibration coverage by `(site_name, asset_id)`.
+- Calls FMSR for failure modes and failure-to-sensor mapping (with optional cache files in [`failure_mapping/<slug>.json`](failure_mapping/)).
+- If there is no IoT inventory at all, the run uses `closed_form` (`open_form_eligible` false).
+- In grounded runs, focuses without live support can be allocated `0` budget instead of inventing identifiers.
+
+### Asset-class mapping notes
+
+Coherent open-form runs depend on the CLI `asset_name` aligning with how servers resolve assets:
+
+#### 1. CLI label and IoT / vibration inventory
+
+[`discover_grounding`](grounding.py) loads the full IoT inventory exposed by the IoT server; it does not substring-filter asset rows by the CLI string. Vibration rows are merged when `(site_name, asset_id)` matches. For scenarios that mention specific assets, use ids and sites that actually appear in the grounded bundle and profile.
+
+#### 2. Asset class → curated FMSR failure modes
+
+FMSR failure-mode grounding is most reliable when the asset class maps to a curated key instead of falling back to the LLM.
+
+Curated failure modes live in:
+
+- [`src/servers/fmsr/failure_modes.yaml`](../servers/fmsr/failure_modes.yaml)
+
+Alias resolution for lookup lives in:
+
+- [`src/servers/fmsr/main.py`](../servers/fmsr/main.py) via `_ASSET_FAILURE_MODE_ALIASES` and `_resolve_failure_mode_asset_key()`
+
+Concrete example:
+
+- CLI input: `"Transformer"`
+- IoT asset id: `"Transformer 1"`
+- curated FMSR key: `"smart grid transformer"`
+
+That works because `Transformer -> smart grid transformer` is explicitly aliased in FMSR.
+
+If you add a new asset class, make sure at least one of these is true:
+
+- the normalized CLI asset class exactly matches a key in `failure_modes.yaml`
+- or there is an explicit alias in `_ASSET_FAILURE_MODE_ALIASES`
+- or you are intentionally accepting slower, less deterministic LLM fallback behavior
+
+Recommended rule:
+
+- For production-ish grounded generation, prefer adding a curated `failure_modes.yaml` entry plus an alias if the CLI-facing name differs from the curated key.
+
+#### 3. Failure / sensor grounding
+
+After failure modes are found, grounding builds failure-to-sensor views for scenario generation in [`grounding.py`](grounding.py): either from a cache file under `failure_mapping/` or from `get_failure_mode_sensor_mapping` (then written to cache).
+
+#### 4. Asset class → vibration coverage
+
+`vibration` is only meaningful in open-form when the vibration database has rows for the same `(site_name, asset_id)` pairs as IoT.
+
+Relevant code:
+
+- [`src/servers/vibration/couchdb_client.py`](../servers/vibration/couchdb_client.py)
+- [`src/scenarios/grounding.py`](grounding.py)
+
+Important consequence:
+
+- If IoT has `Transformer 1` but vibration has no matching row, grounded generation can still run, but vibration-focused scenarios may receive `0` budget if the profile has no vibration sensors.
+
+#### 5. Quick checklist when adding a new asset class
+
+- FMSR: curated `failure_modes.yaml` entry and/or alias, or accepted LLM fallback.
+- IoT / vibration: asset ids and sites match what you want referenced in open-form text.
+- Large sensor sets: consider caching under `failure_mapping/<slug>.json` after the first successful mapping.
+- Few-shot pools include examples adjacent to the new class or focus (see [`utils.py`](utils.py)).
+
+#### 6. Troubleshooting example: Transformer
+
+For the transformer case, a typical mapping is:
+
+- CLI asset class: `"Transformer"`
+- grounded IoT asset: `"Transformer 1"`
+- grounded vibration assets: often none
+- curated FMSR family: `"smart grid transformer"`
+
+Expected behavior:
+
+- open-form is enabled when IoT inventory exists
+- `iot`, `fmsr`, `tsfm`, and `wo` can receive budget
+- `vibration` may be `0` without vibration rows
+
+If a run stalls or falls back unexpectedly, inspect:
+
+- IoT DB content and IoT server behavior
+- FMSR aliases for `Transformer`
+- FMSR mapping cache and logs under `failure_mapping/`
+
+### 2. Asset profile synthesis
+
+The asset profile combines:
+
+- grounded live coverage when available
+- ArXiv evidence about the physical asset class
+- available tool descriptions from the MCP servers
+
+The profile includes:
+
+- asset-class description
+- grounded per-instance coverage
+- known failure modes
+- failure-to-sensor and sensor-to-failure mappings
+- relevant tools by focus
+- operator-facing tasks
+- manager-facing tasks
+- standards and conventions
+
+### 3. Budget allocation
+
+Budget is allocated across:
+
+- `iot`
+- `fmsr`
+- `tsfm`
+- `wo`
+- `vibration`
+- `multiagent`
+
+Special handling:
+
+- `vibration=0` when grounded open-form coverage does not include matching vibration-backed assets for the asset class.
+- `multiagent` is capped at **75%** of the total budget (see `_multiagent_budget_cap` in [`generator/prompt_helpers.py`](generator/prompt_helpers.py)).
+
+### 4. Few-shot retrieval
+
+Few-shot examples are drawn from the JSONL files under [`huggingface/`](huggingface/) and, for vibration, from [`local/vibration_utterance.json`](local/vibration_utterance.json). Per-focus sourcing is implemented in [`utils.py`](utils.py) (`_build_candidate_pool`):
+
+- **iot / wo**: filtered rows from `huggingface/scenarios/all_utterance.jsonl`
+- **fmsr**: `huggingface/task/failure_mapping_senarios.jsonl` (bucketed shapes)
+- **tsfm**: `huggingface/task/rule_monitoring_scenarios.jsonl` (diverse entities)
+- **vibration**: `local/vibration_utterance.json`
+- **multiagent**: `huggingface/asset/compressor_utterance.jsonl`, `huggingface/asset/hydrolicpump_utterance.jsonl`, plus multiagent rows from `all_utterance.jsonl`
+
+Ranking considers:
+
+- asset/entity similarity
+- focus similarity
+- closed-form vs open-form fit
+- operator or manager wording fit
+
+### 5. Scenario generation and validation
+
+Generation is budgeted and validated per focus lane; the same lane is serialized as `type` in the output. [`constraints`](constraints/) enforces:
+
+- required schema fields
+- duplicate avoidance
+- clear primary focus
+- self-contained closed-form requests
+- grounded identifiers for open-form requests
+- at least two namespaces for multiagent workflows
+
+Cross-focus support is allowed as long as the primary focus remains clear.
+
+## Closed-form vs open-form
+
+### Closed-form
+
+Closed-form scenarios must be solvable from the query itself. They can include:
+
+- DGA readings
+- rule definitions
+- maintenance summaries
+- sensor/value snippets
+- dataset names and evaluation requests
+
+Example:
+
+```text
+Interpret the DGA gas readings for transformer: Hydrogen 100 ppm, Methane 50 ppm, Acetylene 5 ppm, Ethylene 20 ppm, Ethane 10 ppm.
+```
+
+### Open-form
+
+Open-form scenarios may require live retrieval, but every concrete identifier must come from grounded discovery. That includes:
+
+- site names
+- asset ids
+- sensor names
+- explicit time bounds
+
+## Output file
+
+`scenarios.json` is a JSON array of objects matching the schema at the top of this document. Field meanings: `id` (stable id), `type` (benchmark lane: `iot`, `fmsr`, `tsfm`, `wo`, `vibration`, or `multiagent`), `text` (user request), `category`, `characteristic_form` (expected tools and answer shape).
+
+## Logs
+
+When `--log` is enabled, prompts and raw responses are written under `generated/scenarios/<asset>_scenarios_<timestamp>/logs/`, next to `scenarios.json`. Stage-specific subdirectories mirror the pipeline steps.
+
+Typical files include:
+
+- `01_grounding/discovery.json`
+- `02_retrieval/steps/*.txt` and `02_retrieval/summary.txt`
+- `03_asset_profile/prompt.txt`, `03_asset_profile/response.json`, and `03_asset_profile/final_asset_profile.json`
+- `04_budget/prompt.txt` and `04_budget/response.json`
+- `05_generation/<focus>/generation_prompt.txt`, `generation_response.json`, and validate/repair prompts under the same focus folder (including `multiagent`, which uses the multi-agent combiner prompt in the same layout as other focuses)
+- optional `05_generation/<focus>/deterministic_failures_attempt_*.json` when validation fails and retries
+
