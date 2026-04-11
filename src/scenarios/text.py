@@ -23,9 +23,17 @@ def normalize_example_fingerprint(text: str) -> str:
     return " ".join(str(text).lower().split())
 
 
+def truncate_title_one_line(title: str | None, *, max_len: int = 90) -> str:
+    t = (title or "").strip().replace("\n", " ")
+    if len(t) > max_len:
+        return t[: max_len - 3] + "..."
+    return t or "(no title)"
+
+
 __all__ = [
     "collapse_whitespace_lower",
     "normalize_example_fingerprint",
     "normalize_for_fuzzy_dedup",
     "slugify_asset_name",
+    "truncate_title_one_line",
 ]

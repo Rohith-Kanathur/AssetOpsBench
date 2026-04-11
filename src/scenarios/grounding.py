@@ -16,7 +16,6 @@ from .text import slugify_asset_name
 
 _log = logging.getLogger(__name__)
 
-# One JSON file per asset class name: ``failure_mapping/<slug>.json`` (next to this package).
 _FAILURE_MAPPING_DIR = Path(__file__).resolve().parent / "failure_mapping"
 
 
@@ -87,7 +86,6 @@ def _as_mapping(result: Any) -> dict[str, Any]:
 
 
 def _iot_timestamp_to_str(value: Any) -> str | None:
-    """Normalize CouchDB timestamp values for ``GroundedTimeRange`` (strings or datetimes)."""
     if value is None:
         return None
     if isinstance(value, str):
@@ -99,7 +97,6 @@ def _iot_timestamp_to_str(value: Any) -> str | None:
 
 
 def _discover_iot_inventory_and_instances() -> tuple[list[AssetInstance], list[str]]:
-    """At SITE_NAME: all CouchDB asset ids; IoT sensor names are unioned once (not per instance)."""
     instances: list[AssetInstance] = []
     iot_union: set[str] = set()
 
@@ -114,7 +111,6 @@ def _discover_iot_inventory_and_instances() -> tuple[list[AssetInstance], list[s
             end=_iot_timestamp_to_str(tr_raw.get("end")),
             total_observations=int(tr_raw.get("total_observations") or 0),
         )
-        # Here, we assume the defintion of "MAIN" as the only site (as defined in IoT server)
         instances.append(
             AssetInstance(
                 site_name=SITES[0],
@@ -142,7 +138,6 @@ def _overlay_vibration(
     instances: list[AssetInstance],
     vib_by_key: dict[tuple[str, str], dict[str, Any]],
 ) -> list[str]:
-    """Attach vibration time ranges per instance; return union of vibration sensor names."""
     vib_union: set[str] = set()
     for inst in instances:
         row = vib_by_key.get((inst.site_name, inst.asset_id))
@@ -230,11 +225,6 @@ def _build_failure_sensor_grounding(
 
 
 def discover_grounding(asset_name: str, requested_open_form: bool = False) -> GroundingBundle:
-    """Collect grounded asset coverage for open-form scenario generation.
-
-    ``asset_name`` is the CLI asset label (used for FMSR and prompts).
-    """
-
     if not requested_open_form:
         return GroundingBundle(asset_name=asset_name, requested_open_form=False)
 

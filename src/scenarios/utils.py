@@ -31,7 +31,6 @@ _ASSET_KEYWORD_SUBSTRINGS = (
 )
 _ASSET_ID_PATTERN = re.compile(r"\b[A-Z]{2,6}\d{4,}\b")
 
-# Generic benchmark queries to exclude from all_utterance (substring match, lowercased).
 _GENERIC_UTTERANCE_DENYLIST = (
     "what iot sites are available",
     "can you list the iot sites",
@@ -54,7 +53,6 @@ _TSFM_ENTITY_ORDER = (
 
 
 def parse_llm_json(raw: str) -> tuple[Any, str | None]:
-    """Parse an LLM response containing a JSON object or array."""
     text = raw.strip()
     if text.startswith("```"):
         lines = text.splitlines()
@@ -117,7 +115,6 @@ def _load_local_vibration_list() -> list[dict[str, Any]]:
 
 
 def _is_asset_specific_utterance(text: str) -> bool:
-    """Filter for all_utterance: asset-specific vs generic site/capability questions."""
     tl = text.lower()
     for phrase in _GENERIC_UTTERANCE_DENYLIST:
         if phrase in tl:
@@ -129,18 +126,16 @@ def _is_asset_specific_utterance(text: str) -> bool:
     return False
 
 
-# Failure-mapping few-shot: one example per utterance shape (covers all rows in the JSONL).
 _FMSR_FEWSHOT_BUCKET_ORDER: tuple[str, ...] = (
-    "list_all",  # "List all failure modes of …"
-    "for_list_all",  # "For a compressor, list all the failure modes …"
-    "what",  # "What sensors can be …", "What are the failure modes …", etc.
-    "which",  # "Which failure modes …", "Which sensors are most …" (sentence starts with Which)
-    "for_which",  # "For an aero gas turbine, which failure modes …" (For …, which …)
+    "list_all",
+    "for_list_all",
+    "what",
+    "which",
+    "for_which",
 )
 
 
 def _failure_mapping_bucket(text: str) -> str | None:
-    """Classify failure_mapping_senarios.jsonl rows by question prefix / shape."""
     s = text.strip()
     sl = s.lower()
     if sl.startswith("list all"):
@@ -171,7 +166,6 @@ def _pick_failure_mapping_examples(rows: list[dict[str, Any]]) -> list[dict[str,
 
 
 def _pick_rule_monitoring_diverse(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """One row per target asset class (entity field or SVL in text)."""
     picked: list[dict[str, Any]] = []
     used_ids: set[int | str] = set()
 
@@ -309,7 +303,6 @@ def fetch_hf_fewshot(
         _log.info("No few-shot examples were available for focus %r.", focus)
         return []
 
-    # Dedupe by normalized text fingerprint
     seen: set[str] = set()
     unique: list[dict[str, Any]] = []
     for example in pool:

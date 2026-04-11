@@ -25,23 +25,51 @@ def main() -> None:
     parser.add_argument("--model-id", default=_DEFAULT_MODEL, help="Model ID for LiteLLM")
     parser.add_argument("--num-scenarios", type=int, default=50, help="Total number of scenarios to generate")
     parser.add_argument("--show-workflow", action="store_true", help="Show intermediate pipeline steps in the console")
-    parser.add_argument("--log", action="store_true", help="Dump raw prompts and results to a log directory")
+    parser.add_argument(
+        "--log",
+        action="store_true",
+        help=(
+            "Write prompts and pipeline artifacts under the run directory (generated/scenarios/.../logs/). "
+            "Does not change console output; use --show-workflow for step-by-step terminal output."
+        ),
+    )
     parser.add_argument(
         "--data-in-couchdb",
         action="store_true",
         help="Use grounded open-form generation when matching live CouchDB-backed asset data is available",
     )
+    parser.add_argument(
+        "--retriever",
+        choices=("arxiv", "semantic_scholar"),
+        default="arxiv",
+        help=(
+            "Optional. Academic search backend for Phase 1 evidence retrieval. "
+            "Default is arxiv when this flag is omitted."
+        ),
+    )
+    parser.add_argument(
+        "--research-digest",
+        metavar="PATH",
+        default=None,
+        help=(
+            "Optional. Path to a precomputed research digest (Markdown). When set and the file exists, "
+            "skips academic retrieval and digest LLM steps; loads this text for asset profile construction."
+        ),
+    )
 
     args = parser.parse_args()
     output_path = default_scenario_output_path(args.asset_name)
 
-    # With --show-workflow alone, keep the root logger quiet (WARNING). When
-    # --data-in-couchdb is also set, Phase 1 runs FMSR mapping (per-pair LLM work
-    # inside the server); use INFO so `scenarios.grounding` can log progress.
-    if args.show_workflow and not args.data_in_couchdb:
+    # stderr: `--show-workflow` owns the console (`_print_step`); keep root at
+    # WARNING so `_log.info(...)` from agent/grounding/retrieval never mixes in.
+    # Without `--show-workflow`, `--data-in-couchdb` raises to INFO so
+    # `scenarios.grounding` can emit FMSR/discovery progress on stderr.
+    if args.show_workflow:
         level = logging.WARNING
-    else:
+    elif args.data_in_couchdb:
         level = logging.INFO
+    else:
+        level = logging.WARNING
     # Imported MCP server modules (e.g. servers.fmsr.main) call basicConfig(WARNING)
     # at import time; without force=True, this CLI's basicConfig would be a no-op.
     logging.basicConfig(
@@ -56,10 +84,15 @@ def main() -> None:
     log_dir = None
     if args.log:
         log_dir = str(output_path.parent / "logs")
-        print(f"Logging session to: {log_dir}")
         os.makedirs(log_dir, exist_ok=True)
 
-    agent = ScenarioGeneratorAgent(model_id=args.model_id, show_workflow=args.show_workflow, log_dir=log_dir)
+    agent = ScenarioGeneratorAgent(
+        model_id=args.model_id,
+        show_workflow=args.show_workflow,
+        log_dir=log_dir,
+        retriever=args.retriever,
+        research_digest_path=args.research_digest,
+    )
 
     try:
         final_scenarios = asyncio.run(

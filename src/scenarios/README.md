@@ -9,6 +9,11 @@ The generator works in two modes:
 
 > **Open-form disclaimer:** For grounded `open_form` runs (`--data-in-couchdb`), configure `.env` (or the process environment) so **`IOT_DBNAME`**, **`WO_DBNAME`**, and **`VIBRATION_DBNAME`** each point to live CouchDB databases that actually contain data relevant to the **asset name** you pass on the CLI (for example `"Transformer"` or `"Motor"`). If these names point at the wrong or empty databases, IoT, work-order, and vibration grounding will be misleading or sparse for that asset.
 
+> **Academic retrieval and research digest:** Asset profile construction (Phase 1) runs **grounded discovery** first (full CouchDB IoT/vibration/FMSR discovery only when **`--data-in-couchdb`** is set), then **academic evidence retrieval**, then a **two-step research digest** (per-paper structured extraction, then merge into one Markdown brief), unless you supply a precomputed digest (see below). The `--retriever` flag selects the search backend; default is **`arxiv`**. Use **`--retriever semantic_scholar`** for Semantic Scholar instead.
+>
+> **Semantic Scholar retrieval:** When using `--retriever semantic_scholar`, set **`SEMANTIC_SCHOLAR_API_KEY`** in `.env` (optional but recommended for higher API rate limits). The CLI does not accept the key as a flag; only the environment variable is read. If unset, the public rate limits apply.
+>
+> **Precomputed research digest:** Pass **`--research-digest PATH`** to a Markdown file that already contains the merged research brief. If that path exists, the run **skips** academic search, PDF/snippet retrieval, and digest LLM calls, and feeds that file straight into asset profile construction. If the path does not exist, the CLI exits with an error.
 
 >  For **new asset classes**, add or update **`_ASSET_FAILURE_MODE_ALIASES`** in [`src/servers/fmsr/main.py`](../servers/fmsr/main.py) when the CLI-facing name should map to a different curated failure-mode key in [`failure_modes.yaml`](../servers/fmsr/failure_modes.yaml); otherwise FMSR may fall back to LLM-only failure lists. See **Asset class → curated FMSR failure modes** below for the full picture.
 
@@ -41,8 +46,10 @@ Key flags:
 | `asset_name` | required | Asset class name, for example `"Motor"` or `"Transformer"` |
 | `--num-scenarios N` | `50` | Total number of scenarios to generate |
 | `--model-id MODEL` | project default | LiteLLM model override |
+| `--retriever {arxiv,semantic_scholar}` | `arxiv` | Academic search backend for evidence retrieval (omit flag for default) |
+| `--research-digest PATH` | unset | If set and the file exists, skip retrieval and digest LLM steps; load this Markdown as the research brief for the asset profile |
 | `--data-in-couchdb` | off | Enable grounded open-form generation when live IoT inventory exists (requires `.env` DB names; see open-form disclaimer above) |
-| `--show-workflow` | off | Print phase-by-phase progress, including live repair counts |
+| `--show-workflow` | off | Print phase-by-phase progress (Phases 1–4: asset profile → budget → per-focus generation → multiagent), including live repair counts |
 | `--log` | off | Write prompts and responses under `logs/` next to `scenarios.json` (same run folder) |
 
 Output is always `generated/scenarios/<asset_slug>_scenarios_<YYYYMMDD_HHMMSS>/scenarios.json` (not configurable; slug from [`text.slugify_asset_name`](text.py)).
@@ -54,11 +61,14 @@ Examples:
 # Closed-form, self-contained scenarios only
 uv run python -m scenarios.generator "Transformer" --num-scenarios 20
 
-# Grounded open-form with CouchDB-backed IoT data, workflow output, and run logs
-uv run python -m scenarios.generator "Transformer" --log --data-in-couchdb
+# Grounded open-form: Semantic Scholar retrieval, CouchDB grounding, console workflow, and full disk logs
+uv run python -m scenarios.generator "Transformer" --show-workflow --log --data-in-couchdb --retriever "semantic_scholar"
 
 # Grounded open-form with verbose workflow (no --log)
 uv run python -m scenarios.generator "Motor" --data-in-couchdb --show-workflow
+
+# Reuse a saved research digest (skips academic retrieval and digest synthesis)
+uv run python -m scenarios.generator "Transformer" --research-digest ./my_digest.md
 
 # Debug run with raw logs (hydraulic pump asset class)
 uv run python -m scenarios.generator "Hydrolic Pump" --data-in-couchdb --show-workflow --log
@@ -77,12 +87,17 @@ scenarios/
 │   └── prompt_helpers.py      # prompt fragments, default paths, workflow printing
 ├── grounding.py               # IoT inventory, vibration overlay, FMSR mapping; optional failure_mapping/ cache
 ├── retrieval/
-│   ├── arxiv.py               # ArXiv fetch
-│   └── pipeline.py            # LLM-ranked evidence; public API retrieve_asset_evidence
+│   ├── base.py                # EvidenceMetadataExecutor protocol
+│   ├── arxiv.py               # ArXiv metadata + PDF text
+│   ├── semantic_scholar.py    # Semantic Scholar Graph API
+│   ├── pdf_http.py            # PDF URL probing and fetch helpers
+│   ├── digest.py              # synthesize_research_digest (per-paper + merge LLM steps)
+│   └── pipeline.py            # retrieve_asset_evidence: section-wise search loops, snippets
 ├── constraints/
 │   ├── policies.py            # focus policies for prompts
 │   └── validation.py          # deterministic validation / repair loop
 ├── prompts/
+│   ├── research_digest.py     # digest section headings and per-paper / merge prompts
 │   ├── asset_profile.py
 │   ├── budget.py
 │   ├── generation.py
@@ -118,10 +133,16 @@ flowchart TD
     E -->|No| C
     E -->|Yes| F["Open-form mode"]
 
-    C --> G["ArXiv retrieval + evidence ranking"]
-    F --> G
+    C --> Rd{"--research-digest<br/>points to existing file?"}
+    F --> Rd
 
-    G --> H["Asset profile synthesis<br/>description, grounded instances, tasks,<br/>failure mappings, relevant tools, standards"]
+    Rd -->|Yes| Gp["Load Markdown digest<br/>(skip academic retrieval + digest LLM)"]
+    Rd -->|No| G["Academic retrieval: bounded search per digest section,<br/>metadata judge, PDF probe, top-PDF snippets"]
+
+    G --> Gm["Research digest: per-paper extraction<br/>then merged Markdown brief"]
+
+    Gm --> H["Asset profile synthesis (LLM JSON)<br/>description, grounded instances, tasks,<br/>failure mappings, relevant tools, standards"]
+    Gp --> H
     H --> I["Budget allocation<br/>iot / fmsr / tsfm / wo / vibration / multiagent"]
     I --> J["Few-shot retrieval<br/>HF JSONL pools + local vibration supplement"]
 
@@ -233,13 +254,18 @@ If a run stalls or falls back unexpectedly, inspect:
 
 ### 2. Asset profile synthesis
 
-The asset profile combines:
+Phase 1 always runs [`discover_grounding`](grounding.py) first (full CouchDB IoT/vibration/FMSR work only when `--data-in-couchdb` is set; otherwise the bundle stays in closed-form shape). Then literature and digest steps depend on **`--research-digest`**:
 
-- grounded live coverage when available
-- ArXiv evidence about the physical asset class
+- **Precomputed digest:** If `--research-digest PATH` is set and the file exists, academic retrieval and digest LLM calls are skipped; that Markdown is passed into the profile builder as the research brief.
+- **Live pipeline:** Otherwise [`retrieve_asset_evidence`](retrieval/pipeline.py) runs. For each merge-section heading in [`prompts/research_digest.py`](prompts/research_digest.py) (for example condition monitoring, maintenance context, sensor modalities, failure modes, standards, operator/manager tasks), the planner issues bounded search queries against the configured backend (`arxiv` default or `semantic_scholar`), judges metadata relevance, keeps candidates whose PDF URLs pass an HTTP probe, downloads up to a few top PDFs, and builds text snippets. [`synthesize_research_digest`](retrieval/digest.py) then runs **per-paper** structured extraction followed by a **merge** pass into one Markdown digest.
+
+The final [`PROFILE_BUILDER_PROMPT`](prompts/asset_profile.py) call combines:
+
+- the grounding summary (JSON)
+- the merged research digest (Markdown)
 - available tool descriptions from the MCP servers
 
-The profile includes:
+The resulting asset profile includes:
 
 - asset-class description
 - grounded per-instance coverage
@@ -331,12 +357,14 @@ Open-form scenarios may require live retrieval, but every concrete identifier mu
 
 When `--log` is enabled, prompts and raw responses are written under `generated/scenarios/<asset>_scenarios_<timestamp>/logs/`, next to `scenarios.json`. Stage-specific subdirectories mirror the pipeline steps.
 
-Typical files include:
+Typical files include (within each stage folder, filenames are prefixed with a per-folder step counter such as `01_`, `02_`):
 
-- `01_grounding/discovery.json`
-- `02_retrieval/steps/*.txt` and `02_retrieval/summary.txt`
-- `03_asset_profile/prompt.txt`, `03_asset_profile/response.json`, and `03_asset_profile/final_asset_profile.json`
-- `04_budget/prompt.txt` and `04_budget/response.json`
+- `01_grounding/` — grounded bundle JSON (`discovery.json` stem)
+- `02_retrieval/paper_search/<section_slug>/step_*.txt` — one bounded ReAct loop per research-digest section; `02_retrieval/paper_search/summary.txt` — final ranked pool and selected PDFs
+- optional `02_retrieval/paper_search/raw_arxiv.json` or `raw_semantic_scholar.json` — raw API payloads when using those backends
+- `02_retrieval/paper_digest/per_paper_*.txt` and `merged.txt` — produced by live digest synthesis; with **`--research-digest`** there are no per-paper steps, but **`--log`** still writes `merged.txt` from the loaded file
+- `03_asset_profile/prompt.txt`, `response.json`, and `final_asset_profile.json`
+- `04_budget/prompt.txt` and `response.json`
 - `05_generation/<focus>/generation_prompt.txt`, `generation_response.json`, and validate/repair prompts under the same focus folder (including `multiagent`, which uses the multi-agent combiner prompt in the same layout as other focuses)
 - optional `05_generation/<focus>/deterministic_failures_attempt_*.json` when validation fails and retries
 

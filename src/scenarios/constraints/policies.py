@@ -13,7 +13,6 @@ def _format_bullet_list(items: Iterable[str]) -> str:
     return "\n".join(f"- {item}" for item in items)
 
 
-# Shared across all focuses: injected into prompts via forbidden_patterns.
 FORBIDDEN_MCP_NAMES_IN_SCENARIO_TEXT = (
     "Do not put MCP tool names, function names, or parenthetical examples like "
     '"e.g. get_failure_modes tool" in the scenario text; put those only in characteristic_form.'
@@ -24,8 +23,6 @@ FOCUS_ORDER: tuple[str, ...] = ("iot", "fmsr", "tsfm", "wo", "vibration", "multi
 
 @dataclass(frozen=True)
 class FocusPolicy:
-    """Prompt and validation guidance for one focus."""
-
     categories: tuple[str, ...]
     prompt_requirements: tuple[str, ...]
     forbidden_patterns: tuple[str, ...]
@@ -157,8 +154,6 @@ def format_mode_requirements(
     focus: str,
     generation_mode: str,
 ) -> str:
-    """Return prompt guidance for closed-form vs grounded open-form runs."""
-
     if generation_mode == "open_form":
         asset_ids = profile.grounded_asset_ids(focus)
         sensors = profile.grounded_sensor_names(focus)

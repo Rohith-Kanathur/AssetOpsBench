@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import io
+import json
 import logging
+from collections.abc import Callable
 import ssl
 import time
 import urllib.error
@@ -11,7 +13,8 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-from ..models import EvidenceCandidate
+from ..models import EvidenceCandidate, PdfTextOutcome
+from .pdf_http import fetch_pdf_bytes
 
 _log = logging.getLogger(__name__)
 
@@ -64,6 +67,8 @@ _STANDARD_KEYWORDS = [
     "ieee",
     "iso",
     "condition assessment",
+    "industry 4.0",
+    "iiot",
     "maintenance strategy",
     "reliability centered maintenance",
 ]
@@ -127,9 +132,12 @@ _OFF_TARGET_REASON_MARKERS = [
 
 
 class _ArxivExecutor:
-    """Single-entry executor that enforces a cooldown before every ArXiv request."""
-
-    def __init__(self, cooldown_seconds: float = _ARXIV_COOLDOWN_SECONDS) -> None:
+    def __init__(
+        self,
+        cooldown_seconds: float = _ARXIV_COOLDOWN_SECONDS,
+        *,
+        log_writer: Callable[[str, str], None] | None = None,
+    ) -> None:
         self.cooldown_seconds = cooldown_seconds
         self._last_request_at: float | None = None
         self.metadata_requests = 0
@@ -137,6 +145,7 @@ class _ArxivExecutor:
         self._ctx = ssl.create_default_context()
         self._ctx.check_hostname = False
         self._ctx.verify_mode = ssl.CERT_NONE
+        self._log_writer = log_writer
 
     def _wait_for_cooldown(self) -> None:
         if self._last_request_at is None:
@@ -171,6 +180,22 @@ class _ArxivExecutor:
             _log.warning("Failed to fetch ArXiv metadata for %r: %s", query, exc)
             return []
 
+        if self._log_writer:
+            self._log_writer(
+                "02_retrieval/paper_search/raw_arxiv.json",
+                json.dumps(
+                    {
+                        "backend": "arxiv",
+                        "query": query,
+                        "request_url": url,
+                        "content_type": "application/atom+xml",
+                        "raw_response": data.decode("utf-8", errors="replace"),
+                    },
+                    indent=2,
+                    ensure_ascii=False,
+                ),
+            )
+
         try:
             root = ET.fromstring(data)
         except ET.ParseError as exc:
@@ -181,7 +206,7 @@ class _ArxivExecutor:
         candidates: list[EvidenceCandidate] = []
         for entry in root.findall("atom:entry", ns):
             raw_id = entry.findtext("atom:id", default="", namespaces=ns).strip()
-            arxiv_id = raw_id.rsplit("/", 1)[-1] if raw_id else ""
+            paper_id = raw_id.rsplit("/", 1)[-1] if raw_id else ""
             title = entry.findtext("atom:title", default="No Title", namespaces=ns)
             summary = entry.findtext("atom:summary", default="No Summary", namespaces=ns)
             published = entry.findtext("atom:published", default="", namespaces=ns).strip() or None
@@ -197,7 +222,7 @@ class _ArxivExecutor:
 
             candidates.append(
                 EvidenceCandidate(
-                    arxiv_id=arxiv_id or title.strip(),
+                    paper_id=paper_id or title.strip(),
                     title=title.strip().replace("\n", " "),
                     summary=summary.strip().replace("\n", " "),
                     query=query,
@@ -207,10 +232,12 @@ class _ArxivExecutor:
             )
         return candidates
 
-    def fetch_pdf_text(self, pdf_url: str, max_pages: int = _MAX_PDF_PAGES) -> str:
+    def fetch_pdf_text_detail(
+        self, pdf_url: str, max_pages: int = _MAX_PDF_PAGES
+    ) -> tuple[str, PdfTextOutcome]:
         self.pdf_requests += 1
         try:
-            pdf_bytes = self._open(pdf_url, timeout=15)
+            pdf_bytes = fetch_pdf_bytes(pdf_url, timeout=15)
             from pypdf import PdfReader
 
             reader = PdfReader(io.BytesIO(pdf_bytes))
@@ -221,7 +248,14 @@ class _ArxivExecutor:
                 page_text = page.extract_text()
                 if page_text:
                     pages.append(page_text)
-            return "\n".join(pages)
+            text = "\n".join(pages)
+            if text.strip():
+                return text, "ok"
+            return "", "empty_text"
         except Exception as exc:  # noqa: BLE001
             _log.warning("Failed to fetch or parse ArXiv PDF %s: %s", pdf_url, exc)
-            return ""
+            return "", "fetch_failed"
+
+    def fetch_pdf_text(self, pdf_url: str, max_pages: int = _MAX_PDF_PAGES) -> str:
+        text, _ = self.fetch_pdf_text_detail(pdf_url, max_pages)
+        return text

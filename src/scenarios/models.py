@@ -9,6 +9,10 @@ from pydantic import BaseModel, Field
 
 ScenarioTypeKey = Literal["iot", "fmsr", "tsfm", "wo", "vibration", "multiagent"]
 
+RetrieverMode = Literal["arxiv", "semantic_scholar"]
+
+PdfTextOutcome = Literal["ok", "fetch_failed", "empty_text"]
+
 
 class KeyDescription(BaseModel):
     """A named item with a short human-readable description."""
@@ -76,7 +80,6 @@ class AssetProfile(BaseModel):
     relevant_tools: dict[str, list[dict[str, str]]] = Field(default_factory=dict)
     operator_tasks: list[str] = Field(default_factory=list)
     manager_tasks: list[str] = Field(default_factory=list)
-    iso_standards: list[str] = Field(default_factory=list)
 
     def instances_for_focus(self, focus: str) -> list[AssetInstance]:
         """Return grounded instances that can support the requested focus."""
@@ -146,7 +149,7 @@ class RetrievalAction(BaseModel):
 class EvidenceCandidate(BaseModel):
     """Metadata for one potentially relevant paper or evidence source."""
 
-    arxiv_id: str
+    paper_id: str
     title: str
     summary: str
     query: str
@@ -159,7 +162,7 @@ class EvidenceCandidate(BaseModel):
 class EvidenceSnippet(BaseModel):
     """Extracted evidence text used to justify an asset profile."""
 
-    arxiv_id: str
+    paper_id: str
     title: str
     url: str | None = None
     source: str
@@ -217,6 +220,7 @@ __all__ = [
     "GroundingBundle",
     "KeyDescription",
     "RetrievalAction",
+    "RetrieverMode",
     "Scenario",
     "ScenarioBudget",
     "ScenarioTypeKey",

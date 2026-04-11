@@ -18,8 +18,6 @@ _REQUIRED_TEXT_FIELDS = ("text", "category", "characteristic_form")
 
 @dataclass(frozen=True)
 class ScenarioValidationFailure:
-    """A scenario plus the deterministic reasons it failed validation."""
-
     scenario: dict
     reasons: tuple[str, ...]
 

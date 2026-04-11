@@ -25,8 +25,10 @@ from ..constraints import (
 from ..grounding import discover_grounding
 from ..models import (
     AssetProfile,
+    EvidenceCandidate,
     GroundingBundle,
     KeyDescription,
+    RetrieverMode,
     Scenario,
     ScenarioBudget,
     SensorNameDescription,
@@ -38,8 +40,8 @@ from ..prompts import (
     SCENARIO_GENERATOR_PROMPT,
     VALIDATE_REPAIR_PROMPT,
 )
-from ..retrieval import retrieve_asset_evidence
-from ..text import slugify_asset_name
+from ..retrieval import retrieve_asset_evidence, synthesize_research_digest
+from ..text import slugify_asset_name, truncate_title_one_line
 from ..utils import fetch_hf_fewshot, parse_llm_json
 from .prompt_helpers import (
     _MULTIAGENT_MAX_TOKENS,
@@ -47,7 +49,6 @@ from .prompt_helpers import (
     _MAX_SCENARIO_ATTEMPTS,
     _PROFILE_MAX_TOKENS,
     _asset_profile_json,
-    _evidence_summary_for_prompt,
     _few_shot_examples_section,
     _grounding_summary_for_prompt,
     _invert_failure_mapping,
@@ -76,8 +77,6 @@ def _scenario_from_llm_row(
     scenario_type: str,
     generation_mode: str,
 ) -> Scenario:
-    """Build a ``Scenario`` from parsed LLM JSON; drop any ``type`` key so the pipeline value wins."""
-
     payload = dict(row)
     payload.pop("type", None)
     return Scenario(**payload, type=scenario_type, generation_mode=generation_mode)
@@ -89,12 +88,17 @@ class ScenarioGeneratorAgent:
         model_id: str = _DEFAULT_MODEL,
         show_workflow: bool = False,
         log_dir: str | None = None,
+        *,
+        retriever: RetrieverMode = "arxiv",
+        research_digest_path: str | None = None,
     ) -> None:
         _quiet_litellm_logging()
         self.llm = LiteLLMBackend(model_id=model_id)
         self.executor = Executor(llm=self.llm)
         self.show_workflow = show_workflow
         self.log_dir = log_dir
+        self.retriever = retriever
+        self.research_digest_path = research_digest_path
         self._log_steps_by_subdir: dict[str, int] = {}
 
     def _log_path(self, name: str, *, step: int) -> Path:
@@ -131,7 +135,7 @@ class ScenarioGeneratorAgent:
         asset_name = asset_name.strip()
         if not asset_name:
             raise ValueError("Asset class name is empty after stripping whitespace.")
-        _log.info("Starting scenario generation for asset: %s", asset_name)
+        _log.debug("Starting scenario generation for asset: %s", asset_name)
         server_desc = await self.executor.get_server_descriptions()
 
         if self.show_workflow:
@@ -249,34 +253,121 @@ class ScenarioGeneratorAgent:
                 f"Grounded instances: {len(grounding.asset_instances)}\n"
             )
             _print_step("grounding", "Grounded discovery complete", details=details)
-            _print_step("researcher_queries", f"Planning bounded ArXiv retrieval for {asset_name}...")
 
-        evidence_bundle = retrieve_asset_evidence(
-            asset_name=asset_name,
-            server_desc=server_desc,
-            llm=self.llm,
-            log_writer=self._write_log,
-        )
+        preload = self.research_digest_path
+        if preload:
+            digest_path = Path(preload)
+            if not digest_path.is_file():
+                raise FileNotFoundError(
+                    f"Research digest file not found: {digest_path}. "
+                    "Omit --research-digest or provide a valid path to skip retrieval."
+                )
+            research_digest = digest_path.read_text(encoding="utf-8")
+            if self.log_dir:
+                self._write_log(
+                    "02_retrieval/paper_digest/merged.txt",
+                    research_digest.strip(),
+                )
+            if self.show_workflow:
+                _print_step(
+                    "research_digest",
+                    "Loaded precomputed research digest (retrieval and digest LLM steps skipped)",
+                    details=str(digest_path.resolve()),
+                )
+        else:
+            if self.show_workflow:
+                _print_step(
+                    "researcher_queries",
+                    f"Planning bounded academic literature retrieval for {asset_name}...",
+                )
 
-        if self.show_workflow:
-            top_titles = "\n".join(
-                f" - {candidate.title} (judge_score={candidate.judge_score}/10)"
-                for candidate in evidence_bundle.candidates[:3]
-            ) or " - No ranked candidates"
-            details = (
-                f"Canonical asset: {evidence_bundle.canonical_asset_name}\n"
-                f"Queries:\n"
-                + "\n".join(f" - {query}" for query in evidence_bundle.query_history)
-                + "\nTop Evidence:\n"
-                + top_titles
+            on_pdf_workflow = None
+            on_academic_query = None
+            if self.show_workflow:
+                _pdf_ok_logged: set[str] = set()
+
+                def _on_academic_query(query: str, n_results: int) -> None:
+                    _print_step(
+                        "academic_query",
+                        f"Query: {query!r}",
+                        details=f"Results: {n_results} paper(s) from metadata search",
+                    )
+
+                def _on_pdf_workflow(
+                    candidate: EvidenceCandidate, phase: str, outcome: str
+                ) -> None:
+                    title = truncate_title_one_line(candidate.title)
+                    pid = candidate.paper_id
+                    if outcome == "ok":
+                        if pid in _pdf_ok_logged:
+                            return
+                        _pdf_ok_logged.add(pid)
+                        _print_step(
+                            "pdf_fetch",
+                            f'Paper "{title}" — PDF text loaded',
+                            details=f"paper_id={pid}\nphase={phase}",
+                        )
+                        return
+                    label = {
+                        "no_pdf_url": "No PDF URL (no open-access direct link resolved from metadata)",
+                        "fetch_failed": "PDF fetch failed or URL not a usable PDF stream",
+                        "empty_text": "PDF downloaded but extractable text is empty",
+                    }.get(outcome, outcome)
+                    _print_step(
+                        "pdf_fetch",
+                        f'Paper "{title}" — {label}',
+                        details=f"paper_id={pid}\nphase={phase}\noutcome={outcome}",
+                    )
+
+                on_pdf_workflow = _on_pdf_workflow
+                on_academic_query = _on_academic_query
+
+            evidence_bundle = retrieve_asset_evidence(
+                asset_name=asset_name,
+                server_desc=server_desc,
+                llm=self.llm,
+                log_writer=self._write_log,
+                retriever=self.retriever,
+                on_pdf_workflow=on_pdf_workflow,
+                on_academic_query=on_academic_query,
             )
-            _print_step("arxiv_search_result", "ArXiv evidence retrieval complete", details=details)
+
+            if self.show_workflow:
+                top_titles = "\n".join(
+                    f" - {candidate.title} (judge_score={candidate.judge_score}/10)"
+                    for candidate in evidence_bundle.candidates[:3]
+                ) or " - No ranked candidates"
+                details = (
+                    f"Canonical asset: {evidence_bundle.canonical_asset_name}\n"
+                    f"Queries:\n"
+                    + "\n".join(f" - {query}" for query in evidence_bundle.query_history)
+                    + "\nTop Evidence:\n"
+                    + top_titles
+                )
+                _print_step(
+                    "evidence_retrieval",
+                    "Academic search engine evidence retrieval complete",
+                    details=details,
+                )
+
+            research_digest = synthesize_research_digest(
+                evidence_bundle,
+                self.llm,
+                retriever=self.retriever,
+                log_writer=self._write_log,
+                on_pdf_workflow=on_pdf_workflow,
+            )
+            if self.show_workflow:
+                _print_step(
+                    "research_digest",
+                    "Research digest synthesis complete (per-paper extraction + merge)",
+                )
 
         prompt = PROFILE_BUILDER_PROMPT.format(
             asset_name=asset_name,
             generation_mode=generation_mode,
             grounding_summary_json=_grounding_summary_for_prompt(grounding),
-            evidence_summary_json=_evidence_summary_for_prompt(evidence_bundle),
+            research_digest=research_digest,
             tool_descriptions=_tool_summary_for_prompt(server_desc),
         )
         self._write_log("03_asset_profile/prompt.txt", prompt)
@@ -399,7 +490,6 @@ class ScenarioGeneratorAgent:
         merged["relevant_tools"] = normalized_relevant
         merged["operator_tasks"] = _require_nonempty_list(merged.get("operator_tasks"), field="operator_tasks")
         merged["manager_tasks"] = _require_nonempty_list(merged.get("manager_tasks"), field="manager_tasks")
-        merged["iso_standards"] = _require_nonempty_list(merged.get("iso_standards"), field="iso_standards")
         return AssetProfile(**merged)
 
     async def allocate_budget(self, profile: AssetProfile, total: int = 50) -> ScenarioBudget:

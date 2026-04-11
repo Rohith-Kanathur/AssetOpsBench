@@ -16,14 +16,6 @@ from ..text import slugify_asset_name
 
 
 def _quiet_litellm_logging() -> None:
-    """Raise LiteLLM library loggers to WARNING.
-
-    litellm._logging uses logger names ``LiteLLM``, ``LiteLLM Proxy``, and
-    ``LiteLLM Router`` (not ``litellm``). Those loggers attach their own
-    StreamHandler, so per-completion INFO lines appear even when the root
-    logger is WARNING unless these loggers are adjusted.
-    """
-
     for name in ("LiteLLM", "LiteLLM Proxy", "LiteLLM Router"):
         logging.getLogger(name).setLevel(logging.WARNING)
 
@@ -33,7 +25,6 @@ _MAX_FEWSHOT_EXAMPLES = 6
 
 
 def _multiagent_budget_cap(total: int) -> int:
-    """Maximum multiagent scenarios: floor(75% of total)."""
     if total <= 1:
         return total
     return (total * 3) // 4
@@ -41,9 +32,6 @@ def _multiagent_budget_cap(total: int) -> int:
 
 _PROFILE_MAX_TOKENS = 4096
 _MULTIAGENT_MAX_TOKENS = 4096
-_MAX_PROFILE_CANDIDATES = 5
-_MAX_PROFILE_SNIPPETS = 6
-_MAX_PROFILE_SNIPPET_CHARS = 700
 DEFAULT_GENERATED_SCENARIOS_DIR = Path("generated/scenarios")
 
 
@@ -230,33 +218,6 @@ def _grounding_summary_for_prompt(grounding: GroundingBundle) -> str:
         "failure_modes": grounding.failure_modes,
         "failure_sensor_mapping": grounding.failure_sensor_mapping,
         "sensor_failure_mapping": grounding.sensor_failure_mapping,
-    }
-    return json.dumps(summary, indent=2)
-
-
-def _evidence_summary_for_prompt(evidence_bundle) -> str:
-    summary = {
-        "asset_name": evidence_bundle.asset_name,
-        "canonical_asset_name": evidence_bundle.canonical_asset_name,
-        "query_history": evidence_bundle.query_history,
-        "top_candidates": [
-            {
-                "title": candidate.title,
-                "query": candidate.query,
-                "judge_score": candidate.judge_score,
-                "judge_reason": candidate.judge_reason,
-                "published": candidate.published,
-            }
-            for candidate in evidence_bundle.candidates[:_MAX_PROFILE_CANDIDATES]
-        ],
-        "snippets": [
-            {
-                "title": snippet.title,
-                "source": snippet.source,
-                "text": snippet.text[:_MAX_PROFILE_SNIPPET_CHARS],
-            }
-            for snippet in evidence_bundle.snippets[:_MAX_PROFILE_SNIPPETS]
-        ],
     }
     return json.dumps(summary, indent=2)
 
