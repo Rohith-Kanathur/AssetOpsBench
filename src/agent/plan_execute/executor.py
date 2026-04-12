@@ -218,11 +218,11 @@ async def _resolve_args_with_llm(
         .replace("{context}", context_text or "(none)")
     )
     raw = llm.generate(prompt)
-    resolved = _parse_json(raw)
+    resolved = _parse_json(raw.text)
     if resolved is None:
         _log.warning(
             "Tool '%s': arg resolution returned no parseable JSON (response: %r…)",
-            tool, raw[:120],
+            tool, raw.text[:120],
         )
         return {}
     return resolved

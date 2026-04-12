@@ -2,7 +2,7 @@
 
 import pytest
 
-from llm import LLMBackend
+from llm import LLMBackend, LLMResult, LLMUsage
 
 
 class MockLLM(LLMBackend):
@@ -11,8 +11,16 @@ class MockLLM(LLMBackend):
     def __init__(self, response: str = "") -> None:
         self._response = response
 
-    def generate(self, prompt: str, temperature: float = 0.0) -> str:
-        return self._response
+    def generate(
+        self,
+        prompt: str,
+        temperature: float = 0.0,
+        max_tokens: int | None = None,
+    ) -> LLMResult:
+        return LLMResult(
+            text=self._response,
+            usage=LLMUsage(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+        )
 
 
 class SequentialMockLLM(LLMBackend):
@@ -21,8 +29,17 @@ class SequentialMockLLM(LLMBackend):
     def __init__(self, responses: list[str]) -> None:
         self._responses = iter(responses)
 
-    def generate(self, prompt: str, temperature: float = 0.0) -> str:
-        return next(self._responses, "")
+    def generate(
+        self,
+        prompt: str,
+        temperature: float = 0.0,
+        max_tokens: int | None = None,
+    ) -> LLMResult:
+        text = next(self._responses, "")
+        return LLMResult(
+            text=text,
+            usage=LLMUsage(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+        )
 
 
 @pytest.fixture

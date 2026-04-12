@@ -104,7 +104,7 @@ class PlanExecuteRunner(AgentRunner):
         )
         answer = self._llm.generate(
             _SUMMARIZE_PROMPT.format(question=question, results=results_text)
-        )
+        ).text
 
         return OrchestratorResult(
             question=question,

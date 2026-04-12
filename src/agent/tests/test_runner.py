@@ -16,6 +16,7 @@ from agent.plan_execute.executor import (
 )
 from agent.plan_execute.models import Plan, PlanStep, StepResult
 from agent.plan_execute.runner import PlanExecuteRunner
+from llm import LLMResult, LLMUsage
 
 # ── shared plan strings ───────────────────────────────────────────────────────
 
@@ -82,9 +83,12 @@ class _CapturingLLM:
         self.prompts: list[str] = []
         self._response = response
 
-    def generate(self, prompt: str, **_kw) -> str:
+    def generate(self, prompt: str, **_kw) -> LLMResult:
         self.prompts.append(prompt)
-        return self._response
+        return LLMResult(
+            text=self._response,
+            usage=LLMUsage(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+        )
 
 
 # ── orchestrator tests ────────────────────────────────────────────────────────
