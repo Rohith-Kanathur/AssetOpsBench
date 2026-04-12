@@ -14,9 +14,12 @@ Credentials are resolved from environment variables based on the prefix:
 
 from __future__ import annotations
 
+import logging
 import os
 
-from .base import LLMBackend
+from .base import LLMBackend, LLMResult, LLMUsage
+
+_log = logging.getLogger(__name__)
 
 
 class LiteLLMBackend(LLMBackend):
@@ -36,7 +39,7 @@ class LiteLLMBackend(LLMBackend):
         prompt: str,
         temperature: float = 0.0,
         max_tokens: int | None = None,
-    ) -> str:
+    ) -> LLMResult:
         import litellm
 
         kwargs: dict = {
@@ -56,4 +59,25 @@ class LiteLLMBackend(LLMBackend):
             kwargs["api_base"] = os.environ["LITELLM_BASE_URL"]
 
         response = litellm.completion(**kwargs)
-        return response.choices[0].message.content
+        text = response.choices[0].message.content or ""
+        usage: LLMUsage | None = None
+        raw_usage = getattr(response, "usage", None)
+        if raw_usage is not None:
+            usage = LLMUsage(
+                prompt_tokens=getattr(raw_usage, "prompt_tokens", None),
+                completion_tokens=getattr(raw_usage, "completion_tokens", None),
+                total_tokens=getattr(raw_usage, "total_tokens", None),
+            )
+            _log.info(
+                "LLM usage model=%s prompt_tokens=%s completion_tokens=%s total_tokens=%s",
+                self._model_id,
+                usage.prompt_tokens,
+                usage.completion_tokens,
+                usage.total_tokens,
+            )
+        else:
+            _log.info(
+                "LLM completion model=%s (no usage object from provider)",
+                self._model_id,
+            )
+        return LLMResult(text=text, usage=usage)
