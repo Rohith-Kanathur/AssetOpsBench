@@ -135,12 +135,12 @@ uv run vibration-mcp-server
 **Path:** `src/servers/iot/main.py`
 **Requires:** CouchDB (`COUCHDB_URL`, `COUCHDB_USERNAME`, `COUCHDB_PASSWORD`, `IOT_DBNAME`)
 
-| Tool      | Arguments                                  | Description                                                             |
-| --------- | ------------------------------------------ | ----------------------------------------------------------------------- |
-| `sites`   | —                                          | List all available sites                                                |
-| `assets`  | `site_name`                                | List all asset IDs for a site                                           |
-| `sensors` | `site_name`, `asset_id`                    | List sensor names for an asset                                          |
-| `history` | `site_name`, `asset_id`, `start`, `final?` | Fetch historical sensor readings for a time range (ISO 8601 timestamps) |
+| Tool          | Arguments                                  | Description                                                             |
+| ------------- | ------------------------------------------ | ----------------------------------------------------------------------- |
+| `get_sites`   | —                                          | List all available sites                                                |
+| `get_assets`  | `site_name`                                | List all asset IDs for a site                                           |
+| `get_sensors` | `site_name`, `asset_id`                    | List sensor names for an asset                                          |
+| `get_history` | `site_name`, `asset_id`, `start`, `final?` | Fetch historical sensor readings for a time range (ISO 8601 timestamps) |
 
 ### utilities — Utilities
 
@@ -316,7 +316,7 @@ Expected plan (3 parallel steps, no dependencies):
 
 ```
 [1] utilities  : current_date_time()
-[2] iot        : assets(site_name="MAIN")
+[2] iot        : get_assets(site_name="MAIN")
 [3] fmsr       : get_failure_modes(asset_name="chiller")
 ```
 
