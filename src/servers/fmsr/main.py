@@ -219,7 +219,7 @@ def _call_asset2fm(asset_name: str) -> list[str]:
     last_exc: Exception | None = None
     for _ in range(_MAX_RETRIES):
         try:
-            result = _parse_numbered_list(_llm.generate(prompt))
+            result = _parse_numbered_list(_llm.generate(prompt).text)
             _asset2fm_cache[asset_name] = result
             return result
         except Exception as exc:
@@ -235,7 +235,7 @@ def _call_relevancy(asset_name: str, failure_mode: str, sensor: str) -> dict:
     last_exc: Exception | None = None
     for _ in range(_MAX_RETRIES):
         try:
-            return _parse_relevancy(_llm.generate(prompt))
+            return _parse_relevancy(_llm.generate(prompt).text)
         except Exception as exc:
             last_exc = exc
     raise last_exc
@@ -260,7 +260,7 @@ def _call_dga(
     last_exc: Exception | None = None
     for _ in range(_MAX_RETRIES):
         try:
-            raw = _llm.generate(prompt)
+            raw = _llm.generate(prompt).text
             return _parse_dga_response(raw)
         except Exception as exc:
             last_exc = exc
@@ -281,7 +281,7 @@ def _call_winding(
     last_exc: Exception | None = None
     for _ in range(_MAX_RETRIES):
         try:
-            raw = _llm.generate(prompt)
+            raw = _llm.generate(prompt).text
             return _parse_winding_response(raw)
         except Exception as exc:
             last_exc = exc
@@ -320,7 +320,7 @@ def _call_load(
     last_exc: Exception | None = None
     for _ in range(_MAX_RETRIES):
         try:
-            raw = _llm.generate(prompt)
+            raw = _llm.generate(prompt).text
             return _parse_load_response(raw)
         except Exception as exc:
             last_exc = exc

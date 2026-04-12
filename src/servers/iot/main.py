@@ -237,13 +237,13 @@ def get_asset_coverage() -> List[Dict[str, Any]]:
 
 
 @mcp.tool(title="List Sites")
-def sites() -> SitesResult:
+def get_sites() -> SitesResult:
     """Retrieves a list of sites. Each site is represented by a name."""
     return SitesResult(sites=SITES)
 
 
 @mcp.tool(title="List Assets")
-def assets(site_name: str) -> Union[AssetsResult, ErrorResult]:
+def get_assets(site_name: str) -> Union[AssetsResult, ErrorResult]:
     """Returns a list of assets for a given site. Each asset includes an id and a name."""
     if site_name not in SITES:
         return ErrorResult(error=f"unknown site {site_name}")
@@ -258,7 +258,7 @@ def assets(site_name: str) -> Union[AssetsResult, ErrorResult]:
 
 
 @mcp.tool(title="List Sensors")
-def sensors(site_name: str, asset_id: str) -> Union[SensorsResult, ErrorResult]:
+def get_sensors(site_name: str, asset_id: str) -> Union[SensorsResult, ErrorResult]:
     """Lists the sensors available for a specified asset at a given site."""
     if site_name not in SITES:
         return ErrorResult(error=f"unknown site {site_name}")
@@ -277,7 +277,7 @@ def sensors(site_name: str, asset_id: str) -> Union[SensorsResult, ErrorResult]:
 
 
 @mcp.tool(title="Get Sensor History")
-def history(
+def get_history(
     site_name: str, asset_id: str, start: str, final: Optional[str] = None
 ) -> Union[HistoryResult, ErrorResult]:
     """Returns a list of historical sensor values for the specified asset(s) at a site within a given time range (start to final)."""

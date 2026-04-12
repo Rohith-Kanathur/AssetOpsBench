@@ -196,7 +196,7 @@ def _judge_metadata_batch(
         metadata_entries_json=_summarise_metadata_for_judge(candidates),
     )
     response = llm.generate(prompt)
-    parsed, _ = parse_llm_json(response)
+    parsed, _ = parse_llm_json(response.text)
 
     scored_by_id: dict[str, tuple[int, str]] = {}
     if isinstance(parsed, list):
@@ -553,7 +553,7 @@ def _retrieve_for_section(
             section_heading=section_heading,
         )
         response = llm.generate(prompt)
-        parsed, _ = parse_llm_json(response)
+        parsed, _ = parse_llm_json(response.text)
         action = _coerce_action(parsed)
         canonical_asset_name = action.canonical_asset_name
 
