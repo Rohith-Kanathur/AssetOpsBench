@@ -130,7 +130,7 @@ async def test_run_collects_trajectory():
     from claude_agent_sdk import AssistantMessage, ResultMessage, TextBlock, ToolUseBlock
 
     mock_tool = MagicMock(spec=ToolUseBlock)
-    mock_tool.name = "sensors"
+    mock_tool.name = "get_sensors"
     mock_tool.input = {"asset_id": "CH-6"}
     mock_tool.id = "tu_123"
 
@@ -159,7 +159,7 @@ async def test_run_collects_trajectory():
     turn = traj.turns[0]
     assert turn.text == "Calling sensors tool..."
     assert len(turn.tool_calls) == 1
-    assert turn.tool_calls[0].name == "sensors"
+    assert turn.tool_calls[0].name == "get_sensors"
     assert turn.tool_calls[0].input == {"asset_id": "CH-6"}
     assert turn.input_tokens == 100
     assert turn.output_tokens == 20
@@ -174,7 +174,7 @@ async def test_run_tool_output_captured():
     from claude_agent_sdk import AssistantMessage, ResultMessage, TextBlock, ToolUseBlock
 
     mock_tool = MagicMock(spec=ToolUseBlock)
-    mock_tool.name = "sensors"
+    mock_tool.name = "get_sensors"
     mock_tool.input = {"asset_id": "CH-6"}
     mock_tool.id = "tu_456"
 
@@ -223,7 +223,7 @@ async def test_run_tool_output_string_response():
     from claude_agent_sdk import AssistantMessage, ResultMessage, TextBlock, ToolUseBlock
 
     mock_tool = MagicMock(spec=ToolUseBlock)
-    mock_tool.name = "sites"
+    mock_tool.name = "get_sites"
     mock_tool.input = {}
     mock_tool.id = "tu_789"
 
