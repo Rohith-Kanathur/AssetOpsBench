@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from agent.cli import _DEFAULT_MODEL
 
 from .agent import ScenarioGeneratorAgent
-from .prompt_helpers import default_scenario_output_path
+from .prompt_helpers import default_scenario_output_path, negative_scenario_output_path
 
 
 def main() -> None:
@@ -24,6 +24,12 @@ def main() -> None:
     parser.add_argument("asset_name", help="Asset class name (for example 'Chiller' or 'Wind Turbine')")
     parser.add_argument("--model-id", default=_DEFAULT_MODEL, help="Model ID for LiteLLM")
     parser.add_argument("--num-scenarios", type=int, default=50, help="Total number of scenarios to generate")
+    parser.add_argument(
+        "--num-negative-scenarios",
+        type=int,
+        default=2,
+        help="Total number of intentionally unanswerable negative scenarios to generate (0 disables the negative track)",
+    )
     parser.add_argument("--show-workflow", action="store_true", help="Show intermediate pipeline steps in the console")
     parser.add_argument(
         "--log",
@@ -95,16 +101,20 @@ def main() -> None:
     )
 
     try:
-        final_scenarios = asyncio.run(
+        generation_result = asyncio.run(
             agent.run(
                 args.asset_name,
                 num_scenarios=args.num_scenarios,
                 data_in_couchdb=args.data_in_couchdb,
+                num_negative_scenarios=args.num_negative_scenarios,
             )
         )
     except Exception as exc:  # noqa: BLE001
         print(f"\n[FATAL ERROR] {exc}")
         sys.exit(1)
+
+    final_scenarios = generation_result.scenarios
+    negative_scenarios = generation_result.negative_scenarios
 
     if not final_scenarios:
         print("\n[WARNING] No scenarios were successfully generated and validated.")
@@ -114,7 +124,17 @@ def main() -> None:
     with output_path.open("w") as handle:
         json.dump([scenario.to_dict() for scenario in final_scenarios], handle, indent=2)
 
+    if negative_scenarios:
+        negative_output_path = negative_scenario_output_path(output_path)
+        with negative_output_path.open("w") as handle:
+            json.dump([scenario.to_dict() for scenario in negative_scenarios], handle, indent=2)
+
     if not args.show_workflow:
-        print(f"Success! Generated {len(final_scenarios)} scenarios at {output_path}")
+        suffix = (
+            f" and {len(negative_scenarios)} negative scenarios at {negative_scenario_output_path(output_path)}"
+            if negative_scenarios
+            else ""
+        )
+        print(f"Success! Generated {len(final_scenarios)} scenarios at {output_path}{suffix}")
     else:
         print(f"Scenarios saved to {output_path}")

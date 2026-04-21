@@ -26,6 +26,7 @@ class FocusPolicy:
     categories: tuple[str, ...]
     prompt_requirements: tuple[str, ...]
     forbidden_patterns: tuple[str, ...]
+    hardness_guidance: tuple[str, ...]
 
     def format_categories(self) -> str:
         return _format_bullet_list(self.categories)
@@ -35,6 +36,9 @@ class FocusPolicy:
 
     def format_forbidden_patterns(self) -> str:
         return _format_bullet_list(self.forbidden_patterns)
+
+    def format_hardness_guidance(self) -> str:
+        return _format_bullet_list(self.hardness_guidance)
 
 
 SCENARIO_POLICIES: dict[str, FocusPolicy] = {
@@ -48,6 +52,10 @@ SCENARIO_POLICIES: dict[str, FocusPolicy] = {
             FORBIDDEN_MCP_NAMES_IN_SCENARIO_TEXT,
             "Avoid turning a primary IoT scenario into a generic asset essay with no telemetry task.",
         ),
+        hardness_guidance=(
+            "Make hard IoT scenarios combine telemetry retrieval with at least one follow-up comparison, prioritization, or summary request.",
+            "Use fallback clauses for missing or conflicting channels, such as asking for an alternate signal or a secondary comparison if a sensor is unavailable.",
+        ),
     ),
     "fmsr": FocusPolicy(
         categories=("Knowledge Query", "Diagnostic Assessment", "Recommendation"),
@@ -58,6 +66,10 @@ SCENARIO_POLICIES: dict[str, FocusPolicy] = {
         forbidden_patterns=(
             FORBIDDEN_MCP_NAMES_IN_SCENARIO_TEXT,
             "Avoid generic telemetry listing tasks with no failure, reliability, or engineering reasoning.",
+        ),
+        hardness_guidance=(
+            "Make hard FMSR scenarios combine a diagnosis or failure-mode assessment with a ranked explanation, confidence framing, or recommended next check.",
+            "Use fallback clauses for incomplete evidence, such as asking what to conclude if one reading is missing or two fault signatures disagree.",
         ),
     ),
     "tsfm": FocusPolicy(
@@ -75,6 +87,10 @@ SCENARIO_POLICIES: dict[str, FocusPolicy] = {
             FORBIDDEN_MCP_NAMES_IN_SCENARIO_TEXT,
             "Avoid plain asset discovery or failure-list questions with no time-series analysis task.",
         ),
+        hardness_guidance=(
+            "Make hard TSFM scenarios combine a forecast, anomaly check, or model comparison with at least one decision-oriented follow-up such as escalation, confidence, or threshold interpretation.",
+            "Use fallback clauses for missing channels, alternate horizons, or alternate baselines when the preferred signal or window is unavailable.",
+        ),
     ),
     "wo": FocusPolicy(
         categories=("Decision Support", "Prediction", "Knowledge Query"),
@@ -85,6 +101,10 @@ SCENARIO_POLICIES: dict[str, FocusPolicy] = {
         forbidden_patterns=(
             FORBIDDEN_MCP_NAMES_IN_SCENARIO_TEXT,
             "Avoid plain sensor-list or standalone forecasting tasks with no maintenance decision component.",
+        ),
+        hardness_guidance=(
+            "Make hard WO scenarios combine review of alerts/events/history with a scheduling, bundling, or prioritization decision.",
+            "Use fallback clauses such as recommending a plan only if no similar corrective work order already exists, otherwise comparing with the existing plan.",
         ),
     ),
     "vibration": FocusPolicy(
@@ -102,6 +122,10 @@ SCENARIO_POLICIES: dict[str, FocusPolicy] = {
             FORBIDDEN_MCP_NAMES_IN_SCENARIO_TEXT,
             "Avoid generic telemetry prompts that do not require vibration-specific tools or reasoning.",
         ),
+        hardness_guidance=(
+            "Make hard vibration scenarios combine a spectrum or severity assessment with a likely fault interpretation and an operating/maintenance recommendation.",
+            "Use fallback clauses for alternate machine context, such as what to do if the RPM, bearing model, or severity zone is uncertain.",
+        ),
     ),
     "multiagent": FocusPolicy(
         categories=("Knowledge Query", "Workflow Coordination"),
@@ -112,6 +136,10 @@ SCENARIO_POLICIES: dict[str, FocusPolicy] = {
         forbidden_patterns=(
             FORBIDDEN_MCP_NAMES_IN_SCENARIO_TEXT,
             "Avoid collapsing multiagent scenarios into a single-focus task.",
+        ),
+        hardness_guidance=(
+            "Make hard multiagent scenarios require at least two distinct intermediate findings before a final decision, with one step informing the next.",
+            "Use fallback clauses when those findings disagree, such as escalating only if both diagnostics and planning signals point to risk, otherwise recommending additional checks.",
         ),
     ),
 }
@@ -134,6 +162,10 @@ def format_requirements_for_prompt(focus: str) -> str:
 
 def format_forbidden_patterns_for_prompt(focus: str) -> str:
     return get_scenario_policy(focus).format_forbidden_patterns()
+
+
+def format_hardness_guidance_for_prompt(focus: str) -> str:
+    return get_scenario_policy(focus).format_hardness_guidance()
 
 
 def format_accepted_scenarios_for_prompt(

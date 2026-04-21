@@ -210,6 +210,13 @@ class Scenario(BaseModel):
         }
 
 
+class ScenarioGenerationResult(BaseModel):
+    """Final output of one scenario-generation run."""
+
+    scenarios: list[Scenario] = Field(default_factory=list)
+    negative_scenarios: list[Scenario] = Field(default_factory=list)
+
+
 __all__ = [
     "AssetProfile",
     "EvidenceBundle",
@@ -222,6 +229,7 @@ __all__ = [
     "RetrievalAction",
     "RetrieverMode",
     "Scenario",
+    "ScenarioGenerationResult",
     "ScenarioBudget",
     "ScenarioTypeKey",
     "SensorNameDescription",
