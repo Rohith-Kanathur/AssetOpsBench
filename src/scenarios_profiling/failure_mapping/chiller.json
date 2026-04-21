@@ -1,0 +1,260 @@
+{
+  "fm2sensor": {
+    "Compressor Overheating: Failed due to Normal wear, overheating": [
+      "ati",
+      "co",
+      "dbds",
+      "il1",
+      "il2",
+      "il3",
+      "interfacial_v",
+      "inut",
+      "nitrogen",
+      "oti",
+      "oti_a",
+      "oti_t",
+      "rated_mva",
+      "vl1",
+      "vl12",
+      "vl2",
+      "vl23",
+      "vl3",
+      "vl31",
+      "water_content",
+      "wti"
+    ],
+    "Condenser Improper water side flow rate": [
+      "ati",
+      "co",
+      "dbds",
+      "il1",
+      "il2",
+      "il3",
+      "interfacial_v",
+      "inut",
+      "oti",
+      "oti_a",
+      "oti_t",
+      "vl1",
+      "vl12",
+      "vl2",
+      "vl23",
+      "vl3",
+      "vl31",
+      "water_content",
+      "wti"
+    ],
+    "Condenser Water side fouling": [
+      "ati",
+      "co",
+      "dbds",
+      "il3",
+      "interfacial_v",
+      "inut",
+      "oti",
+      "oti_t",
+      "vl1",
+      "vl2",
+      "vl3",
+      "vl31",
+      "wti"
+    ],
+    "Evaporator Water side fouling": [
+      "ati",
+      "co",
+      "dbds",
+      "il1",
+      "il2",
+      "il3",
+      "interfacial_v",
+      "inut",
+      "oti",
+      "oti_a",
+      "oti_t",
+      "vl12",
+      "vl2",
+      "vl3",
+      "vl31",
+      "water_content",
+      "wti"
+    ],
+    "Heat Exchangers: Fans: Degraded motor or worn bearing due to Normal use": [
+      "ati",
+      "co",
+      "dbds",
+      "inut",
+      "oti",
+      "wti"
+    ],
+    "Purge Unit Excessive purge": [
+      "ati",
+      "co",
+      "dbds",
+      "il1",
+      "il2",
+      "il3",
+      "interfacial_v",
+      "inut",
+      "nitrogen",
+      "oti",
+      "oxygen",
+      "vl2",
+      "vl23",
+      "vl3",
+      "water_content",
+      "wti"
+    ],
+    "Refrigerant Operated Control Valve Failed spring": [
+      "ati",
+      "co",
+      "dbds",
+      "inut",
+      "oti",
+      "wti"
+    ]
+  },
+  "sensor2fm": {
+    "ati": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Condenser Water side fouling",
+      "Evaporator Water side fouling",
+      "Heat Exchangers: Fans: Degraded motor or worn bearing due to Normal use",
+      "Purge Unit Excessive purge",
+      "Refrigerant Operated Control Valve Failed spring"
+    ],
+    "co": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Condenser Water side fouling",
+      "Evaporator Water side fouling",
+      "Heat Exchangers: Fans: Degraded motor or worn bearing due to Normal use",
+      "Purge Unit Excessive purge",
+      "Refrigerant Operated Control Valve Failed spring"
+    ],
+    "dbds": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Condenser Water side fouling",
+      "Evaporator Water side fouling",
+      "Heat Exchangers: Fans: Degraded motor or worn bearing due to Normal use",
+      "Purge Unit Excessive purge",
+      "Refrigerant Operated Control Valve Failed spring"
+    ],
+    "il1": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Evaporator Water side fouling",
+      "Purge Unit Excessive purge"
+    ],
+    "il2": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Evaporator Water side fouling",
+      "Purge Unit Excessive purge"
+    ],
+    "il3": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Condenser Water side fouling",
+      "Evaporator Water side fouling",
+      "Purge Unit Excessive purge"
+    ],
+    "interfacial_v": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Condenser Water side fouling",
+      "Evaporator Water side fouling",
+      "Purge Unit Excessive purge"
+    ],
+    "inut": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Condenser Water side fouling",
+      "Evaporator Water side fouling",
+      "Heat Exchangers: Fans: Degraded motor or worn bearing due to Normal use",
+      "Purge Unit Excessive purge",
+      "Refrigerant Operated Control Valve Failed spring"
+    ],
+    "nitrogen": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Purge Unit Excessive purge"
+    ],
+    "oti": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Condenser Water side fouling",
+      "Evaporator Water side fouling",
+      "Heat Exchangers: Fans: Degraded motor or worn bearing due to Normal use",
+      "Purge Unit Excessive purge",
+      "Refrigerant Operated Control Valve Failed spring"
+    ],
+    "oti_a": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Evaporator Water side fouling"
+    ],
+    "oti_t": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Condenser Water side fouling",
+      "Evaporator Water side fouling"
+    ],
+    "oxygen": [
+      "Purge Unit Excessive purge"
+    ],
+    "rated_mva": [
+      "Compressor Overheating: Failed due to Normal wear, overheating"
+    ],
+    "vl1": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Condenser Water side fouling"
+    ],
+    "vl12": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Evaporator Water side fouling"
+    ],
+    "vl2": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Condenser Water side fouling",
+      "Evaporator Water side fouling",
+      "Purge Unit Excessive purge"
+    ],
+    "vl23": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Purge Unit Excessive purge"
+    ],
+    "vl3": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Condenser Water side fouling",
+      "Evaporator Water side fouling",
+      "Purge Unit Excessive purge"
+    ],
+    "vl31": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Condenser Water side fouling",
+      "Evaporator Water side fouling"
+    ],
+    "water_content": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Evaporator Water side fouling",
+      "Purge Unit Excessive purge"
+    ],
+    "wti": [
+      "Compressor Overheating: Failed due to Normal wear, overheating",
+      "Condenser Improper water side flow rate",
+      "Condenser Water side fouling",
+      "Evaporator Water side fouling",
+      "Heat Exchangers: Fans: Degraded motor or worn bearing due to Normal use",
+      "Purge Unit Excessive purge",
+      "Refrigerant Operated Control Valve Failed spring"
+    ]
+  }
+}

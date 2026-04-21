@@ -29,6 +29,8 @@ dependencies = [
     "scikit-learn>=1.8.0",
     "datasets>=4.8.4",
     "pypdf>=6.9.2",
+    "torch>=2.0",
+    "wandb>=0.18",
 ]
 
 [project.scripts]

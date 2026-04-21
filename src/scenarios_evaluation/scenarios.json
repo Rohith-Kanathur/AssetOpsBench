@@ -1,0 +1,352 @@
+[
+  {
+    "id": "transformer_scenario_01",
+    "type": "iot",
+    "text": "What are the latest values for acetylene, hydrogen, and oxygen sensors for Transformer 1 at the MAIN site?",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should be the latest values for the acetylene, hydrogen, and oxygen sensors for Transformer 1 at the MAIN site. The return value should be a reference to a file containing these sensor values. This task requires the use of get_sensors and get_history tools."
+  },
+  {
+    "id": "transformer_scenario_02",
+    "type": "iot",
+    "text": "List all the sensors available for Transformer 1 at the MAIN site.",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should be a list of all sensors available for Transformer 1 at the MAIN site. The return value should be a reference to a file listing the sensors. This task requires the use of get_sensors tool."
+  },
+  {
+    "id": "transformer_scenario_03",
+    "type": "iot",
+    "text": "Retrieve the historical data for the dielectric_rigidity sensor of Transformer 1 at the MAIN site between 2024-01-15 and 2024-01-19.",
+    "category": "Data Query",
+    "characteristic_form": "The expected response should be the historical data for the dielectric_rigidity sensor of Transformer 1 at the MAIN site for the specified time range. The return value should be a reference to a file containing the historical data. This task requires the use of get_history tool."
+  },
+  {
+    "id": "transformer_scenario_04",
+    "type": "iot",
+    "text": "What is the average value of the oti_t sensor for Transformer 1 at the MAIN site over the last 5 observations?",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should be the average value of the oti_t sensor for Transformer 1 at the MAIN site over the last 5 observations. The return value should be a numeric value representing the average. This task requires the use of get_history tool."
+  },
+  {
+    "id": "transformer_scenario_05",
+    "type": "iot",
+    "text": "Can I get the latest readings for il1, il2, and il3 sensors for Transformer 1 at the MAIN site?",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should be the latest readings for the il1, il2, and il3 sensors for Transformer 1 at the MAIN site. The return value should be a reference to a file containing these sensor readings. This task requires the use of get_sensors and get_history tools."
+  },
+  {
+    "id": "transformer_scenario_06",
+    "type": "iot",
+    "text": "List the sensor data for Transformer 1 at the MAIN site on 2024-01-15.",
+    "category": "Data Query",
+    "characteristic_form": "The expected response should be all sensor data for Transformer 1 at the MAIN site on 2024-01-15. The return value should be a reference to a file containing the sensor data. This task requires the use of get_history tool."
+  },
+  {
+    "id": "transformer_scenario_07",
+    "type": "iot",
+    "text": "What are the values of co, co2, and methane sensors for Transformer 1 at the MAIN site on 2024-01-18?",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should be the values of co, co2, and methane sensors for Transformer 1 at the MAIN site on 2024-01-18. The return value should be a reference to a file containing these sensor values. This task requires the use of get_history tool."
+  },
+  {
+    "id": "transformer_scenario_08",
+    "type": "iot",
+    "text": "Retrieve the data for the wti and oti sensors for Transformer 1 at the MAIN site between 2024-01-15 and 2024-01-19.",
+    "category": "Data Query",
+    "characteristic_form": "The expected response should be the historical data for the wti and oti sensors for Transformer 1 at the MAIN site for the specified time range. The return value should be a reference to a file containing the historical data. This task requires the use of get_history tool."
+  },
+  {
+    "id": "transformer_scenario_09",
+    "type": "fmsr",
+    "text": "What are the potential failure modes of Transformer 1 that can be detected using dissolved gas analysis?",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The answer should contain one or more failure modes of Transformer 1. The failure modes need to be from the list [Partial Discharge in Oil, Thermal Fault \u2014 Oil Overheating, Thermal Fault \u2014 Core/Winding, Low-Energy Arcing (Sparking), High-Energy Arcing, Tap Changer Mechanical Wear, Oil Contamination / Moisture Ingress, Cellulose Insulation Ageing, Oil Dielectric Degradation]. The characteristic form should explicitly mention the use of interpret_dga tool."
+  },
+  {
+    "id": "transformer_scenario_10",
+    "type": "fmsr",
+    "text": "Assess the winding temperature condition of Transformer 1 given the current winding temperature is 85\u00b0C, oil temperature is 60\u00b0C, ambient temperature is 25\u00b0C, top oil temperature is 65\u00b0C, and ambient temperature near the transformer is 24\u00b0C.",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The answer should assess the thermal condition of Transformer 1's windings. The characteristic form should explicitly mention the use of assess_winding_temperature tool with parameters wti, oti, ati, oti_t, oti_a."
+  },
+  {
+    "id": "transformer_scenario_11",
+    "type": "fmsr",
+    "text": "List the sensors that can detect High-Energy Arcing in Transformer 1.",
+    "category": "Recommendation",
+    "characteristic_form": "The answer should contain one or more sensors related to Transformer 1. The sensors need to be from the list [ati, co, dbds, dielectric_rigidity, ethylene, hydrogen, il1, il2, il3, interfacial_v, inut, oti, oti_a, oti_t, power_factor, rated_mva, vl1, vl12, vl2, vl23, vl3, vl31, wti]. The characteristic form should explicitly mention the use of get_failure_mode_sensor_mapping tool."
+  },
+  {
+    "id": "transformer_scenario_12",
+    "type": "fmsr",
+    "text": "Predict the health index of Transformer 1 using the latest available condition data.",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The answer should predict the health index of Transformer 1. The characteristic form should explicitly mention the use of predict_health_index tool with relevant parameters such as hydrogen, oxygen, nitrogen, methane, co, co2, ethylene, ethane, acetylene, dbds, power_factor, interfacial_v, dielectric_rigidity, water_content."
+  },
+  {
+    "id": "transformer_scenario_13",
+    "type": "fmsr",
+    "text": "What are the failure modes of Transformer 1 that can be detected by monitoring the hydrogen and acetylene levels?",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The answer should contain one or more failure modes of Transformer 1. The failure modes need to be from the list [Partial Discharge in Oil, Thermal Fault \u2014 Oil Overheating, Thermal Fault \u2014 Core/Winding, Low-Energy Arcing (Sparking), High-Energy Arcing, Oil Dielectric Degradation]. The characteristic form should explicitly mention the use of get_failure_mode_sensor_mapping tool and interpret_dga tool."
+  },
+  {
+    "id": "transformer_scenario_14",
+    "type": "fmsr",
+    "text": "Assess the loading condition of Transformer 1 given the current voltage and current readings.",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The answer should assess the loading condition of Transformer 1. The characteristic form should explicitly mention the use of assess_load_profile tool with parameters vl1, vl2, vl3, il1, il2, il3, vl12, vl23, vl31, inut, rated_mva."
+  },
+  {
+    "id": "transformer_scenario_15",
+    "type": "fmsr",
+    "text": "Interpret the dissolved gas analysis for Transformer 1 with hydrogen level at 150 ppm, methane at 20 ppm, acetylene at 5 ppm, ethylene at 30 ppm, and ethane at 10 ppm.",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The answer should interpret the dissolved gas analysis readings for Transformer 1. The characteristic form should explicitly mention the use of interpret_dga tool with parameters hydrogen, methane, acetylene, ethylene, ethane."
+  },
+  {
+    "id": "transformer_scenario_16",
+    "type": "fmsr",
+    "text": "List all the failure modes that can be detected by monitoring the dielectric rigidity of Transformer 1's oil.",
+    "category": "Recommendation",
+    "characteristic_form": "The answer should contain one or more failure modes of Transformer 1. The failure modes need to be from the list [Partial Discharge in Oil, Thermal Fault \u2014 Oil Overheating, Thermal Fault \u2014 Core/Winding, Low-Energy Arcing (Sparking), High-Energy Arcing, Oil Contamination / Moisture Ingress, Cellulose Insulation Ageing, Oil Dielectric Degradation]. The characteristic form should explicitly mention the use of get_failure_mode_sensor_mapping tool."
+  },
+  {
+    "id": "transformer_scenario_17",
+    "type": "fmsr",
+    "text": "What sensors are relevant for detecting Oil Contamination / Moisture Ingress in Transformer 1?",
+    "category": "Recommendation",
+    "characteristic_form": "The answer should contain one or more sensors related to Transformer 1. The sensors need to be from the list [ati, co, dbds, dielectric_rigidity, ethane, ethylene, hydrogen, il1, il2, il3, interfacial_v, inut, methane, nitrogen, oti, oti_a, oti_t, oxygen, power_factor, rated_mva, vl1, vl12, vl2, vl23, vl3, vl31, water_content, wti]. The characteristic form should explicitly mention the use of get_failure_mode_sensor_mapping tool."
+  },
+  {
+    "id": "transformer_scenario_18",
+    "type": "fmsr",
+    "text": "Assess the condition of Transformer 1's cellulose insulation ageing using the available condition monitoring data.",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The answer should assess the condition of Transformer 1's cellulose insulation ageing. The characteristic form should explicitly mention the use of predict_health_index tool and get_failure_mode_sensor_mapping tool with relevant parameters."
+  },
+  {
+    "id": "transformer_scenario_19",
+    "type": "tsfm",
+    "text": "Forecast the winding temperature of Transformer 1 for the next 24 hours using historical data from the wti sensor.",
+    "category": "Inference Query",
+    "characteristic_form": "The expected response should be a json string containing the forecasted winding temperature values for the next 24 hours. This task requires the run_tsfm_forecasting tool."
+  },
+  {
+    "id": "transformer_scenario_20",
+    "type": "tsfm",
+    "text": "Detect anomalies in the dissolved gas analysis data from Transformer 1 between 2024-01-15T00:00:00.000000 and 2024-01-19T00:00:00.000000.",
+    "category": "Anomaly Detection Query",
+    "characteristic_form": "The expected response should be a json string containing the anomaly labels for the dissolved gas analysis data. This task requires the run_tsad tool."
+  },
+  {
+    "id": "transformer_scenario_21",
+    "type": "tsfm",
+    "text": "Predict the future values of hydrogen concentration in Transformer 1 using data from the hydrogen sensor.",
+    "category": "Inference Query",
+    "characteristic_form": "The expected response should be a json string containing the predicted hydrogen concentration values. This task requires the run_tsfm_forecasting tool."
+  },
+  {
+    "id": "transformer_scenario_22",
+    "type": "tsfm",
+    "text": "Identify anomalies in the oil temperature of Transformer 1 between 2024-01-15T00:00:00.000000 and 2024-01-19T00:00:00.000000.",
+    "category": "Anomaly Detection Query",
+    "characteristic_form": "The expected response should be a json string containing the anomaly labels for the oil temperature data. This task requires the run_tsad tool."
+  },
+  {
+    "id": "transformer_scenario_23",
+    "type": "tsfm",
+    "text": "Forecast the power factor of Transformer 1 for the next 48 hours using historical data from the power_factor sensor.",
+    "category": "Inference Query",
+    "characteristic_form": "The expected response should be a json string containing the forecasted power factor values for the next 48 hours. This task requires the run_tsfm_forecasting tool."
+  },
+  {
+    "id": "transformer_scenario_24",
+    "type": "tsfm",
+    "text": "Detect anomalies in the current measurements of Transformer 1 between 2024-01-15T00:00:00.000000 and 2024-01-19T00:00:00.000000.",
+    "category": "Anomaly Detection Query",
+    "characteristic_form": "The expected response should be a json string containing the anomaly labels for the current measurements. This task requires the run_tsad tool."
+  },
+  {
+    "id": "transformer_scenario_25",
+    "type": "tsfm",
+    "text": "Predict the future values of moisture content in Transformer 1 using data from the water_content sensor.",
+    "category": "Inference Query",
+    "characteristic_form": "The expected response should be a json string containing the predicted moisture content values. This task requires the run_tsfm_forecasting tool."
+  },
+  {
+    "id": "transformer_scenario_26",
+    "type": "tsfm",
+    "text": "Detect voltage anomalies in Transformer 1's voltage readings from 2024-01-15T00:00:00.000000 to 2024-01-19T00:00:00.000000.",
+    "category": "Anomaly Detection Query",
+    "characteristic_form": "The expected response should be a json string containing the anomaly labels for the voltage measurements. This task requires the run_tsad tool."
+  },
+  {
+    "id": "transformer_scenario_27",
+    "type": "wo",
+    "text": "Retrieve all work orders for Transformer 1 between January 15, 2024, and January 19, 2024.",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should use the get_work_orders tool with equipment_id 'Transformer 1', start_date '2024-01-15', and end_date '2024-01-19' to retrieve all work orders within the specified date range."
+  },
+  {
+    "id": "transformer_scenario_28",
+    "type": "wo",
+    "text": "What are the corrective work orders for Transformer 1 during the first half of January 2024?",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should use the get_corrective_work_orders tool with equipment_id 'Transformer 1', start_date '2024-01-01', and end_date '2024-01-15' to retrieve corrective work orders."
+  },
+  {
+    "id": "transformer_scenario_29",
+    "type": "wo",
+    "text": "Predict the next work order type for Transformer 1 based on historical data from January 15, 2024, to January 19, 2024.",
+    "category": "Prediction",
+    "characteristic_form": "The expected response should use the predict_next_work_order tool with equipment_id 'Transformer 1', start_date '2024-01-15', and end_date '2024-01-19' to predict the next work order type."
+  },
+  {
+    "id": "transformer_scenario_30",
+    "type": "wo",
+    "text": "Analyze the distribution of work order types for Transformer 1 during January 2024.",
+    "category": "Decision Support",
+    "characteristic_form": "The expected response should use the get_work_order_distribution tool with equipment_id 'Transformer 1', start_date '2024-01-01', and end_date '2024-01-31' to analyze the distribution of work order types."
+  },
+  {
+    "id": "transformer_scenario_31",
+    "type": "wo",
+    "text": "List all preventive work orders for Transformer 1 between January 15, 2024, and January 19, 2024.",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should use the get_preventive_work_orders tool with equipment_id 'Transformer 1', start_date '2024-01-15', and end_date '2024-01-19' to list preventive work orders."
+  },
+  {
+    "id": "transformer_scenario_32",
+    "type": "multiagent",
+    "text": "What are the latest values for acetylene, hydrogen, and oxygen sensors for Transformer 1 at the MAIN site, and what do they indicate about its condition?",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The expected response should first retrieve the latest sensor values using the iot:get_history tool, then interpret the results using fmsr:interpret_dga to assess the transformer's condition."
+  },
+  {
+    "id": "transformer_scenario_33",
+    "type": "multiagent",
+    "text": "List all the sensors available for Transformer 1 at the MAIN site and identify potential failure modes they can detect.",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should list the available sensors using iot:get_sensors, then use fmsr:get_failure_mode_sensor_mapping to identify detectable failure modes."
+  },
+  {
+    "id": "transformer_scenario_34",
+    "type": "multiagent",
+    "text": "Retrieve the historical data for the dielectric_rigidity sensor of Transformer 1 between 2024-01-15 and 2024-01-19, and forecast its future values.",
+    "category": "Data Query",
+    "characteristic_form": "The expected response should retrieve historical data using iot:get_history, then use tsfm:run_tsfm_forecasting to predict future dielectric_rigidity values."
+  },
+  {
+    "id": "transformer_scenario_35",
+    "type": "multiagent",
+    "text": "Can I get the latest readings for il1, il2, and il3 sensors for Transformer 1 at the MAIN site, and predict the next work order based on historical data?",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should retrieve the latest sensor readings using iot:get_history, then use wo:predict_next_work_order to forecast the next maintenance need."
+  },
+  {
+    "id": "transformer_scenario_36",
+    "type": "multiagent",
+    "text": "List the sensor data for Transformer 1 at the MAIN site on 2024-01-15, and detect any anomalies in the data.",
+    "category": "Data Query",
+    "characteristic_form": "The expected response should list the sensor data using iot:get_history, then use tsfm:run_tsad to detect anomalies in the data."
+  },
+  {
+    "id": "transformer_scenario_37",
+    "type": "multiagent",
+    "text": "What are the values of co, co2, and methane sensors for Transformer 1 at the MAIN site on 2024-01-18, and what do they indicate about its health?",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The expected response should retrieve the sensor values using iot:get_history, then use fmsr:predict_health_index to assess the transformer's health."
+  },
+  {
+    "id": "transformer_scenario_38",
+    "type": "multiagent",
+    "text": "Retrieve the data for the wti and oti sensors for Transformer 1 between 2024-01-15 and 2024-01-19, and analyze it for any trends or anomalies.",
+    "category": "Data Query",
+    "characteristic_form": "The expected response should retrieve the historical data using iot:get_history, then use tsfm:run_tsfm_forecasting and tsfm:run_tsad to analyze trends and detect anomalies."
+  },
+  {
+    "id": "transformer_scenario_39",
+    "type": "multiagent",
+    "text": "Assess Transformer 1's condition by analyzing winding temperature, oil quality, and potential failure modes.",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The expected response should use fmsr:assess_winding_temperature to evaluate winding temperature condition, fmsr:get_failure_modes to identify potential failure modes, and iot:get_sensors to retrieve relevant sensor data."
+  },
+  {
+    "id": "transformer_scenario_40",
+    "type": "multiagent",
+    "text": "Identify potential failure modes of Transformer 1 using dissolved gas analysis and list relevant sensors for monitoring.",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The expected response should use fmsr:get_failure_modes to identify potential failure modes, fmsr:get_failure_mode_sensor_mapping to determine relevant sensors, and iot:get_history to retrieve historical sensor data."
+  },
+  {
+    "id": "transformer_scenario_41",
+    "type": "multiagent",
+    "text": "Predict the health index of Transformer 1 using the latest condition data and assess its overall condition.",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The expected response should use iot:get_history to retrieve the latest condition data, fmsr:predict_health_index to predict the health index, and tsfm:run_tsad to detect any anomalies in the time-series data."
+  },
+  {
+    "id": "transformer_scenario_42",
+    "type": "multiagent",
+    "text": "List all the sensors available for Transformer 1 at the MAIN site and identify which ones are relevant for detecting High-Energy Arcing.",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should first list all sensors available for Transformer 1 using the iot namespace's get_sensors tool. Then, it should use the fmsr namespace's get_failure_mode_sensor_mapping tool to identify sensors relevant for detecting High-Energy Arcing."
+  },
+  {
+    "id": "transformer_scenario_43",
+    "type": "multiagent",
+    "text": "Can I get the latest readings for il1, il2, and il3 sensors for Transformer 1 at the MAIN site, and assess its loading condition?",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should first retrieve the latest readings for il1, il2, and il3 sensors using the iot namespace's get_history tool. Then, it should use the fmsr namespace's assess_load_profile tool to evaluate the loading condition of Transformer 1."
+  },
+  {
+    "id": "transformer_scenario_44",
+    "type": "multiagent",
+    "text": "Retrieve the data for the wti and oti sensors for Transformer 1 at the MAIN site between 2024-01-15 and 2024-01-19, and forecast their future values.",
+    "category": "Data Query",
+    "characteristic_form": "The expected response should first retrieve the historical data for the wti and oti sensors using the iot namespace's get_history tool. Then, it should use the tsfm namespace's run_tsfm_forecasting tool to predict future values of wti and oti."
+  },
+  {
+    "id": "transformer_scenario_45",
+    "type": "multiagent",
+    "text": "Predict the health index of Transformer 1 using the latest available condition data and suggest a maintenance action.",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The expected response should first use the fmsr namespace's predict_health_index tool to forecast the health index of Transformer 1. Then, it should use the wo namespace's predict_next_work_order tool to suggest a maintenance action based on the predicted health index."
+  },
+  {
+    "id": "transformer_scenario_46",
+    "type": "multiagent",
+    "text": "What are the latest acetylene, hydrogen, and oxygen sensor values for Transformer 1 at MAIN?",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should first retrieve the latest values for acetylene, hydrogen, and oxygen sensors using the iot namespace's get_history tool. Then, it should use the fmsr namespace's interpret_dga tool to analyze these values for potential faults or anomalies in Transformer 1."
+  },
+  {
+    "id": "transformer_scenario_47",
+    "type": "multiagent",
+    "text": "Assess Transformer 1's winding temperature condition given wti = 85\u00b0C, oti = 60\u00b0C, oti_a = 25\u00b0C, oti_t = 65\u00b0C, and ati = 24\u00b0C. Then, predict the next work order type.",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The expected response should first assess the winding temperature condition using the fmsr namespace's assess_winding_temperature tool. Then, it should use the wo namespace's predict_next_work_order tool to forecast the next work order type for Transformer 1."
+  },
+  {
+    "id": "transformer_scenario_48",
+    "type": "multiagent",
+    "text": "List Transformer 1's sensor data at MAIN on 2024-01-15 and detect any anomalies.",
+    "category": "Data Query",
+    "characteristic_form": "The expected response should first list the sensor data for Transformer 1 on 2024-01-15 using the iot namespace's get_history tool. Then, it should use the tsfm namespace's run_tsad tool to detect any anomalies in the sensor data."
+  },
+  {
+    "id": "transformer_scenario_49",
+    "type": "multiagent",
+    "text": "What are co, co2, and methane sensor values for Transformer 1 at MAIN on 2024-01-18, and what do they indicate about its health?",
+    "category": "Knowledge Query",
+    "characteristic_form": "The expected response should first retrieve the values of co, co2, and methane sensors using the iot namespace's get_history tool. Then, it should use the fmsr namespace's predict_health_index tool to assess the overall health of Transformer 1 based on these and other condition data."
+  },
+  {
+    "id": "transformer_scenario_50",
+    "type": "multiagent",
+    "text": "Analyze Transformer 1 at the MAIN site for potential failure modes using the latest dissolved gas analysis data and predict the next work order based on historical maintenance records.",
+    "category": "Diagnostic Assessment",
+    "characteristic_form": "The expected response should involve using the fmsr tool to interpret the latest dissolved gas analysis data for Transformer 1, identifying potential failure modes, and then utilizing the wo tool to predict the next work order based on historical maintenance records. The characteristic form should explicitly mention the use of interpret_dga and predict_next_work_order tools."
+  }
+]

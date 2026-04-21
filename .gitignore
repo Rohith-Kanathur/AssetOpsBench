@@ -205,3 +205,5 @@ src/scenarios/tmp/
 
 # ignore generated scenario outputs and manual scenario analyses
 generated/
+profiling_output/
+wandb/
