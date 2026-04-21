@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime
+import math
 import json
 import logging
 from pathlib import Path
@@ -72,6 +73,16 @@ def default_scenario_output_path(asset_name: str) -> Path:
     return run_dir / "scenarios.json"
 
 
+def negative_scenario_output_path(scenarios_path: Path) -> Path:
+    return scenarios_path.with_name("negative_scenarios.json")
+
+
+def hard_scenario_target(count: int, ratio: float = 0.7) -> int:
+    if count <= 0:
+        return 0
+    return max(1, math.ceil(count * ratio))
+
+
 def _asset_profile_json(profile: AssetProfile) -> str:
     return profile.model_dump_json(indent=2)
 
@@ -84,8 +95,9 @@ def _few_shot_examples_section(few_shots: list[dict]) -> str:
         )
 
     return (
-        "Benchmark few-shot examples (style and specificity only; follow Generation Mode for "
-        "closed-form vs open-form grounding):\n"
+        "Benchmark few-shot examples (style, complexity, and specificity references only; "
+        "follow Generation Mode for closed-form vs open-form grounding, and always prefer "
+        "direct operator/manager wording over any legacy benchmark phrasing):\n"
         f"{json.dumps(few_shots, indent=2)}"
     )
 

@@ -222,6 +222,138 @@ def _to_prompt_dict(example: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+_NATURAL_STYLE_SOURCES = {
+    "all_utterance_iot",
+    "all_utterance_wo",
+    "all_utterance_multiagent",
+    "compressor_utterance",
+    "hydrolicpump_utterance",
+    "local_vibration",
+}
+
+
+def _complexity_score(example: dict[str, Any]) -> int:
+    text = str(example.get("text", "")).strip()
+    lowered = text.lower()
+    score = 0
+    score += 2 * sum(
+        1
+        for marker in (
+            " and ",
+            " also ",
+            " then ",
+            " before ",
+            " after ",
+            " while ",
+            " compare ",
+            " summarize ",
+            " recommend ",
+            " justify ",
+            " prioritize ",
+            " along with ",
+        )
+        if marker in lowered
+    )
+    score += 4 * len(
+        re.findall(r"\bif\b|\botherwise\b|\belse\b|\bunless\b|\bif available\b|\bif not\b", lowered)
+    )
+    score += 2 * len(
+        re.findall(
+            r"\bwithin\b|\bbetween\b|\bat least\b|\bat most\b|\btop\b|\bonly\b|\blast\b|\bnext\b|\bfirst\b|\bhighest\b|\blowest\b",
+            lowered,
+        )
+    )
+    score += min(text.count(","), 3)
+    word_count = len(text.split())
+    if word_count >= 18:
+        score += 1
+    if word_count >= 32:
+        score += 1
+    return score
+
+
+def _user_centric_score(example: dict[str, Any]) -> int:
+    text = str(example.get("text", "")).strip()
+    lowered = text.lower()
+    score = 0
+    if str(example.get("source_config", "")).strip() in _NATURAL_STYLE_SOURCES:
+        score += 3
+    if re.search(
+        r"\b(can you|could you|please|should i|should we|i would like|we need|we are building|after|for asset|consider asset)\b",
+        lowered,
+    ):
+        score += 2
+    if "?" in text:
+        score += 1
+    return score
+
+
+def _sorted_prompt_examples(
+    examples: list[dict[str, Any]],
+    *,
+    prioritize_natural: bool = False,
+) -> list[dict[str, Any]]:
+    return sorted(
+        examples,
+        key=lambda example: (
+            _user_centric_score(example) if prioritize_natural else 0,
+            _complexity_score(example),
+            _user_centric_score(example),
+            len(str(example.get("text", "")).split()),
+            str(example.get("source_config", "")),
+            str(example.get("text", "")),
+        ),
+        reverse=True,
+    )
+
+
+def _select_examples(
+    ordered: list[dict[str, Any]],
+    *,
+    limit: int,
+    selected_fingerprints: set[str],
+) -> list[dict[str, Any]]:
+    picked: list[dict[str, Any]] = []
+    for example in ordered:
+        fingerprint = normalize_example_fingerprint(example.get("text", ""))
+        if not fingerprint or fingerprint in selected_fingerprints:
+            continue
+        selected_fingerprints.add(fingerprint)
+        picked.append(example)
+        if len(picked) >= limit:
+            break
+    return picked
+
+
+def _build_style_reference_pool() -> list[dict[str, Any]]:
+    pool: list[dict[str, Any]] = []
+    for row in _load_jsonl(_ALL_UTTERANCE):
+        row_type = str(row.get("type", "")).strip()
+        if row_type not in {"IoT", "Workorder", "multiagent"}:
+            continue
+        text = str(row.get("text", ""))
+        if not _is_asset_specific_utterance(text):
+            continue
+        source_config = {
+            "IoT": "all_utterance_iot",
+            "Workorder": "all_utterance_wo",
+            "multiagent": "all_utterance_multiagent",
+        }[row_type]
+        pool.append(_normalize_fewshot_row(row, source_config))
+
+    for path, tag in (
+        (_COMPRESSOR, "compressor_utterance"),
+        (_HYDRAULIC_PUMP, "hydrolicpump_utterance"),
+    ):
+        for row in _load_jsonl(path):
+            pool.append(_normalize_fewshot_row(row, tag))
+
+    for item in _load_local_vibration_list():
+        pool.append(_normalize_fewshot_row(dict(item), "local_vibration"))
+
+    return pool
+
+
 def _build_candidate_pool(
     focus: str,
 ) -> list[dict[str, Any]]:
@@ -298,22 +430,64 @@ def fetch_hf_fewshot(
     if seed is not None:
         random.seed(seed)
 
-    pool = _build_candidate_pool(focus)
-    if not pool:
+    focus_pool = _build_candidate_pool(focus)
+    if not focus_pool:
         _log.info("No few-shot examples were available for focus %r.", focus)
         return []
 
     seen: set[str] = set()
-    unique: list[dict[str, Any]] = []
-    for example in pool:
+    unique_focus: list[dict[str, Any]] = []
+    for example in focus_pool:
         fp = normalize_example_fingerprint(example.get("text", ""))
         if not fp or fp in seen:
             continue
         seen.add(fp)
-        unique.append(example)
+        unique_focus.append(example)
 
-    random.shuffle(unique)
-    selected = unique[:max_examples]
+    style_pool = _build_style_reference_pool()
+    unique_style: list[dict[str, Any]] = []
+    for example in style_pool:
+        fp = normalize_example_fingerprint(example.get("text", ""))
+        if not fp or fp in seen:
+            continue
+        seen.add(fp)
+        unique_style.append(example)
+
+    rng = random.Random(seed) if seed is not None else random
+    rng.shuffle(unique_focus)
+    rng.shuffle(unique_style)
+
+    anchor_quota = min(len(unique_focus), max(1, max_examples // 3))
+    natural_target = max(1, max_examples // 3) if max_examples > 1 else 0
+    natural_quota = min(len(unique_style), max(0, min(natural_target, max_examples - anchor_quota)))
+    selected_fingerprints: set[str] = set()
+
+    selected: list[dict[str, Any]] = []
+    selected.extend(
+        _select_examples(
+            _sorted_prompt_examples(unique_focus),
+            limit=anchor_quota,
+            selected_fingerprints=selected_fingerprints,
+        )
+    )
+    selected.extend(
+        _select_examples(
+            _sorted_prompt_examples(unique_style, prioritize_natural=True),
+            limit=natural_quota,
+            selected_fingerprints=selected_fingerprints,
+        )
+    )
+
+    combined_fill = unique_focus + unique_style
+    rng.shuffle(combined_fill)
+    selected.extend(
+        _select_examples(
+            _sorted_prompt_examples(combined_fill, prioritize_natural=True),
+            limit=max_examples - len(selected),
+            selected_fingerprints=selected_fingerprints,
+        )
+    )
+
     return [_to_prompt_dict(ex) for ex in selected]
 
 

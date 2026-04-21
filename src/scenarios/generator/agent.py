@@ -17,9 +17,10 @@ from ..constraints import (
     format_accepted_scenarios_for_prompt,
     format_categories_for_prompt,
     format_forbidden_patterns_for_prompt,
+    format_hardness_guidance_for_prompt,
     format_mode_requirements,
     format_requirements_for_prompt,
-    get_scenario_policy,
+    validate_negative_scenario_batch,
     validate_scenario_batch,
 )
 from ..grounding import discover_grounding
@@ -30,12 +31,15 @@ from ..models import (
     KeyDescription,
     RetrieverMode,
     Scenario,
+    ScenarioGenerationResult,
     ScenarioBudget,
     SensorNameDescription,
 )
 from ..prompts import (
     BUDGET_ALLOCATOR_PROMPT,
     MULTIAGENT_COMBINER_PROMPT,
+    NEGATIVE_SCENARIO_GENERATOR_PROMPT,
+    NEGATIVE_VALIDATE_REPAIR_PROMPT,
     PROFILE_BUILDER_PROMPT,
     SCENARIO_GENERATOR_PROMPT,
     VALIDATE_REPAIR_PROMPT,
@@ -51,6 +55,7 @@ from .prompt_helpers import (
     _asset_profile_json,
     _few_shot_examples_section,
     _grounding_summary_for_prompt,
+    hard_scenario_target,
     _invert_failure_mapping,
     _label_desc_dict_from_list,
     _multiagent_budget_cap,
@@ -131,7 +136,8 @@ class ScenarioGeneratorAgent:
         asset_name: str,
         num_scenarios: int = 50,
         data_in_couchdb: bool = False,
-    ) -> list[Scenario]:
+        num_negative_scenarios: int = 2,
+    ) -> ScenarioGenerationResult:
         asset_name = asset_name.strip()
         if not asset_name:
             raise ValueError("Asset class name is empty after stripping whitespace.")
@@ -225,7 +231,22 @@ class ScenarioGeneratorAgent:
                 f"in {asset_profile.generation_mode} mode.\n"
             )
 
-        return all_scenarios
+        negative_scenarios: list[Scenario] = []
+        if num_negative_scenarios > 0:
+            if self.show_workflow:
+                _print_section("Phase 5: Negative Scenario Construction")
+            negative_scenarios = self.generate_negative_scenarios(
+                count=num_negative_scenarios,
+                profile=asset_profile,
+                server_desc=server_desc,
+                accepted_scenarios=[scenario.to_dict() for scenario in all_scenarios],
+                validation_tool_names=validation_tool_names,
+            )
+
+        return ScenarioGenerationResult(
+            scenarios=all_scenarios,
+            negative_scenarios=negative_scenarios,
+        )
 
     async def build_asset_profile(
         self,
@@ -580,6 +601,8 @@ class ScenarioGeneratorAgent:
             few_shot_examples_section=_few_shot_examples_section(few_shots),
             category_options=format_categories_for_prompt(focus),
             specialization_requirements=format_requirements_for_prompt(focus),
+            hard_target_count=hard_scenario_target(count),
+            hardness_guidance=format_hardness_guidance_for_prompt(focus),
             forbidden_patterns=format_forbidden_patterns_for_prompt(focus),
             mode_requirements=format_mode_requirements(profile, focus, profile.generation_mode),
             accepted_scenario_texts=format_accepted_scenarios_for_prompt(accepted_scenarios or []),
@@ -604,15 +627,21 @@ class ScenarioGeneratorAgent:
         profile: AssetProfile,
         accepted_scenarios: list[dict] | None = None,
         failures: list[ScenarioValidationFailure] | None = None,
+        *,
+        negative: bool = False,
     ) -> list[dict]:
         if not scenarios:
             return []
 
         profile_json = _asset_profile_json(profile)
-        prompt = VALIDATE_REPAIR_PROMPT.format(
+        prompt_template = NEGATIVE_VALIDATE_REPAIR_PROMPT if negative else VALIDATE_REPAIR_PROMPT
+        prompt = prompt_template.format(
             subagent_name=focus,
             category_options=format_categories_for_prompt(focus),
             specialization_requirements=format_requirements_for_prompt(focus),
+            hard_target_count=hard_scenario_target(len(scenarios)),
+            batch_size=len(scenarios),
+            hardness_guidance=format_hardness_guidance_for_prompt(focus),
             forbidden_patterns=format_forbidden_patterns_for_prompt(focus),
             mode_requirements=format_mode_requirements(profile, focus, profile.generation_mode),
             asset_profile_json=profile_json,
@@ -621,7 +650,7 @@ class ScenarioGeneratorAgent:
             validation_failures_json=failure_payload(failures or []),
         )
         self._write_log(
-            f"05_generation/{focus}/validate_repair_prompt.txt",
+            f"{'06_negative_generation' if negative else '05_generation'}/{focus}/validate_repair_prompt.txt",
             _redact_logged_prompt(prompt, profile_json),
         )
 
@@ -629,9 +658,15 @@ class ScenarioGeneratorAgent:
         parsed, _ = parse_llm_json(response.text)
         if isinstance(parsed, list):
             repaired = parsed[: len(scenarios)]
-            self._write_json_log(f"05_generation/{focus}/validate_repair_response.json", repaired)
+            self._write_json_log(
+                f"{'06_negative_generation' if negative else '05_generation'}/{focus}/validate_repair_response.json",
+                repaired,
+            )
             return repaired
-        self._write_json_log(f"05_generation/{focus}/validate_repair_response.json", scenarios)
+        self._write_json_log(
+            f"{'06_negative_generation' if negative else '05_generation'}/{focus}/validate_repair_response.json",
+            scenarios,
+        )
         return scenarios
 
     def construct_multiagent_scenarios(
@@ -651,6 +686,8 @@ class ScenarioGeneratorAgent:
             mcp_function_definitions=json.dumps(server_desc, indent=2),
             single_agent_scenarios_json=json.dumps(single_agents[:10], indent=2),
             accepted_scenario_texts=format_accepted_scenarios_for_prompt(accepted_scenarios or []),
+            hard_target_count=hard_scenario_target(count),
+            hardness_guidance=format_hardness_guidance_for_prompt("multiagent"),
             mode_requirements=format_mode_requirements(profile, "multiagent", profile.generation_mode),
             forbidden_patterns=format_forbidden_patterns_for_prompt("multiagent"),
         )
@@ -680,7 +717,6 @@ class ScenarioGeneratorAgent:
         accepted_scenarios = list(accepted_scenarios or [])
         valid_batch: list[dict] = []
         failure_notes: list[str] = []
-        last_llm_was_validate_repair = False
 
         for attempt in range(1, _MAX_SCENARIO_ATTEMPTS + 1):
             remaining = count - len(valid_batch)
@@ -698,9 +734,14 @@ class ScenarioGeneratorAgent:
             )
             if not generated:
                 failure_notes.append(f"attempt {attempt}: generator returned no parseable scenarios")
-                last_llm_was_validate_repair = False
                 continue
 
+            generated = self.validate_and_repair(
+                focus=focus,
+                scenarios=generated,
+                profile=profile,
+                accepted_scenarios=baseline,
+            )
             valid_now, failures = validate_scenario_batch(
                 focus=focus,
                 scenarios=generated,
@@ -728,7 +769,6 @@ class ScenarioGeneratorAgent:
                     accepted_scenarios=accepted_scenarios + valid_batch,
                     failures=failures,
                 )
-                last_llm_was_validate_repair = True
                 repaired_valid, remaining_failures = validate_scenario_batch(
                     focus=focus,
                     scenarios=repaired_invalids,
@@ -746,8 +786,6 @@ class ScenarioGeneratorAgent:
                         f"05_generation/{focus}/remaining_failures_attempt_{attempt:02d}.json",
                         failure_payload(remaining_failures),
                     )
-            else:
-                last_llm_was_validate_repair = False
 
         if len(valid_batch) < count:
             shortage = count - len(valid_batch)
@@ -757,9 +795,184 @@ class ScenarioGeneratorAgent:
                 f"Still missing {shortage}. Details: {summary}"
             )
         final_for_focus = valid_batch[:count]
-        if last_llm_was_validate_repair:
-            self._write_json_log(f"05_generation/{focus}/final_scenarios.json", final_for_focus)
+        self._write_json_log(f"05_generation/{focus}/final_scenarios.json", final_for_focus)
         return final_for_focus
+
+    def generate_negative_focus_scenarios(
+        self,
+        focus: str,
+        count: int,
+        profile: AssetProfile,
+        server_desc: dict,
+        accepted_scenarios: list[dict] | None = None,
+    ) -> list[dict]:
+        profile_json = _asset_profile_json(profile)
+        prompt = NEGATIVE_SCENARIO_GENERATOR_PROMPT.format(
+            count=count,
+            subagent_name=focus,
+            asset_name=profile.asset_name,
+            generation_mode=profile.generation_mode,
+            asset_profile_json=profile_json,
+            tool_definitions=json.dumps(server_desc.get(focus, {}), indent=2),
+            category_options=format_categories_for_prompt(focus),
+            specialization_requirements=format_requirements_for_prompt(focus),
+            mode_requirements=format_mode_requirements(profile, focus, profile.generation_mode),
+            accepted_scenario_texts=format_accepted_scenarios_for_prompt(accepted_scenarios or []),
+        )
+        self._write_log(
+            f"06_negative_generation/{focus}/generation_prompt.txt",
+            _redact_logged_prompt(prompt, profile_json),
+        )
+
+        response = self.llm.generate(prompt)
+        parsed, _ = parse_llm_json(response.text)
+        if isinstance(parsed, list):
+            self._write_json_log(f"06_negative_generation/{focus}/generation_response.json", parsed)
+            return parsed
+        self._write_json_log(f"06_negative_generation/{focus}/generation_response.json", [])
+        return []
+
+    def generate_validated_negative_scenarios(
+        self,
+        focus: str,
+        count: int,
+        profile: AssetProfile,
+        server_desc: dict,
+        accepted_scenarios: list[dict] | None = None,
+        validation_tool_names: dict[str, tuple[str, ...]] | None = None,
+    ) -> list[dict]:
+        accepted_scenarios = list(accepted_scenarios or [])
+        valid_batch: list[dict] = []
+        failure_notes: list[str] = []
+
+        for attempt in range(1, _MAX_SCENARIO_ATTEMPTS + 1):
+            remaining = count - len(valid_batch)
+            if remaining <= 0:
+                break
+
+            baseline = accepted_scenarios + valid_batch
+            generated = self.generate_negative_focus_scenarios(
+                focus=focus,
+                count=remaining,
+                profile=profile,
+                server_desc=server_desc,
+                accepted_scenarios=baseline,
+            )
+            if not generated:
+                failure_notes.append(f"attempt {attempt}: negative generator returned no parseable scenarios")
+                continue
+
+            generated = self.validate_and_repair(
+                focus=focus,
+                scenarios=generated,
+                profile=profile,
+                accepted_scenarios=baseline,
+                negative=True,
+            )
+            valid_now, failures = validate_negative_scenario_batch(
+                focus=focus,
+                scenarios=generated,
+                accepted_scenarios=baseline,
+                profile=profile,
+                generation_mode=profile.generation_mode,
+                tool_names_by_focus=validation_tool_names,
+            )
+            valid_batch.extend(valid_now)
+
+            if failures:
+                self._write_log(
+                    f"06_negative_generation/{focus}/deterministic_failures_attempt_{attempt:02d}.json",
+                    failure_payload(failures),
+                )
+                repaired_invalids = self.validate_and_repair(
+                    focus=focus,
+                    scenarios=[failure.scenario for failure in failures],
+                    profile=profile,
+                    accepted_scenarios=accepted_scenarios + valid_batch,
+                    failures=failures,
+                    negative=True,
+                )
+                repaired_valid, remaining_failures = validate_negative_scenario_batch(
+                    focus=focus,
+                    scenarios=repaired_invalids,
+                    accepted_scenarios=accepted_scenarios + valid_batch,
+                    profile=profile,
+                    generation_mode=profile.generation_mode,
+                    tool_names_by_focus=validation_tool_names,
+                )
+                valid_batch.extend(repaired_valid)
+                if remaining_failures:
+                    failure_notes.append(
+                        f"attempt {attempt}: {len(remaining_failures)} negative scenario(s) still invalid after repair"
+                    )
+                    self._write_log(
+                        f"06_negative_generation/{focus}/remaining_failures_attempt_{attempt:02d}.json",
+                        failure_payload(remaining_failures),
+                    )
+
+        if len(valid_batch) < count:
+            shortage = count - len(valid_batch)
+            summary = "; ".join(failure_notes) if failure_notes else "no detailed failure summary available"
+            raise RuntimeError(
+                f"Failed to generate {count} negative {focus} scenarios after {_MAX_SCENARIO_ATTEMPTS} attempts. "
+                f"Still missing {shortage}. Details: {summary}"
+            )
+        final_for_focus = valid_batch[:count]
+        self._write_json_log(f"06_negative_generation/{focus}/final_scenarios.json", final_for_focus)
+        return final_for_focus
+
+    def generate_negative_scenarios(
+        self,
+        count: int,
+        profile: AssetProfile,
+        server_desc: dict,
+        accepted_scenarios: list[dict] | None = None,
+        validation_tool_names: dict[str, tuple[str, ...]] | None = None,
+    ) -> list[Scenario]:
+        accepted_scenarios = list(accepted_scenarios or [])
+        if count <= 0:
+            return []
+
+        focuses = self._negative_focus_order(profile, validation_tool_names)
+        negative_scenarios: list[Scenario] = []
+        for index in range(count):
+            focus = focuses[index % len(focuses)]
+            negative_rows = self.generate_validated_negative_scenarios(
+                focus=focus,
+                count=1,
+                profile=profile,
+                server_desc=server_desc,
+                accepted_scenarios=accepted_scenarios + [scenario.to_dict() for scenario in negative_scenarios],
+                validation_tool_names=validation_tool_names,
+            )
+            for scenario_data in negative_rows:
+                scenario_data["id"] = (
+                    f"{slugify_asset_name(profile.asset_name)}_negative_scenario_{len(negative_scenarios)+1:02d}"
+                )
+                negative_scenarios.append(
+                    _scenario_from_llm_row(
+                        scenario_data,
+                        scenario_type=focus,
+                        generation_mode=profile.generation_mode,
+                    )
+                )
+
+        return negative_scenarios
+
+    def _negative_focus_order(
+        self,
+        profile: AssetProfile,
+        validation_tool_names: dict[str, tuple[str, ...]] | None,
+    ) -> list[str]:
+        ordered: list[str] = []
+        for focus in FOCUS_ORDER:
+            if focus == "multiagent":
+                continue
+            if (validation_tool_names and validation_tool_names.get(focus)) or profile.relevant_tools.get(focus):
+                ordered.append(focus)
+        if ordered:
+            return ordered
+        return [focus for focus in FOCUS_ORDER if focus != "multiagent"]
 
     def _generate_attempt_batch(
         self,

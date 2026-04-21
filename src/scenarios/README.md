@@ -7,15 +7,15 @@ The generator works in two modes:
 - `closed_form`: self-contained scenarios where the query itself provides the needed values, rules, summaries, or dataset references.
 - `open_form`: grounded scenarios that use live CouchDB-backed identifiers discovered from IoT and vibration coverage.
 
-> **Open-form disclaimer:** For grounded `open_form` runs (`--data-in-couchdb`), configure `.env` (or the process environment) so **`IOT_DBNAME`**, **`WO_DBNAME`**, and **`VIBRATION_DBNAME`** each point to live CouchDB databases that actually contain data relevant to the **asset name** you pass on the CLI (for example `"Transformer"` or `"Motor"`). If these names point at the wrong or empty databases, IoT, work-order, and vibration grounding will be misleading or sparse for that asset.
+> **Open-form disclaimer:** For grounded `open_form` runs (`--data-in-couchdb`), configure `.env` (or the process environment) so `**IOT_DBNAME`**, `**WO_DBNAME**`, and `**VIBRATION_DBNAME**` each point to live CouchDB databases that actually contain data relevant to the **asset name** you pass on the CLI (for example `"Transformer"` or `"Motor"`). If these names point at the wrong or empty databases, IoT, work-order, and vibration grounding will be misleading or sparse for that asset.
 
-> **Academic retrieval and research digest:** Asset profile construction (Phase 1) runs **grounded discovery** first (full CouchDB IoT/vibration/FMSR discovery only when **`--data-in-couchdb`** is set), then **academic evidence retrieval**, then a **two-step research digest** (per-paper structured extraction, then merge into one Markdown brief), unless you supply a precomputed digest (see below). The `--retriever` flag selects the search backend; default is **`arxiv`**. Use **`--retriever semantic_scholar`** for Semantic Scholar instead.
+> **Academic retrieval and research digest:** Asset profile construction (Phase 1) runs **grounded discovery** first (full CouchDB IoT/vibration/FMSR discovery only when `**--data-in-couchdb`** is set), then **academic evidence retrieval**, then a **two-step research digest** (per-paper structured extraction, then merge into one Markdown brief), unless you supply a precomputed digest (see below). The `--retriever` flag selects the search backend; default is `**arxiv`**. Use `**--retriever semantic_scholar**` for Semantic Scholar instead.
 >
-> **Semantic Scholar retrieval:** When using `--retriever semantic_scholar`, set **`SEMANTIC_SCHOLAR_API_KEY`** in `.env` (optional but recommended for higher API rate limits). The CLI does not accept the key as a flag; only the environment variable is read. If unset, the public rate limits apply.
+> **Semantic Scholar retrieval:** When using `--retriever semantic_scholar`, set `**SEMANTIC_SCHOLAR_API_KEY`** in `.env` (optional but recommended for higher API rate limits). The CLI does not accept the key as a flag; only the environment variable is read. If unset, the public rate limits apply.
 >
-> **Precomputed research digest:** Pass **`--research-digest PATH`** to a Markdown file that already contains the merged research brief. If that path exists, the run **skips** academic search, PDF/snippet retrieval, and digest LLM calls, and feeds that file straight into asset profile construction. If the path does not exist, the CLI exits with an error.
+> **Precomputed research digest:** Pass `**--research-digest PATH`** to a Markdown file that already contains the merged research brief. If that path exists, the run **skips** academic search, PDF/snippet retrieval, and digest LLM calls, and feeds that file straight into asset profile construction. If the path does not exist, the CLI exits with an error.
 
->  For **new asset classes**, add or update **`_ASSET_FAILURE_MODE_ALIASES`** in [`src/servers/fmsr/main.py`](../servers/fmsr/main.py) when the CLI-facing name should map to a different curated failure-mode key in [`failure_modes.yaml`](../servers/fmsr/failure_modes.yaml); otherwise FMSR may fall back to LLM-only failure lists. See **Asset class → curated FMSR failure modes** below for the full picture.
+>  For **new asset classes**, add or update `**_ASSET_FAILURE_MODE_ALIASES`** in `[src/servers/fmsr/main.py](../servers/fmsr/main.py)` when the CLI-facing name should map to a different curated failure-mode key in `[failure_modes.yaml](../servers/fmsr/failure_modes.yaml)`; otherwise FMSR may fall back to LLM-only failure lists. See **Asset class → curated FMSR failure modes** below for the full picture.
 
 The run writes a JSON **array** of scenarios. Each object has this shape:
 
@@ -29,7 +29,9 @@ The run writes a JSON **array** of scenarios. Each object has this shape:
 }
 ```
 
-Allowed `type` values: `iot`, `fmsr`, `tsfm`, `wo`, `vibration`, `multiagent`. Few-shot source JSONL files under [`huggingface/`](huggingface/) still use their own `type` column labels (e.g. `IoT`, `Workorder`) when filtering examples; generated `scenarios.json` uses the canonical keys above. See [`models.py`](models.py) (`Scenario`, `ScenarioTypeKey`).
+Allowed `type` values: `iot`, `fmsr`, `tsfm`, `wo`, `vibration`, `multiagent`. Few-shot source JSONL files under `[huggingface/](huggingface/)` still use their own `type` column labels (e.g. `IoT`, `Workorder`) when filtering examples; generated `scenarios.json` uses the canonical keys above. See `[models.py](models.py)` (`Scenario`, `ScenarioTypeKey`).
+
+When negative generation is enabled, the run also writes a sibling `negative_scenarios.json` file with the same schema. Those scenarios are intentionally unanswerable and expect an explicit insufficiency/refusal-style answer rather than a hallucinated best effort.
 
 ## CLI
 
@@ -41,18 +43,21 @@ uv run python -m scenarios.generator "<Asset Class>" [options]
 
 Key flags:
 
-| Flag | Default | Description |
-|---|---|---|
-| `asset_name` | required | Asset class name, for example `"Motor"` or `"Transformer"` |
-| `--num-scenarios N` | `50` | Total number of scenarios to generate |
-| `--model-id MODEL` | project default | LiteLLM model override |
-| `--retriever {arxiv,semantic_scholar}` | `arxiv` | Academic search backend for evidence retrieval (omit flag for default) |
-| `--research-digest PATH` | unset | If set and the file exists, skip retrieval and digest LLM steps; load this Markdown as the research brief for the asset profile |
-| `--data-in-couchdb` | off | Enable grounded open-form generation when live IoT inventory exists (requires `.env` DB names; see open-form disclaimer above) |
-| `--show-workflow` | off | Print phase-by-phase progress (Phases 1–4: asset profile → budget → per-focus generation → multiagent), including live repair counts |
-| `--log` | off | Write prompts and responses under `logs/` next to `scenarios.json` (same run folder) |
 
-Output is always `generated/scenarios/<asset_slug>_scenarios_<YYYYMMDD_HHMMSS>/scenarios.json` (not configurable; slug from [`text.slugify_asset_name`](text.py)).
+| Flag                                   | Default         | Description                                                                                                                                               |
+| -------------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `asset_name`                           | required        | Asset class name, for example `"Motor"` or `"Transformer"`                                                                                                |
+| `--num-scenarios N`                    | `50`            | Total number of scenarios to generate                                                                                                                     |
+| `--num-negative-scenarios N`           | `2`             | Total number of intentionally unanswerable negative scenarios to generate; use `0` to disable                                                             |
+| `--model-id MODEL`                     | project default | LiteLLM model override                                                                                                                                    |
+| `--retriever {arxiv,semantic_scholar}` | `arxiv`         | Academic search backend for evidence retrieval (omit flag for default)                                                                                    |
+| `--research-digest PATH`               | unset           | If set and the file exists, skip retrieval and digest LLM steps; load this Markdown as the research brief for the asset profile                           |
+| `--data-in-couchdb`                    | off             | Enable grounded open-form generation when live IoT inventory exists (requires `.env` DB names; see open-form disclaimer above)                            |
+| `--show-workflow`                      | off             | Print phase-by-phase progress (Phases 1–5: asset profile → budget → per-focus generation → multiagent → negative scenarios), including live repair counts |
+| `--log`                                | off             | Write prompts and responses under `logs/` next to `scenarios.json` (same run folder)                                                                      |
+
+
+Output always includes `generated/scenarios/<asset_slug>_scenarios_<YYYYMMDD_HHMMSS>/scenarios.json` (not configurable; slug from `[text.slugify_asset_name](text.py)`). When negative generation is enabled, the same run directory also contains `negative_scenarios.json`.
 
 Examples:
 
@@ -157,6 +162,8 @@ flowchart TD
     M --> N["Final JSON output<br/>id, type, text, category, characteristic_form"]
 ```
 
+
+
 ## Pipeline
 
 ### 1. Grounded discovery
@@ -165,7 +172,7 @@ Runs when `--data-in-couchdb` is enabled.
 
 - Enumerates IoT assets via the IoT server (`get_asset_list`, sensors, time ranges).
 - Joins vibration coverage by `(site_name, asset_id)`.
-- Calls FMSR for failure modes and failure-to-sensor mapping (with optional cache files in [`failure_mapping/<slug>.json`](failure_mapping/)).
+- Calls FMSR for failure modes and failure-to-sensor mapping (with optional cache files in `[failure_mapping/<slug>.json](failure_mapping/)`).
 - If there is no IoT inventory at all, the run uses `closed_form` (`open_form_eligible` false).
 - In grounded runs, focuses without live support can be allocated `0` budget instead of inventing identifiers.
 
@@ -175,7 +182,7 @@ Coherent open-form runs depend on the CLI `asset_name` aligning with how servers
 
 #### 1. CLI label and IoT / vibration inventory
 
-[`discover_grounding`](grounding.py) loads the full IoT inventory exposed by the IoT server; it does not substring-filter asset rows by the CLI string. Vibration rows are merged when `(site_name, asset_id)` matches. For scenarios that mention specific assets, use ids and sites that actually appear in the grounded bundle and profile.
+`[discover_grounding](grounding.py)` loads the full IoT inventory exposed by the IoT server; it does not substring-filter asset rows by the CLI string. Vibration rows are merged when `(site_name, asset_id)` matches. For scenarios that mention specific assets, use ids and sites that actually appear in the grounded bundle and profile.
 
 #### 2. Asset class → curated FMSR failure modes
 
@@ -183,11 +190,11 @@ FMSR failure-mode grounding is most reliable when the asset class maps to a cura
 
 Curated failure modes live in:
 
-- [`src/servers/fmsr/failure_modes.yaml`](../servers/fmsr/failure_modes.yaml)
+- `[src/servers/fmsr/failure_modes.yaml](../servers/fmsr/failure_modes.yaml)`
 
 Alias resolution for lookup lives in:
 
-- [`src/servers/fmsr/main.py`](../servers/fmsr/main.py) via `_ASSET_FAILURE_MODE_ALIASES` and `_resolve_failure_mode_asset_key()`
+- `[src/servers/fmsr/main.py](../servers/fmsr/main.py)` via `_ASSET_FAILURE_MODE_ALIASES` and `_resolve_failure_mode_asset_key()`
 
 Concrete example:
 
@@ -209,7 +216,7 @@ Recommended rule:
 
 #### 3. Failure / sensor grounding
 
-After failure modes are found, grounding builds failure-to-sensor views for scenario generation in [`grounding.py`](grounding.py): either from a cache file under `failure_mapping/` or from `get_failure_mode_sensor_mapping` (then written to cache).
+After failure modes are found, grounding builds failure-to-sensor views for scenario generation in `[grounding.py](grounding.py)`: either from a cache file under `failure_mapping/` or from `get_failure_mode_sensor_mapping` (then written to cache).
 
 #### 4. Asset class → vibration coverage
 
@@ -217,8 +224,8 @@ After failure modes are found, grounding builds failure-to-sensor views for scen
 
 Relevant code:
 
-- [`src/servers/vibration/couchdb_client.py`](../servers/vibration/couchdb_client.py)
-- [`src/scenarios/grounding.py`](grounding.py)
+- `[src/servers/vibration/couchdb_client.py](../servers/vibration/couchdb_client.py)`
+- `[src/scenarios/grounding.py](grounding.py)`
 
 Important consequence:
 
@@ -229,7 +236,7 @@ Important consequence:
 - FMSR: curated `failure_modes.yaml` entry and/or alias, or accepted LLM fallback.
 - IoT / vibration: asset ids and sites match what you want referenced in open-form text.
 - Large sensor sets: consider caching under `failure_mapping/<slug>.json` after the first successful mapping.
-- Few-shot pools include examples adjacent to the new class or focus (see [`utils.py`](utils.py)).
+- Few-shot pools include examples adjacent to the new class or focus (see `[utils.py](utils.py)`).
 
 #### 6. Troubleshooting example: Transformer
 
@@ -254,12 +261,12 @@ If a run stalls or falls back unexpectedly, inspect:
 
 ### 2. Asset profile synthesis
 
-Phase 1 always runs [`discover_grounding`](grounding.py) first (full CouchDB IoT/vibration/FMSR work only when `--data-in-couchdb` is set; otherwise the bundle stays in closed-form shape). Then literature and digest steps depend on **`--research-digest`**:
+Phase 1 always runs `[discover_grounding](grounding.py)` first (full CouchDB IoT/vibration/FMSR work only when `--data-in-couchdb` is set; otherwise the bundle stays in closed-form shape). Then literature and digest steps depend on `**--research-digest**`:
 
 - **Precomputed digest:** If `--research-digest PATH` is set and the file exists, academic retrieval and digest LLM calls are skipped; that Markdown is passed into the profile builder as the research brief.
-- **Live pipeline:** Otherwise [`retrieve_asset_evidence`](retrieval/pipeline.py) runs. For each merge-section heading in [`prompts/research_digest.py`](prompts/research_digest.py) (for example condition monitoring, maintenance context, sensor modalities, failure modes, standards, operator/manager tasks), the planner issues bounded search queries against the configured backend (`arxiv` default or `semantic_scholar`), judges metadata relevance, keeps candidates whose PDF URLs pass an HTTP probe, downloads up to a few top PDFs, and builds text snippets. [`synthesize_research_digest`](retrieval/digest.py) then runs **per-paper** structured extraction followed by a **merge** pass into one Markdown digest.
+- **Live pipeline:** Otherwise `[retrieve_asset_evidence](retrieval/pipeline.py)` runs. For each merge-section heading in `[prompts/research_digest.py](prompts/research_digest.py)` (for example condition monitoring, maintenance context, sensor modalities, failure modes, standards, operator/manager tasks), the planner issues bounded search queries against the configured backend (`arxiv` default or `semantic_scholar`), judges metadata relevance, keeps candidates whose PDF URLs pass an HTTP probe, downloads up to a few top PDFs, and builds text snippets. `[synthesize_research_digest](retrieval/digest.py)` then runs **per-paper** structured extraction followed by a **merge** pass into one Markdown digest.
 
-The final [`PROFILE_BUILDER_PROMPT`](prompts/asset_profile.py) call combines:
+The final `[PROFILE_BUILDER_PROMPT](prompts/asset_profile.py)` call combines:
 
 - the grounding summary (JSON)
 - the merged research digest (Markdown)
@@ -290,11 +297,11 @@ Budget is allocated across:
 Special handling:
 
 - `vibration=0` when grounded open-form coverage does not include matching vibration-backed assets for the asset class.
-- `multiagent` is capped at **75%** of the total budget (see `_multiagent_budget_cap` in [`generator/prompt_helpers.py`](generator/prompt_helpers.py)).
+- `multiagent` is capped at **75%** of the total budget (see `_multiagent_budget_cap` in `[generator/prompt_helpers.py](generator/prompt_helpers.py)`).
 
 ### 4. Few-shot retrieval
 
-Few-shot examples are drawn from the JSONL files under [`huggingface/`](huggingface/) and, for vibration, from [`local/vibration_utterance.json`](local/vibration_utterance.json). Per-focus sourcing is implemented in [`utils.py`](utils.py) (`_build_candidate_pool`):
+Few-shot examples are drawn from the JSONL files under `[huggingface/](huggingface/)` and, for vibration, from `[local/vibration_utterance.json](local/vibration_utterance.json)`. Per-focus sourcing is implemented in `[utils.py](utils.py)` (`_build_candidate_pool`):
 
 - **iot / wo**: filtered rows from `huggingface/scenarios/all_utterance.jsonl`
 - **fmsr**: `huggingface/task/failure_mapping_senarios.jsonl` (bucketed shapes)
@@ -302,16 +309,22 @@ Few-shot examples are drawn from the JSONL files under [`huggingface/`](huggingf
 - **vibration**: `local/vibration_utterance.json`
 - **multiagent**: `huggingface/asset/compressor_utterance.jsonl`, `huggingface/asset/hydrolicpump_utterance.jsonl`, plus multiagent rows from `all_utterance.jsonl`
 
-Ranking considers:
+Selection now mixes two kinds of references:
 
-- asset/entity similarity
-- focus similarity
-- closed-form vs open-form fit
-- operator or manager wording fit
+- structurally hard examples from the focus-specific pool (for example TSFM rule-monitoring prompts)
+- more natural end-user examples from `all_utterance.jsonl`, compressor/hydraulic-pump asset prompts, and local vibration prompts
+
+Ranking and selection consider:
+
+- structural difficulty (multi-part asks, constraints, if/else or fallback language)
+- end-user-centric wording fit
+- focus relevance from the local corpus
+
+Prompt instructions explicitly treat legacy few-shots as structure references only and prefer direct operator/manager phrasing in the generated output.
 
 ### 5. Scenario generation and validation
 
-Generation is budgeted and validated per focus lane; the same lane is serialized as `type` in the output. [`constraints`](constraints/) enforces:
+Generation is budgeted and validated per focus lane; the same lane is serialized as `type` in the output. `[constraints](constraints/)` enforces:
 
 - required schema fields
 - duplicate avoidance
@@ -319,6 +332,10 @@ Generation is budgeted and validated per focus lane; the same lane is serialized
 - self-contained closed-form requests
 - grounded identifiers for open-form requests
 - at least two namespaces for multiagent workflows
+
+The valid generation loop now runs an always-on LLM validate/repair pass before deterministic validation so the batch can be rewritten toward harder, more user-centric prompts even when the raw JSON is already parseable.
+
+The default negative track runs separately after valid generation. Negative scenarios are not counted against `--num-scenarios`; they are validated to reject accidentally answerable prompts and are written to `negative_scenarios.json`.
 
 Cross-focus support is allowed as long as the primary focus remains clear.
 
@@ -349,9 +366,11 @@ Open-form scenarios may require live retrieval, but every concrete identifier mu
 - sensor names
 - explicit time bounds
 
-## Output file
+## Output files
 
 `scenarios.json` is a JSON array of objects matching the schema at the top of this document. Field meanings: `id` (stable id), `type` (benchmark lane: `iot`, `fmsr`, `tsfm`, `wo`, `vibration`, or `multiagent`), `text` (user request), `category`, `characteristic_form` (expected tools and answer shape).
+
+`negative_scenarios.json` uses the same object shape. Its entries are intentionally unanswerable and expect the system to explain what is missing or unsupported instead of fabricating an answer.
 
 ## Logs
 
@@ -362,9 +381,10 @@ Typical files include (within each stage folder, filenames are prefixed with a p
 - `01_grounding/` — grounded bundle JSON (`discovery.json` stem)
 - `02_retrieval/paper_search/<section_slug>/step_*.txt` — one bounded ReAct loop per research-digest section; `02_retrieval/paper_search/summary.txt` — final ranked pool and selected PDFs
 - optional `02_retrieval/paper_search/raw_arxiv.json` or `raw_semantic_scholar.json` — raw API payloads when using those backends
-- `02_retrieval/paper_digest/per_paper_*.txt` and `merged.txt` — produced by live digest synthesis; with **`--research-digest`** there are no per-paper steps, but **`--log`** still writes `merged.txt` from the loaded file
+- `02_retrieval/paper_digest/per_paper_*.txt` and `merged.txt` — produced by live digest synthesis; with `**--research-digest**` there are no per-paper steps, but `**--log**` still writes `merged.txt` from the loaded file
 - `03_asset_profile/prompt.txt`, `response.json`, and `final_asset_profile.json`
 - `04_budget/prompt.txt` and `response.json`
 - `05_generation/<focus>/generation_prompt.txt`, `generation_response.json`, and validate/repair prompts under the same focus folder (including `multiagent`, which uses the multi-agent combiner prompt in the same layout as other focuses)
 - optional `05_generation/<focus>/deterministic_failures_attempt_*.json` when validation fails and retries
+- `06_negative_generation/<focus>/generation_prompt.txt`, `generation_response.json`, and validate/repair artifacts for negative scenarios when the negative track is enabled
 
