@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from llm.base import LLMUsage
+    from llm.base import LLMResult
 
 _log = logging.getLogger(__name__)
 
@@ -118,15 +118,15 @@ class WandbRunLogger:
     def log_llm_call(
         self,
         phase: str,
-        usage: "LLMUsage | None",
+        result: "LLMResult | None",
         wall_seconds: float = 0.0,
     ) -> None:
         """Accumulate one LLM call record. Called from executor threads."""
         record = LLMCallRecord(
             phase=phase,
-            prompt_tokens=usage.prompt_tokens if usage else None,
-            completion_tokens=usage.completion_tokens if usage else None,
-            total_tokens=usage.total_tokens if usage else None,
+            prompt_tokens=result.input_tokens if result else None,
+            completion_tokens=result.output_tokens if result else None,
+            total_tokens=result.total_tokens if result else None,
             wall_seconds=wall_seconds,
         )
         with self._lock:

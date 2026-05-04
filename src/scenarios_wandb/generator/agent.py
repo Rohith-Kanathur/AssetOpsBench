@@ -351,7 +351,7 @@ class OptimizedScenarioGeneratorAgent:
         *,
         phase: str | None = None,
     ):
-        """Thin wrapper around ``self.llm.generate`` that logs token usage to W&B.
+        """Thin wrapper around ``self.llm.generate_with_usage`` that logs token usage to W&B.
 
         Parameters
         ----------
@@ -365,12 +365,9 @@ class OptimizedScenarioGeneratorAgent:
         """
         _phase = phase or self._current_phase
         _t0 = time.perf_counter()
-        kwargs: dict = {"prompt": prompt}
-        if max_tokens is not None:
-            kwargs["max_tokens"] = max_tokens
-        result = self.llm.generate(**kwargs)
+        result = self.llm.generate_with_usage(prompt, max_tokens=max_tokens)
         _wall = time.perf_counter() - _t0
-        self._wandb.log_llm_call(_phase, result.usage, wall_seconds=_wall)
+        self._wandb.log_llm_call(_phase, result, wall_seconds=_wall)
         return result
 
     # ------------------------------------------------------------------

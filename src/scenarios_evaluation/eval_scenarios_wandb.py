@@ -109,7 +109,7 @@ _llm_call_records: list[_LLMCallRecord] = []
 
 @contextmanager
 def _instrument_llm(phase: str):
-    """Patch LiteLLMBackend so every generate() call is recorded.
+    """Patch LiteLLMBackend so every generate_with_usage() call is recorded.
 
     Works because _run_llm_judge / _run_dry_run import LiteLLMBackend
     inside their function bodies, so they pick up the patched class.
@@ -121,17 +121,21 @@ def _instrument_llm(phase: str):
     _phase = phase
 
     class _Recording(_Orig):  # type: ignore[valid-type]
-        def generate(self, prompt: str, **kwargs: Any) -> Any:
+        def generate_with_usage(
+            self,
+            prompt: str,
+            temperature: float = 0.0,
+            max_tokens: int | None = None,
+        ) -> Any:
             t0 = time.perf_counter()
-            result = super().generate(prompt, **kwargs)
+            result = super().generate_with_usage(prompt, temperature, max_tokens)
             elapsed = time.perf_counter() - t0
-            usage = getattr(result, "usage", None)
             _records.append(
                 _LLMCallRecord(
                     phase=_phase,
-                    prompt_tokens=getattr(usage, "prompt_tokens", None) if usage else None,
-                    completion_tokens=getattr(usage, "completion_tokens", None) if usage else None,
-                    total_tokens=getattr(usage, "total_tokens", None) if usage else None,
+                    prompt_tokens=result.input_tokens,
+                    completion_tokens=result.output_tokens,
+                    total_tokens=result.total_tokens,
                     wall_seconds=elapsed,
                 )
             )

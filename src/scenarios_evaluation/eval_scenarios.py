@@ -405,8 +405,7 @@ def _run_llm_judge(scenarios: list[dict], model_id: str) -> list[dict]:
         print(f"  [{idx}/{total}] LLM judging {sid} ...", end=" ", flush=True)
         t0 = time.perf_counter()
         try:
-            response = llm.generate(prompt, temperature=0.0)
-            raw = response.text.strip()
+            raw = llm.generate(prompt, temperature=0.0).strip()
             if raw.startswith("```"):
                 raw = "\n".join(
                     l for l in raw.splitlines() if not l.startswith("```")
@@ -524,8 +523,7 @@ async def _run_single_dry_run(
         answer=answer_text,
     )
     try:
-        response = llm.generate(prompt, temperature=0.0)
-        raw = response.text.strip()
+        raw = llm.generate(prompt, temperature=0.0).strip()
         if raw.startswith("```"):
             raw = "\n".join(
                 line for line in raw.splitlines() if not line.startswith("```")

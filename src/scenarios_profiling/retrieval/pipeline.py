@@ -196,7 +196,7 @@ def _judge_metadata_batch(
         canonical_asset_name=canonical_asset_name,
         metadata_entries_json=_summarise_metadata_for_judge(candidates),
     )
-    response = llm.generate(prompt)
+    response = llm.generate_with_usage(prompt)
     parsed, _ = parse_llm_json(response.text)
 
     scored_by_id: dict[str, tuple[int, str]] = {}
@@ -554,7 +554,7 @@ def _retrieve_for_section(
             section_heading=section_heading,
         )
         with record(f"retrieval_section__{section_slug}__step_{step_number}__llm_planner"):
-            response = llm.generate(prompt)
+            response = llm.generate_with_usage(prompt)
         parsed, _ = parse_llm_json(response.text)
         action = _coerce_action(parsed)
         canonical_asset_name = action.canonical_asset_name

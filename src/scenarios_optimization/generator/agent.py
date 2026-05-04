@@ -839,7 +839,7 @@ class OptimizedScenarioGeneratorAgent:
             tool_descriptions=_tool_summary_for_prompt(server_desc),
         )
         self._write_log("03_asset_profile/prompt.txt", prompt)
-        response = self.llm.generate(prompt, max_tokens=_PROFILE_MAX_TOKENS)
+        response = self.llm.generate_with_usage(prompt, max_tokens=_PROFILE_MAX_TOKENS)
 
         parsed, parse_err = parse_llm_json(response.text)
         if not parsed or not isinstance(parsed, dict):
@@ -988,7 +988,7 @@ class OptimizedScenarioGeneratorAgent:
             asset_profile_json=profile.model_dump_json(indent=2),
         )
         self._write_log("04_budget/prompt.txt", prompt)
-        response = self.llm.generate(prompt)
+        response = self.llm.generate_with_usage(prompt)
         parsed, _ = parse_llm_json(response.text)
         if not parsed or not isinstance(parsed, dict):
             parsed = {}
@@ -1210,7 +1210,7 @@ class OptimizedScenarioGeneratorAgent:
             f"05_generation/{focus}/generation_prompt.txt",
             _redact_logged_prompt(prompt, profile_json),
         )
-        response = self.llm.generate(prompt)
+        response = self.llm.generate_with_usage(prompt)
         parsed, _ = parse_llm_json(response.text)
         if isinstance(parsed, list):
             self._write_json_log(f"05_generation/{focus}/generation_response.json", parsed)
@@ -1247,7 +1247,7 @@ class OptimizedScenarioGeneratorAgent:
             f"05_generation/{focus}/validate_repair_prompt.txt",
             _redact_logged_prompt(prompt, profile_json),
         )
-        response = self.llm.generate(prompt)
+        response = self.llm.generate_with_usage(prompt)
         parsed, _ = parse_llm_json(response.text)
         if isinstance(parsed, list):
             repaired = parsed[: len(scenarios)]
@@ -1292,7 +1292,7 @@ class OptimizedScenarioGeneratorAgent:
             "05_generation/multiagent/generation_prompt.txt",
             _redact_logged_prompt(prompt, profile_json),
         )
-        response = self.llm.generate(prompt, max_tokens=_MULTIAGENT_MAX_TOKENS)
+        response = self.llm.generate_with_usage(prompt, max_tokens=_MULTIAGENT_MAX_TOKENS)
         parsed, _ = parse_llm_json(response.text)
         if isinstance(parsed, list):
             self._write_json_log("05_generation/multiagent/generation_response.json", parsed)

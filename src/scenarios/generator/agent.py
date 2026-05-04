@@ -393,7 +393,7 @@ class ScenarioGeneratorAgent:
         )
         self._write_log("03_asset_profile/prompt.txt", prompt)
 
-        response = self.llm.generate(prompt, max_tokens=_PROFILE_MAX_TOKENS)
+        response = self.llm.generate_with_usage(prompt, max_tokens=_PROFILE_MAX_TOKENS)
         parsed, parse_err = parse_llm_json(response.text)
         if not parsed or not isinstance(parsed, dict):
             raise RuntimeError(
@@ -520,7 +520,7 @@ class ScenarioGeneratorAgent:
         )
         self._write_log("04_budget/prompt.txt", prompt)
 
-        response = self.llm.generate(prompt)
+        response = self.llm.generate_with_usage(prompt)
         parsed, _ = parse_llm_json(response.text)
         if not parsed or not isinstance(parsed, dict):
             parsed = {}
@@ -612,7 +612,7 @@ class ScenarioGeneratorAgent:
             _redact_logged_prompt(prompt, profile_json),
         )
 
-        response = self.llm.generate(prompt)
+        response = self.llm.generate_with_usage(prompt)
         parsed, _ = parse_llm_json(response.text)
         if isinstance(parsed, list):
             self._write_json_log(f"05_generation/{focus}/generation_response.json", parsed)
@@ -654,7 +654,7 @@ class ScenarioGeneratorAgent:
             _redact_logged_prompt(prompt, profile_json),
         )
 
-        response = self.llm.generate(prompt)
+        response = self.llm.generate_with_usage(prompt)
         parsed, _ = parse_llm_json(response.text)
         if isinstance(parsed, list):
             repaired = parsed[: len(scenarios)]
@@ -696,7 +696,7 @@ class ScenarioGeneratorAgent:
             _redact_logged_prompt(prompt, profile_json),
         )
 
-        response = self.llm.generate(prompt, max_tokens=_MULTIAGENT_MAX_TOKENS)
+        response = self.llm.generate_with_usage(prompt, max_tokens=_MULTIAGENT_MAX_TOKENS)
         parsed, _ = parse_llm_json(response.text)
         if isinstance(parsed, list):
             self._write_json_log("05_generation/multiagent/generation_response.json", parsed)
@@ -824,7 +824,7 @@ class ScenarioGeneratorAgent:
             _redact_logged_prompt(prompt, profile_json),
         )
 
-        response = self.llm.generate(prompt)
+        response = self.llm.generate_with_usage(prompt)
         parsed, _ = parse_llm_json(response.text)
         if isinstance(parsed, list):
             self._write_json_log(f"06_negative_generation/{focus}/generation_response.json", parsed)

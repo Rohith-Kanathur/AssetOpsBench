@@ -207,3 +207,6 @@ src/scenarios/tmp/
 generated/
 profiling_output/
 wandb/
+
+# Observability artifacts (OTLP-JSON traces + per-run trajectory JSON).
+traces/
