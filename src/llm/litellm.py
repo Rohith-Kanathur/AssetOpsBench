@@ -17,9 +17,10 @@ from __future__ import annotations
 import logging
 import os
 
-from .base import LLMBackend, LLMResult, LLMUsage
+from .base import LLMBackend, LLMResult
 
 _log = logging.getLogger(__name__)
+_WATSONX_PREFIX = "watsonx/"
 
 
 class LiteLLMBackend(LLMBackend):
@@ -40,6 +41,14 @@ class LiteLLMBackend(LLMBackend):
         temperature: float = 0.0,
         max_tokens: int | None = None,
     ) -> LLMResult:
+        return self.generate_with_usage(prompt, temperature, max_tokens)
+
+    def generate_with_usage(
+        self,
+        prompt: str,
+        temperature: float = 0.0,
+        max_tokens: int | None = None,
+    ) -> LLMResult:
         import litellm
 
         kwargs: dict = {
@@ -47,9 +56,12 @@ class LiteLLMBackend(LLMBackend):
             "messages": [{"role": "user", "content": prompt}],
             "temperature": temperature,
             "max_tokens": max_tokens or 2048,
+            # Explicit non-streaming: avoids union defaults and reduces Pydantic
+            # serializer warnings (Choices vs StreamingChoices) on model_dump.
+            "stream": False,
         }
 
-        if self._model_id.startswith("watsonx/"):
+        if self._model_id.startswith(_WATSONX_PREFIX):
             kwargs["api_key"] = os.environ["WATSONX_APIKEY"]
             kwargs["project_id"] = os.environ["WATSONX_PROJECT_ID"]
             if url := os.environ.get("WATSONX_URL"):
@@ -59,25 +71,17 @@ class LiteLLMBackend(LLMBackend):
             kwargs["api_base"] = os.environ["LITELLM_BASE_URL"]
 
         response = litellm.completion(**kwargs)
-        text = response.choices[0].message.content or ""
-        usage: LLMUsage | None = None
-        raw_usage = getattr(response, "usage", None)
-        if raw_usage is not None:
-            usage = LLMUsage(
-                prompt_tokens=getattr(raw_usage, "prompt_tokens", None),
-                completion_tokens=getattr(raw_usage, "completion_tokens", None),
-                total_tokens=getattr(raw_usage, "total_tokens", None),
-            )
-            _log.info(
-                "LLM usage model=%s prompt_tokens=%s completion_tokens=%s total_tokens=%s",
-                self._model_id,
-                usage.prompt_tokens,
-                usage.completion_tokens,
-                usage.total_tokens,
-            )
-        else:
-            _log.info(
-                "LLM completion model=%s (no usage object from provider)",
-                self._model_id,
-            )
-        return LLMResult(text=text, usage=usage)
+        usage = getattr(response, "usage", None)
+        prompt_n = int(getattr(usage, "prompt_tokens", 0) or 0)
+        completion_n = int(getattr(usage, "completion_tokens", 0) or 0)
+        raw_total = getattr(usage, "total_tokens", None) if usage else None
+        total_n = int(raw_total) if raw_total is not None else prompt_n + completion_n
+        text = response.choices[0].message.content
+        if text is None:
+            text = ""
+        return LLMResult(
+            text=text,
+            input_tokens=prompt_n,
+            output_tokens=completion_n,
+            total_tokens=total_n,
+        )

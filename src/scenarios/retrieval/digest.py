@@ -130,7 +130,9 @@ def synthesize_research_digest(
             headings_markdown=RESEARCH_DIGEST_HEADINGS_MARKDOWN,
             body_text=body_text,
         )
-        digest = llm.generate(prompt, max_tokens=_DIGEST_PER_PAPER_MAX_TOKENS).text
+        digest = llm.generate_with_usage(
+            prompt, max_tokens=_DIGEST_PER_PAPER_MAX_TOKENS
+        ).text
         block = (
             f"### Paper {index} (source: {source_kind})\n{digest.strip()}"
         )
@@ -144,7 +146,9 @@ def synthesize_research_digest(
         merge_headings_markdown=RESEARCH_DIGEST_MERGE_HEADINGS_MARKDOWN,
         per_paper_digests="\n\n".join(per_paper_digests),
     )
-    merged = llm.generate(merge_prompt, max_tokens=_DIGEST_MERGE_MAX_TOKENS).text.strip()
+    merged = llm.generate_with_usage(
+        merge_prompt, max_tokens=_DIGEST_MERGE_MAX_TOKENS
+    ).text.strip()
     if log_writer:
         log_writer("02_retrieval/paper_digest/merged.txt", merged)
     return merged

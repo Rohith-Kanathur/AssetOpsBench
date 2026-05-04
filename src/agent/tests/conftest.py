@@ -2,7 +2,7 @@
 
 import pytest
 
-from llm import LLMBackend, LLMResult, LLMUsage
+from llm import LLMBackend, LLMResult
 
 
 class MockLLM(LLMBackend):
@@ -19,7 +19,9 @@ class MockLLM(LLMBackend):
     ) -> LLMResult:
         return LLMResult(
             text=self._response,
-            usage=LLMUsage(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+            input_tokens=1,
+            output_tokens=1,
+            total_tokens=2,
         )
 
 
@@ -38,7 +40,9 @@ class SequentialMockLLM(LLMBackend):
         text = next(self._responses, "")
         return LLMResult(
             text=text,
-            usage=LLMUsage(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+            input_tokens=1,
+            output_tokens=1,
+            total_tokens=2,
         )
 
 

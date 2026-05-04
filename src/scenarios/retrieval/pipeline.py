@@ -44,6 +44,7 @@ _MAX_QUERIES_PER_STEP = 2
 _MAX_CANDIDATE_POOL = 8
 _TOP_PDF_DOWNLOADS = 3
 _MAX_SNIPPETS_PER_DOC = 3
+_RETRIEVAL_LLM_MAX_TOKENS = 4096
 
 _log = logging.getLogger(__name__)
 
@@ -195,7 +196,9 @@ def _judge_metadata_batch(
         canonical_asset_name=canonical_asset_name,
         metadata_entries_json=_summarise_metadata_for_judge(candidates),
     )
-    response = llm.generate(prompt)
+    response = llm.generate_with_usage(
+        prompt, max_tokens=_RETRIEVAL_LLM_MAX_TOKENS
+    )
     parsed, _ = parse_llm_json(response.text)
 
     scored_by_id: dict[str, tuple[int, str]] = {}
@@ -552,7 +555,9 @@ def _retrieve_for_section(
             current_results_summary=current_summary,
             section_heading=section_heading,
         )
-        response = llm.generate(prompt)
+        response = llm.generate_with_usage(
+            prompt, max_tokens=_RETRIEVAL_LLM_MAX_TOKENS
+        )
         parsed, _ = parse_llm_json(response.text)
         action = _coerce_action(parsed)
         canonical_asset_name = action.canonical_asset_name
