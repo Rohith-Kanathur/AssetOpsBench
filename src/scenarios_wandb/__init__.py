@@ -25,40 +25,16 @@ B. Batch Processing (``optimization_utils.BatchConfig``, ``chunk_list``)
    * Reduces per-call token usage and allows tighter feedback loops between
      generation and validation.
 
-D. Parallelization (``asyncio.gather``, ``AsyncBatchSemaphore``, ``run_in_executor``)
+C. Parallelization (``asyncio.gather``, ``AsyncBatchSemaphore``, ``run_in_executor``)
    * Per-focus generation tasks run concurrently via ``asyncio.gather``.
    * A semaphore (``--max-concurrent``, default 3) prevents rate-limit errors.
    * Blocking synchronous calls (grounding, file I/O) are offloaded to a
      ``ThreadPoolExecutor`` via ``run_in_executor``.
 
-E. Additional HPML Techniques
-   * **Token budget awareness** – prompts pre-checked with
-     ``estimate_token_count``; accepted-scenario and few-shot sections
-     truncated before hitting context-window limits.
-   * **Progressive timeouts** – early attempts use short timeouts; later
-     expensive repair attempts get more headroom (``ProgressiveTimeout``).
-   * **Timing observability** – every phase measured via ``timed_section`` and
-     stored in ``TimingRegistry``; printed on ``--timing-report``.
-   * **Vectorised deduplication index** – accepted scenarios maintained as a
-     pre-computed list of trigram frozensets; dedup checks are pure set ops.
-
-Quick start::
-
-    from scenarios_optimization.generator import OptimizedScenarioGeneratorAgent
-    import asyncio
-
-    agent = OptimizedScenarioGeneratorAgent(model_id="...", show_workflow=True)
-    scenarios = asyncio.run(agent.run("Chiller"))
-
-    # Run again for the same asset — Phase 1 returns in milliseconds from cache:
-    scenarios = asyncio.run(agent.run("Chiller"))
-
 CLI::
 
     python -m scenarios_optimization.generator Chiller --num-scenarios 50 \\
         --batch-size 10 --max-concurrent 3 --timing-report
-
-See ``optimization_utils.py`` for all optimization primitive implementations.
 """
 
 from .generator import OptimizedScenarioGeneratorAgent

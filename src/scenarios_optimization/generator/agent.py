@@ -1,56 +1,37 @@
 """Optimized scenario generation agent for AssetOpsBench.
 
-This module is the performance-optimized counterpart to
-``scenarios_profiling.generator.agent``.  It preserves all pipeline logic
-and compatibility with existing constraints, models, and prompts, while
-adding the following optimizations:
+This module is the performance-optimized counterpart to scenarios_profiling.generator.agent.
+It preserves all pipeline logic and compatibility with existing constraints, models, and prompts,
+while adding the following optimizations:
 
 Optimization A – Caching
 ------------------------
-* ``build_asset_profile`` checks a two-level (memory + disk) cache before
+* build_asset_profile checks a two-level (memory + disk) cache before
   running the expensive retrieval + LLM synthesis pipeline.  Profiles are
   stored keyed on (asset_name, retriever, requested_open_form) so repeated
   calls for the same asset are instant.
-* Research digests are separately cached so that only the final LLM profile-
+* Research digests are separately cached so that only the final LLM profile
   builder step is re-run when the digest is available but the profile is stale.
-* Few-shot examples are cached via ``functools.lru_cache`` (wrapped by the
-  module-level ``_FEWSHOT_CACHE``) to avoid repeated HuggingFace file I/O.
+* Few-shot examples are cached via functools.lru_cache to avoid repeated HuggingFace file I/O.
 * Budget allocations are memoized per (asset_name, total) so that retries
   within a run skip the budget LLM call.
 
 Optimization B – Batch Processing
 ----------------------------------
-* ``generate_validated_scenarios`` drives all generation through configurable
-  batches (``BatchConfig.generation_batch_size``) rather than requesting the
-  full required count in a single LLM call.
-* Validation is similarly chunked (``BatchConfig.validation_batch_size``).
+* generate_validated_scenarios drives all generation through configurable
+  batches rather than requesting the full required count in a single LLM call.
+* Validation is similarly chunked.
 * Multi-agent construction batches single-agent scenarios into chunks of 10
   to keep prompts within context-window limits.
 
-Optimization D – Parallelization
+Optimization C – Parallelization
 ----------------------------------
-* All per-focus generation loops run concurrently via
-  ``asyncio.gather`` guarded by an ``AsyncBatchSemaphore``.  Each focus
+* All per-focus generation loops run concurrently via asyncio.gather
+  guarded by an AsyncBatchSemaphore.  Each focus
   (iot, fmsr, tsfm, wo, vibration) is handled in its own async task.
 * Blocking synchronous calls (grounding discovery, few-shot file I/O) are
   offloaded to a ``ThreadPoolExecutor`` via ``run_in_executor`` so they do
   not stall the event loop.
-
-Optimization E – Additional HPML Techniques
----------------------------------------------
-* **Token budget awareness**: prompts are pre-checked with
-  ``estimate_token_count`` and context sections (accepted scenarios, few-shot
-  examples) are truncated when approaching the model's context window.
-* **Progressive timeouts**: each repair/retry attempt uses a progressively
-  longer timeout so that cheap failures are fast and expensive repairs get
-  adequate headroom.
-* **Timing observability**: every phase is wrapped in ``timed_section`` which
-  records wall and CPU time to ``GLOBAL_TIMING`` (printed in the summary).
-* **Lazy LLM initialization**: the ``LiteLLMBackend`` and ``Executor`` are
-  instantiated once and reused, avoiding per-call setup overhead.
-* **Vectorised deduplication index**: accepted scenarios are maintained as a
-  pre-computed list of trigram sets so that each new scenario is deduplicated
-  with a single pass through frozenset operations.
 """
 
 from __future__ import annotations
@@ -295,12 +276,10 @@ class OptimizedScenarioGeneratorAgent:
         # ---- Optimization B: Batch configuration ----
         self._batch = batch_config or BatchConfig()
 
-        # ---- Optimization D: Async concurrency semaphore ----
+        # ---- Optimization C: Async concurrency semaphore ----
         self._semaphore = AsyncBatchSemaphore(
             max_concurrent=self._batch.max_concurrent_batches
         )
-
-        # ---- Optimization E: Timing observability ----
         self._timing = timing_registry or GLOBAL_TIMING
 
         # ---- Internal state ----
@@ -407,7 +386,7 @@ class OptimizedScenarioGeneratorAgent:
 
         validation_tool_names = _validation_tool_names_by_focus(server_desc)
 
-        # ---- Optimization D: Parallel per-focus generation ----
+        # ---- Optimization C: Parallel per-focus generation ----
         # Build tasks for every non-zero, non-multiagent focus simultaneously.
         with torch_record("phase_3_generate_all_focuses"):
             async with timed_section("phase_3_generate_all_focuses", self._timing):
@@ -477,38 +456,28 @@ class OptimizedScenarioGeneratorAgent:
         ``scenarios_profiling.generator.ScenarioGeneratorAgent.run_with_profiling``
         so both agents can be swapped in benchmark scripts without changes.
 
-        Because every phase inside ``run`` is already wrapped in a
-        ``torch_record`` span (which is the same ``record_function`` used by
-        ``scenarios_profiling``), the resulting chrome trace has identical span
-        names and nesting — enabling a direct apples-to-apples comparison in
-        ``chrome://tracing`` or Perfetto:
-
-        * ``phase_0_server_descriptions``
-        * ``phase_1_build_asset_profile``  ← faster when cache is warm
-        * ``phase_2_allocate_budget``
-        * ``phase_3_generate_all_focuses``  ← parallel in this agent
-        * ``phase_3_generate_<focus>``       ← per-focus sub-spans
-        * ``phase_4_generate_validate_multiagent``
+        * phase_0_server_descriptions
+        * phase_1_build_asset_profile  ← faster when cache is warm
+        * phase_2_allocate_budget
+        * phase_3_generate_all_focuses  ← parallel in this agent
+        * phase_3_generate_<focus>     ← per-focus sub-spans
+        * phase_4_generate_validate_multiagent`
 
         Parameters
         ----------
         asset_name:
-            Asset class name (e.g. ``"Transformer"``)
+            Asset class name (e.g. Transformer)
         num_scenarios:
             Total number of scenarios to generate.
         data_in_couchdb:
             Whether to use grounded open-form generation.
         profiling_dir:
-            Directory for profiler output.  Ignored when *profiler_config* is
-            provided.  Defaults to
-            ``profiling_output/<asset_slug>_optimized/``.
-        profiler_config:
-            Full ``ProfilerConfig`` override.
+            Directory for profiler output.
 
         Returns
         -------
         list[Scenario]
-            Same output as ``run``.
+            Same output as run.
         """
         if profiler_config is None:
             slug = slugify_asset_name(asset_name) if asset_name.strip() else "asset"
@@ -537,7 +506,7 @@ class OptimizedScenarioGeneratorAgent:
         return scenarios
 
     # ------------------------------------------------------------------
-    # Optimization D: Parallel focus generation
+    # Optimization C: Parallel focus generation
     # ------------------------------------------------------------------
 
     async def _parallel_generate_focuses(
@@ -555,11 +524,11 @@ class OptimizedScenarioGeneratorAgent:
 
         Optimization notes
         ------------------
-        * ``asyncio.gather`` runs tasks concurrently within the same event loop,
+        * asyncio.gather runs tasks concurrently within the same event loop,
           interleaving I/O-bound LLM HTTP calls without true thread overhead.
         * The semaphore ensures at most ``max_concurrent_batches`` focuses run
           at the same time, respecting API rate limits.
-        * Because each focus uses its own ``accepted_scenarios`` snapshot (taken
+        * Because each focus uses its own accepted_scenarios snapshot (taken
           at task-creation time), tasks are independent and require no locking.
           After all tasks complete, the results are merged in ``FOCUS_ORDER``
           order to preserve deterministic scenario IDs.

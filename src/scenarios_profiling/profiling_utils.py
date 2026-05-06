@@ -1,27 +1,4 @@
 """PyTorch Profiler utilities for scenario-generation pipeline profiling.
-
-This module provides:
-- ``get_profiler`` – build a ``torch.profiler.profile`` context manager with
-  sensible defaults for CPU-bound pipeline work (no CUDA required).
-- ``record`` – a thin ``contextlib.contextmanager`` that emits a named
-  ``torch.profiler.record_function`` span.  Falls back gracefully when torch
-  is not installed.
-- ``ProfilerConfig`` – a dataclass that centralises all profiler knobs so
-  callers do not need to import torch directly.
-
-Typical usage in ``generator/agent.py``::
-
-    from scenarios_profiling.profiling_utils import ProfilerConfig, build_profiler, record
-
-    cfg = ProfilerConfig(profile_dir="profiling_output/my_run")
-    with build_profiler(cfg) as prof:
-        with record("phase_1_grounding"):
-            grounding = discover_grounding(asset_name)
-        with record("phase_2_retrieval"):
-            evidence = retrieve_asset_evidence(...)
-        prof.step()   # optional manual step between top-level phases
-
-    # Profiling report is written to ``cfg.profile_dir`` automatically.
 """
 
 from __future__ import annotations
@@ -35,10 +12,7 @@ from typing import Generator
 
 _log = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Try importing torch; if unavailable we fall back to no-op stubs so the
-# profiling module can still be imported in environments without PyTorch.
-# ---------------------------------------------------------------------------
+# Try importing torch and related profiler APIs.  If torch is not installed, we will fall back to no-op stubs.
 try:
     import torch
     import torch.profiler as _torch_profiler

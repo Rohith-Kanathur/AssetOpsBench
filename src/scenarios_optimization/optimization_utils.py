@@ -5,39 +5,12 @@ This module centralises every reusable optimization primitive used by the
 
 Caching
 -------
-* ``AssetProfileCache`` - thread-safe LRU in-memory cache for built
-  ``AssetProfile`` objects, keyed by (asset_name, retriever, generation_mode).
-* ``DiskCache`` - optional JSON-based persistent cache that survives process
-  restarts.  Used to avoid re-running expensive LLM + retrieval calls on
-  repeated runs for the same asset.
 
 Batch Processing
 ----------------
-* ``BatchConfig`` - dataclass carrying configurable batch-size parameters.
-* ``chunk_list`` - split an arbitrary list into fixed-size chunks for batched
-  LLM calls.
 
 Parallelisation
 ---------------
-* ``run_in_executor`` - thin async wrapper around
-  ``asyncio.get_event_loop().run_in_executor`` that sends CPU-bound callables
-  to a shared ``ThreadPoolExecutor`` (safe for I/O-heavy LLM calls) or
-  ``ProcessPoolExecutor`` for true CPU parallelism.
-* ``AsyncBatchSemaphore`` - limits concurrent LLM requests to avoid rate
-  throttling.
-
-Misc HPML Techniques
----------------------
-* ``timed_section`` - async context manager that measures wall-clock and CPU
-  time for a named pipeline phase and stores results in a ``TimingRegistry``.
-* ``TimingRegistry`` - in-memory store for timing measurements; can be dumped
-  to JSON for post-run analysis.
-* ``ProgressiveTimeout`` - increases the per-attempt LLM timeout progressively
-  so early cheap attempts are fast and later expensive attempts have more
-  headroom.
-* ``TokenBudgetEstimator`` - estimates the number of tokens in a prompt string
-  without importing a full tokeniser (uses a fast heuristic), enabling callers
-  to truncate context windows before hitting API limits.
 """
 
 from __future__ import annotations

@@ -27,7 +27,7 @@ Optimization B – Batch Processing
 * Multi-agent construction batches single-agent scenarios into chunks of 10
   to keep prompts within context-window limits.
 
-Optimization D – Parallelization
+Optimization C – Parallelization
 ----------------------------------
 * All per-focus generation loops run concurrently via
   ``asyncio.gather`` guarded by an ``AsyncBatchSemaphore``.  Each focus
@@ -35,22 +35,6 @@ Optimization D – Parallelization
 * Blocking synchronous calls (grounding discovery, few-shot file I/O) are
   offloaded to a ``ThreadPoolExecutor`` via ``run_in_executor`` so they do
   not stall the event loop.
-
-Optimization E – Additional HPML Techniques
----------------------------------------------
-* **Token budget awareness**: prompts are pre-checked with
-  ``estimate_token_count`` and context sections (accepted scenarios, few-shot
-  examples) are truncated when approaching the model's context window.
-* **Progressive timeouts**: each repair/retry attempt uses a progressively
-  longer timeout so that cheap failures are fast and expensive repairs get
-  adequate headroom.
-* **Timing observability**: every phase is wrapped in ``timed_section`` which
-  records wall and CPU time to ``GLOBAL_TIMING`` (printed in the summary).
-* **Lazy LLM initialization**: the ``LiteLLMBackend`` and ``Executor`` are
-  instantiated once and reused, avoiding per-call setup overhead.
-* **Vectorised deduplication index**: accepted scenarios are maintained as a
-  pre-computed list of trigram sets so that each new scenario is deduplicated
-  with a single pass through frozenset operations.
 """
 
 from __future__ import annotations
@@ -445,7 +429,7 @@ class OptimizedScenarioGeneratorAgent:
         self._current_phase = "phase_3_generate_all_focuses"
         validation_tool_names = _validation_tool_names_by_focus(server_desc)
 
-        # ---- Optimization D: Parallel per-focus generation ----
+        # ---- Optimization C: Parallel per-focus generation ----
         # Build tasks for every non-zero, non-multiagent focus simultaneously.
         with torch_record("phase_3_generate_all_focuses"):
             async with timed_section("phase_3_generate_all_focuses", self._timing):
@@ -586,7 +570,7 @@ class OptimizedScenarioGeneratorAgent:
         return scenarios
 
     # ------------------------------------------------------------------
-    # Optimization D: Parallel focus generation
+    # Optimization C: Parallel focus generation
     # ------------------------------------------------------------------
 
     async def _parallel_generate_focuses(
