@@ -114,6 +114,7 @@ The 0.4-point gap is well within run-to-run variance, confirming that the speed 
     ├── scenarios_testing/      # Scenario generation smoke tests
     ├── scenarios_wandb/        # W&B-integrated optimized scenario generation
     └── servers/            # MCP tool servers (IoT, FMSR, TSFM, WO, Vibration, Utilities)
+└── outputs/ # Profiling and Logging Outputs
 ```
 
 ---
@@ -299,7 +300,7 @@ This is built on AssetOpsBench under the guidance of Dr. Dhaval Patel
 
 ### Contact
 
-Open a GitHub Issue or email *[rk3443@columbia.edu]*.
+Open a GitHub Issue or email *[rk3443@columbia.edu]* or *[sagar.chethankumar@columbia.edu]*.
 
 ---
 
