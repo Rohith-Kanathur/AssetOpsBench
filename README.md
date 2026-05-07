@@ -114,7 +114,7 @@ The 0.4-point gap is well within run-to-run variance, confirming that the speed 
     ├── scenarios_testing/      # Scenario generation smoke tests
     ├── scenarios_wandb/        # W&B-integrated optimized scenario generation
     └── servers/            # MCP tool servers (IoT, FMSR, TSFM, WO, Vibration, Utilities)
-└── outputs/ # Profiling and Logging Outputs
+└── outputs/ # Sample profiling and wandb outputs. (Detailed outputs present in the PPT and report)
 ```
 
 ---
