@@ -1,4 +1,4 @@
-# HPML Final Project: [Project Title]
+# HPML Final Project: [Extending AssetOpsBench: Smart Grid Transformer Integration and Automated Scenario Generation]
 
 > **Course:** High Performance Machine Learning
 > **Semester:** Spring 2026
@@ -8,12 +8,12 @@
 
 ## Team Information
 
-- **Team Name:** [Team Name]
+- **Team Number:** 8
 - **Members:**
-  - Full Name 1 (UNI) — *role / area of contribution*
-  - Full Name 2 (UNI) — *role / area of contribution*
-  - Full Name 3 (UNI) — *role / area of contribution*
-  - Full Name 4 (UNI) — *role / area of contribution*
+  - Rohith Kanathur (rk3443) — *Transformer Asset Class Integration, Profiling, Optimization, Wandb Logging, Evaluation and Documentation Work.*
+  - Sagar Chethan Kumar (sc5758) — *Scenario generation pipeline implementation (research & digest agent, validate & repair agent, and domain generation)*
+  - Ananya Kapoor (ak5447) — *Scenario schema validation, eval unit tests, category alignment fix, literature survey and report writing.*
+  - Dev Bahl (db3791) — *Eval tests and report rendering, baseline vs optimized comparison, CI pipeline, experiment reproduction.*
 
 ## Submission
 
@@ -261,13 +261,21 @@ Open the chrome traces present in `profiling_output/` on https://ui.perfetto.dev
 
 **Tool(s) used:** *e.g., Claude, Cursor*
 
-**Specific purpose:** **
+**Specific purpose:** *AI assistance was used for targeted debugging and refinement tasks only. All the core design decisions, experimental methodology, and reported results were produced by the team only.*
 
-**Sections affected:** **
+**Sections affected:** 
+1. W&B Logging: W&B metrics were silently dropped when wandb.log() was called from non-main asyncio threads during parallel focus-group generation. Used AI help to diagnose the root cause and restructure logging into a deferred batch that is flushed from the main thread after asyncio.run() completes.
 
-**How we verified correctness:** **
+2. Thread Pool Offloading Optimization: Thread pool offloading introduced a subtle issue where run_in_executor was being called with a None loop reference causing RuntimeError: cannot schedule new futures after shutdown. Used AI assistance to identify the lifecycle mismatch and add a guard that re-uses the running loop's default executor rather than creating a new one per call.
 
-By submitting this project, the team confirms that the analysis, interpretations, and conclusions are our own, and that any AI assistance is fully disclosed above. The same disclosure block appears as an appendix in the final report.
+3. src/scenarios_profiling/generator/prompts/ and eval_scenarios.py: Used AI assistance to improve the LLM judge prompt and prompts used in scenario generation for clarity and reduction of ambiguous instructions that were causing incorrect outputs.
+
+4. Report Writing: Light prose refinement in the abstract, introduction, and discussion sections to improve grammar, clarity, and conciseness.  All core ideas, experimental methodology, analysis, and conclusions were executed and written entirely by the team members. AI assistance was limited to sentence-level rewording only and did not influence any reported results.
+
+**How we verified correctness:** *All W&B logging fixes were verified by running the generation pipeline multiple times and confirming every expected metric (phase timings, cache hit rates, batch results, LLM call records) appeared on the W&B dashboard. The thread pool fix was verified by running the optimized pipeline many consecutive times without a RuntimeError. Prompt improvements were validated by re-running the full three-stage evaluation suite and confirming quality scores remained stable . All reported experiment numbers were produced by running the pipelines ourselves end-to-end. No AI-generated numbers appear anywhere in the results. Report prose changes were reviewed line-by-line by team members to ensure no false information was reported.*
+
+
+By submitting this project, the team confirms that the analysis, interpretations, and conclusions are our own, and that any AI assistance is fully disclosed above.
 
 ### License
 
@@ -275,21 +283,23 @@ Released under the MIT License. See [`LICENSE`](LICENSE).
 
 ### Citation
 
-If you build on this work, please cite:
+This is built on AssetOpsBench under the guidance of Dr. Dhaval Patel
 
 ```bibtex
-@misc{teamname2026hpml,
-  title  = {[Project Title]},
-  author = {Last1, First1 and Last2, First2 and Last3, First3},
-  year   = {2026},
-  note   = {HPML Spring 2026 Final Project, Columbia University},
-  url    = {https://github.com/<org>/<repo>}
+@misc{patel2026assetopsbenchbenchmarkingaiagents,
+      title={AssetOpsBench: Benchmarking AI Agents for Task Automation in Industrial Asset Operations and Maintenance}, 
+      author={Dhaval Patel and Shuxin Lin and James Rayfield and Nianjun Zhou and Chathurangi Shyalika and Suryanarayana R Yarrabothula and Roman Vaculin and Natalia Martinez and Fearghal O'donncha and Jayant Kalagnanam},
+      year={2026},
+      eprint={2506.03828},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2506.03828}, 
 }
 ```
 
 ### Contact
 
-Open a GitHub Issue or email *[team-contact@columbia.edu]*.
+Open a GitHub Issue or email *[rk3443@columbia.edu]*.
 
 ---
 
