@@ -1,0 +1,1158 @@
+
+  {
+    "schemaVersion": 1,
+    "deviceProperties": [
+    ],
+      "trace_id": "C5A949B77A974AFB8C262616628B8FD0",
+  "displayTimeUnit": "ms",
+  "baseTimeNanoseconds": 1775078550000000000,
+  "traceEvents": [
+  {
+    "ph": "X", "cat": "user_annotation", "name": "ProfilerStep#0", "pid": 51935, "tid": 8880224,
+    "ts": 2766074739996.536, "dur": 380341348.455,
+    "args": {
+      "External id": 1,"Record function id": 0, "Ev Idx": 0
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "full_pipeline", "pid": 51935, "tid": 8880224,
+    "ts": 2766074740023.702, "dur": 380341307.664,
+    "args": {
+      "External id": 2,"Record function id": 0, "Ev Idx": 1
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_0_server_descriptions", "pid": 51935, "tid": 8880224,
+    "ts": 2766074740033.412, "dur": 2164420.032,
+    "args": {
+      "External id": 3,"Record function id": 0, "Ev Idx": 2
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_1_build_asset_profile", "pid": 51935, "tid": 8880224,
+    "ts": 2766076904501.279, "dur": 276927736.023,
+    "args": {
+      "External id": 4,"Record function id": 0, "Ev Idx": 3
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "build_profile__grounding", "pid": 51935, "tid": 8880224,
+    "ts": 2766076904518.863, "dur": 266876.625,
+    "args": {
+      "External id": 5,"Record function id": 0, "Ev Idx": 4
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "grounding__discover_iot_inventory", "pid": 51935, "tid": 8880224,
+    "ts": 2766076904526.405, "dur": 25531.414,
+    "args": {
+      "External id": 6,"Record function id": 0, "Ev Idx": 5
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "grounding__discover_vibration", "pid": 51935, "tid": 8880224,
+    "ts": 2766076930073.819, "dur": 240831.035,
+    "args": {
+      "External id": 7,"Record function id": 0, "Ev Idx": 6
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "grounding__build_failure_sensor_mapping", "pid": 51935, "tid": 8880224,
+    "ts": 2766077170931.645, "dur": 435.176,
+    "args": {
+      "External id": 8,"Record function id": 0, "Ev Idx": 7
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "build_profile__evidence_retrieval", "pid": 51935, "tid": 8880224,
+    "ts": 2766077171529.741, "dur": 244321134.490,
+    "args": {
+      "External id": 9,"Record function id": 0, "Ev Idx": 8
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval__section__condition_monitoring_diagnostics_and_degradation_indicators", "pid": 51935, "tid": 8880224,
+    "ts": 2766077175211.354, "dur": 15425999.227,
+    "args": {
+      "External id": 10,"Record function id": 0, "Ev Idx": 9
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__condition_monitoring_diagnostics_and_degradation_indicators__step_1__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766077175323.648, "dur": 2021486.827,
+    "args": {
+      "External id": 11,"Record function id": 0, "Ev Idx": 10
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__condition_monitoring_diagnostics_and_degradation_indicators__step_1__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766079197821.995, "dur": 152123.386,
+    "args": {
+      "External id": 12,"Record function id": 0, "Ev Idx": 11
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__condition_monitoring_diagnostics_and_degradation_indicators__step_1__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766079350044.841, "dur": 3181330.380,
+    "args": {
+      "External id": 13,"Record function id": 0, "Ev Idx": 12
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__condition_monitoring_diagnostics_and_degradation_indicators__step_1__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766082531454.847, "dur": 779452.296,
+    "args": {
+      "External id": 14,"Record function id": 0, "Ev Idx": 13
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__condition_monitoring_diagnostics_and_degradation_indicators__step_1__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766083310994.769, "dur": 8059405.291,
+    "args": {
+      "External id": 15,"Record function id": 0, "Ev Idx": 14
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__condition_monitoring_diagnostics_and_degradation_indicators__step_2__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766091371012.030, "dur": 1229813.169,
+    "args": {
+      "External id": 16,"Record function id": 0, "Ev Idx": 15
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval__section__maintenance_practices_scheduling_and_work_order_relevant_context", "pid": 51935, "tid": 8880224,
+    "ts": 2766092601297.500, "dur": 29484329.596,
+    "args": {
+      "External id": 17,"Record function id": 0, "Ev Idx": 16
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__maintenance_practices_scheduling_and_work_order_relevant_context__step_1__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766092601474.837, "dur": 1025832.853,
+    "args": {
+      "External id": 18,"Record function id": 0, "Ev Idx": 17
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__maintenance_practices_scheduling_and_work_order_relevant_context__step_1__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766093627434.610, "dur": 63587.158,
+    "args": {
+      "External id": 19,"Record function id": 0, "Ev Idx": 18
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__maintenance_practices_scheduling_and_work_order_relevant_context__step_1__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766093691109.144, "dur": 3221179.324,
+    "args": {
+      "External id": 20,"Record function id": 0, "Ev Idx": 19
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__maintenance_practices_scheduling_and_work_order_relevant_context__step_1__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766096912374.470, "dur": 3019401.678,
+    "args": {
+      "External id": 21,"Record function id": 0, "Ev Idx": 20
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__maintenance_practices_scheduling_and_work_order_relevant_context__step_1__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766099931809.691, "dur": 7868787.611,
+    "args": {
+      "External id": 22,"Record function id": 0, "Ev Idx": 21
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__maintenance_practices_scheduling_and_work_order_relevant_context__step_2__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766107801234.149, "dur": 1082949.051,
+    "args": {
+      "External id": 23,"Record function id": 0, "Ev Idx": 22
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__maintenance_practices_scheduling_and_work_order_relevant_context__step_2__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766108884368.329, "dur": 84384.231,
+    "args": {
+      "External id": 24,"Record function id": 0, "Ev Idx": 23
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__maintenance_practices_scheduling_and_work_order_relevant_context__step_2__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766108968839.519, "dur": 3184137.602,
+    "args": {
+      "External id": 25,"Record function id": 0, "Ev Idx": 24
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__maintenance_practices_scheduling_and_work_order_relevant_context__step_2__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766112153049.247, "dur": 1038482.767,
+    "args": {
+      "External id": 26,"Record function id": 0, "Ev Idx": 25
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__maintenance_practices_scheduling_and_work_order_relevant_context__step_2__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766113191621.766, "dur": 7673917.977,
+    "args": {
+      "External id": 27,"Record function id": 0, "Ev Idx": 26
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__maintenance_practices_scheduling_and_work_order_relevant_context__step_3__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766120866122.795, "dur": 1219092.960,
+    "args": {
+      "External id": 28,"Record function id": 0, "Ev Idx": 27
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval__section__sensor_modalities_measurements_and_signal_interpretation", "pid": 51935, "tid": 8880224,
+    "ts": 2766122085716.514, "dur": 74917727.171,
+    "args": {
+      "External id": 29,"Record function id": 0, "Ev Idx": 28
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_1__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766122085894.143, "dur": 1132468.810,
+    "args": {
+      "External id": 30,"Record function id": 0, "Ev Idx": 29
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_1__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766123218474.830, "dur": 63198.900,
+    "args": {
+      "External id": 31,"Record function id": 0, "Ev Idx": 30
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_1__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766123281744.399, "dur": 13144965.126,
+    "args": {
+      "External id": 32,"Record function id": 0, "Ev Idx": 31
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_1__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766136426860.153, "dur": 486825.001,
+    "args": {
+      "External id": 33,"Record function id": 0, "Ev Idx": 32
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_1__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766136913749.655, "dur": 5046715.702,
+    "args": {
+      "External id": 34,"Record function id": 0, "Ev Idx": 33
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_2__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766141960965.367, "dur": 1228822.357,
+    "args": {
+      "External id": 35,"Record function id": 0, "Ev Idx": 34
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_2__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766143189913.185, "dur": 6623499.434,
+    "args": {
+      "External id": 36,"Record function id": 0, "Ev Idx": 35
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_2__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766149813494.495, "dur": 5765506.022,
+    "args": {
+      "External id": 37,"Record function id": 0, "Ev Idx": 36
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_2__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766155579088.269, "dur": 2872448.602,
+    "args": {
+      "External id": 38,"Record function id": 0, "Ev Idx": 37
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_2__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766158451636.706, "dur": 8801813.697,
+    "args": {
+      "External id": 39,"Record function id": 0, "Ev Idx": 38
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_3__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766167254092.874, "dur": 1565326.549,
+    "args": {
+      "External id": 40,"Record function id": 0, "Ev Idx": 39
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_3__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766168819714.513, "dur": 83186.999,
+    "args": {
+      "External id": 41,"Record function id": 0, "Ev Idx": 40
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_3__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766168902999.347, "dur": 3175693.770,
+    "args": {
+      "External id": 42,"Record function id": 0, "Ev Idx": 41
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_3__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766172078763.659, "dur": 853751.788,
+    "args": {
+      "External id": 43,"Record function id": 0, "Ev Idx": 42
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_3__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766172932587.157, "dur": 8859479.239,
+    "args": {
+      "External id": 44,"Record function id": 0, "Ev Idx": 43
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_4__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766181793019.706, "dur": 1333028.599,
+    "args": {
+      "External id": 45,"Record function id": 0, "Ev Idx": 44
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_4__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766183126290.227, "dur": 64831.181,
+    "args": {
+      "External id": 46,"Record function id": 0, "Ev Idx": 45
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_4__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766183191240.119, "dur": 3173346.974,
+    "args": {
+      "External id": 47,"Record function id": 0, "Ev Idx": 46
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_4__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766186364681.679, "dur": 974343.932,
+    "args": {
+      "External id": 48,"Record function id": 0, "Ev Idx": 47
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_4__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766187339095.029, "dur": 8477553.619,
+    "args": {
+      "External id": 49,"Record function id": 0, "Ev Idx": 48
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__sensor_modalities_measurements_and_signal_interpretation__step_5__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766195818506.892, "dur": 1184512.909,
+    "args": {
+      "External id": 50,"Record function id": 0, "Ev Idx": 49
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval__section__failure_modes_faults_and_operational_risks", "pid": 51935, "tid": 8880224,
+    "ts": 2766197003544.395, "dur": 31998573.290,
+    "args": {
+      "External id": 51,"Record function id": 0, "Ev Idx": 50
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__failure_modes_faults_and_operational_risks__step_1__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766197003710.148, "dur": 1890079.721,
+    "args": {
+      "External id": 52,"Record function id": 0, "Ev Idx": 51
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__failure_modes_faults_and_operational_risks__step_1__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766198893935.913, "dur": 115104.122,
+    "args": {
+      "External id": 53,"Record function id": 0, "Ev Idx": 52
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__failure_modes_faults_and_operational_risks__step_1__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766199009127.454, "dur": 3171764.151,
+    "args": {
+      "External id": 54,"Record function id": 0, "Ev Idx": 53
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__failure_modes_faults_and_operational_risks__step_1__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766202180978.940, "dur": 800949.464,
+    "args": {
+      "External id": 55,"Record function id": 0, "Ev Idx": 54
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__failure_modes_faults_and_operational_risks__step_1__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766202982011.781, "dur": 8508955.024,
+    "args": {
+      "External id": 56,"Record function id": 0, "Ev Idx": 55
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__failure_modes_faults_and_operational_risks__step_2__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766211491538.816, "dur": 1180294.910,
+    "args": {
+      "External id": 57,"Record function id": 0, "Ev Idx": 56
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__failure_modes_faults_and_operational_risks__step_2__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766212672049.646, "dur": 520566.827,
+    "args": {
+      "External id": 58,"Record function id": 0, "Ev Idx": 57
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__failure_modes_faults_and_operational_risks__step_2__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766213192719.933, "dur": 3690800.281,
+    "args": {
+      "External id": 59,"Record function id": 0, "Ev Idx": 58
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__failure_modes_faults_and_operational_risks__step_2__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766216883614.050, "dur": 1583517.655,
+    "args": {
+      "External id": 60,"Record function id": 0, "Ev Idx": 59
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__failure_modes_faults_and_operational_risks__step_2__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766218467159.705, "dur": 8785450.169,
+    "args": {
+      "External id": 61,"Record function id": 0, "Ev Idx": 60
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__failure_modes_faults_and_operational_risks__step_3__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766227252888.047, "dur": 1748553.416,
+    "args": {
+      "External id": 62,"Record function id": 0, "Ev Idx": 61
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval__section__applicable_standards_norms_or_industry_conventions_when_mentioned", "pid": 51935, "tid": 8880224,
+    "ts": 2766229002260.063, "dur": 28978352.221,
+    "args": {
+      "External id": 63,"Record function id": 0, "Ev Idx": 62
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__applicable_standards_norms_or_industry_conventions_when_mentioned__step_1__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766229002474.692, "dur": 1021813.108,
+    "args": {
+      "External id": 64,"Record function id": 0, "Ev Idx": 63
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__applicable_standards_norms_or_industry_conventions_when_mentioned__step_1__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766230024449.471, "dur": 71104.887,
+    "args": {
+      "External id": 65,"Record function id": 0, "Ev Idx": 64
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__applicable_standards_norms_or_industry_conventions_when_mentioned__step_1__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766230095585.859, "dur": 3195561.283,
+    "args": {
+      "External id": 66,"Record function id": 0, "Ev Idx": 65
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__applicable_standards_norms_or_industry_conventions_when_mentioned__step_1__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766233291243.310, "dur": 757423.574,
+    "args": {
+      "External id": 67,"Record function id": 0, "Ev Idx": 66
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__applicable_standards_norms_or_industry_conventions_when_mentioned__step_1__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766234048689.092, "dur": 8059527.669,
+    "args": {
+      "External id": 68,"Record function id": 0, "Ev Idx": 67
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__applicable_standards_norms_or_industry_conventions_when_mentioned__step_2__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766242108760.355, "dur": 915315.405,
+    "args": {
+      "External id": 69,"Record function id": 0, "Ev Idx": 68
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__applicable_standards_norms_or_industry_conventions_when_mentioned__step_2__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766243024154.596, "dur": 76864.458,
+    "args": {
+      "External id": 70,"Record function id": 0, "Ev Idx": 69
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__applicable_standards_norms_or_industry_conventions_when_mentioned__step_2__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766243101039.887, "dur": 3175900.983,
+    "args": {
+      "External id": 71,"Record function id": 0, "Ev Idx": 70
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__applicable_standards_norms_or_industry_conventions_when_mentioned__step_2__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766246276961.454, "dur": 770179.156,
+    "args": {
+      "External id": 72,"Record function id": 0, "Ev Idx": 71
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__applicable_standards_norms_or_industry_conventions_when_mentioned__step_2__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766247047237.237, "dur": 9703294.332,
+    "args": {
+      "External id": 73,"Record function id": 0, "Ev Idx": 72
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__applicable_standards_norms_or_industry_conventions_when_mentioned__step_3__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766256751239.708, "dur": 1228826.899,
+    "args": {
+      "External id": 74,"Record function id": 0, "Ev Idx": 73
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval__section__operator_and_manager_style_tasks_phrased_in_natural_language", "pid": 51935, "tid": 8880224,
+    "ts": 2766257980695.119, "dur": 62567214.048,
+    "args": {
+      "External id": 75,"Record function id": 0, "Ev Idx": 74
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_1__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766257980884.164, "dur": 1129981.137,
+    "args": {
+      "External id": 76,"Record function id": 0, "Ev Idx": 75
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_1__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766259110982.220, "dur": 520396.906,
+    "args": {
+      "External id": 77,"Record function id": 0, "Ev Idx": 76
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_1__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766259631463.753, "dur": 3771404.188,
+    "args": {
+      "External id": 78,"Record function id": 0, "Ev Idx": 77
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_1__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766263402893.107, "dur": 1911900.814,
+    "args": {
+      "External id": 79,"Record function id": 0, "Ev Idx": 78
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_1__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766265314815.046, "dur": 7918688.879,
+    "args": {
+      "External id": 80,"Record function id": 0, "Ev Idx": 79
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_2__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766273233821.389, "dur": 1230681.977,
+    "args": {
+      "External id": 81,"Record function id": 0, "Ev Idx": 80
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_2__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766274464566.742, "dur": 509774.908,
+    "args": {
+      "External id": 82,"Record function id": 0, "Ev Idx": 81
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_2__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766274974373.151, "dur": 3688892.202,
+    "args": {
+      "External id": 83,"Record function id": 0, "Ev Idx": 82
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_2__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766278663359.230, "dur": 969384.586,
+    "args": {
+      "External id": 84,"Record function id": 0, "Ev Idx": 83
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_2__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766279632847.568, "dur": 7430643.769,
+    "args": {
+      "External id": 85,"Record function id": 0, "Ev Idx": 84
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_3__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766287064316.729, "dur": 1636090.763,
+    "args": {
+      "External id": 86,"Record function id": 0, "Ev Idx": 85
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_3__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766288700562.995, "dur": 611642.395,
+    "args": {
+      "External id": 87,"Record function id": 0, "Ev Idx": 86
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_3__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766289312291.684, "dur": 3891355.153,
+    "args": {
+      "External id": 88,"Record function id": 0, "Ev Idx": 87
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_3__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766293203779.799, "dur": 1086239.616,
+    "args": {
+      "External id": 89,"Record function id": 0, "Ev Idx": 88
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_3__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766294290151.334, "dur": 8669664.409,
+    "args": {
+      "External id": 90,"Record function id": 0, "Ev Idx": 89
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_4__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766302960361.754, "dur": 1650333.751,
+    "args": {
+      "External id": 91,"Record function id": 0, "Ev Idx": 90
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_4__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766304611052.012, "dur": 698696.594,
+    "args": {
+      "External id": 92,"Record function id": 0, "Ev Idx": 91
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_4__fetch_metadata", "pid": 51935, "tid": 8880224,
+    "ts": 2766305309794.316, "dur": 3653297.007,
+    "args": {
+      "External id": 93,"Record function id": 0, "Ev Idx": 92
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_4__pdf_probe", "pid": 51935, "tid": 8880224,
+    "ts": 2766308963185.783, "dur": 811133.330,
+    "args": {
+      "External id": 94,"Record function id": 0, "Ev Idx": 93
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_4__llm_judge", "pid": 51935, "tid": 8880224,
+    "ts": 2766309774375.781, "dur": 9132094.976,
+    "args": {
+      "External id": 95,"Record function id": 0, "Ev Idx": 94
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval_section__operator_and_manager_style_tasks_phrased_in_natural_language__step_5__llm_planner", "pid": 51935, "tid": 8880224,
+    "ts": 2766318907194.230, "dur": 1640054.300,
+    "args": {
+      "External id": 96,"Record function id": 0, "Ev Idx": 95
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval__fetch_snippet_pdf__2405.17339v2", "pid": 51935, "tid": 8880224,
+    "ts": 2766320548253.049, "dur": 426027.232,
+    "args": {
+      "External id": 97,"Record function id": 0, "Ev Idx": 96
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval__fetch_snippet_pdf__2512.22189v1", "pid": 51935, "tid": 8880224,
+    "ts": 2766320975001.836, "dur": 311812.460,
+    "args": {
+      "External id": 98,"Record function id": 0, "Ev Idx": 97
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "retrieval__fetch_snippet_pdf__2512.22190v1", "pid": 51935, "tid": 8880224,
+    "ts": 2766321287280.889, "dur": 204400.906,
+    "args": {
+      "External id": 99,"Record function id": 0, "Ev Idx": 98
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "build_profile__research_digest_synthesis", "pid": 51935, "tid": 8880224,
+    "ts": 2766321492678.481, "dur": 18409962.797,
+    "args": {
+      "External id": 100,"Record function id": 0, "Ev Idx": 99
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "digest__fetch_pdf_text__paper_1", "pid": 51935, "tid": 8880224,
+    "ts": 2766321495168.155, "dur": 175226.586,
+    "args": {
+      "External id": 101,"Record function id": 0, "Ev Idx": 100
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "digest__llm_per_paper_1", "pid": 51935, "tid": 8880224,
+    "ts": 2766321670411.408, "dur": 3940298.650,
+    "args": {
+      "External id": 102,"Record function id": 0, "Ev Idx": 101
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "digest__fetch_pdf_text__paper_2", "pid": 51935, "tid": 8880224,
+    "ts": 2766325610754.768, "dur": 426952.583,
+    "args": {
+      "External id": 103,"Record function id": 0, "Ev Idx": 102
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "digest__llm_per_paper_2", "pid": 51935, "tid": 8880224,
+    "ts": 2766326037727.142, "dur": 3423878.114,
+    "args": {
+      "External id": 104,"Record function id": 0, "Ev Idx": 103
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "digest__fetch_pdf_text__paper_3", "pid": 51935, "tid": 8880224,
+    "ts": 2766329461679.466, "dur": 255199.397,
+    "args": {
+      "External id": 105,"Record function id": 0, "Ev Idx": 104
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "digest__llm_per_paper_3", "pid": 51935, "tid": 8880224,
+    "ts": 2766329716896.614, "dur": 3976172.933,
+    "args": {
+      "External id": 106,"Record function id": 0, "Ev Idx": 105
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "digest__llm_merge", "pid": 51935, "tid": 8880224,
+    "ts": 2766333693140.883, "dur": 6208414.541,
+    "args": {
+      "External id": 107,"Record function id": 0, "Ev Idx": 106
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "build_profile__llm_profile_generation", "pid": 51935, "tid": 8880224,
+    "ts": 2766339902693.154, "dur": 13927567.275,
+    "args": {
+      "External id": 108,"Record function id": 0, "Ev Idx": 107
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "build_profile__merge_profile", "pid": 51935, "tid": 8880224,
+    "ts": 2766353830758.773, "dur": 433.299,
+    "args": {
+      "External id": 109,"Record function id": 0, "Ev Idx": 108
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_2_allocate_budget", "pid": 51935, "tid": 8880224,
+    "ts": 2766353832269.302, "dur": 2144921.277,
+    "args": {
+      "External id": 110,"Record function id": 0, "Ev Idx": 109
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "allocate_budget__llm_call", "pid": 51935, "tid": 8880224,
+    "ts": 2766353832291.053, "dur": 2144599.521,
+    "args": {
+      "External id": 111,"Record function id": 0, "Ev Idx": 110
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "allocate_budget__normalize_allocation", "pid": 51935, "tid": 8880224,
+    "ts": 2766355977079.244, "dur": 68.960,
+    "args": {
+      "External id": 112,"Record function id": 0, "Ev Idx": 111
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_3_generate_validate_iot", "pid": 51935, "tid": 8880224,
+    "ts": 2766355977458.210, "dur": 7169845.930,
+    "args": {
+      "External id": 113,"Record function id": 0, "Ev Idx": 112
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__iot__attempt_1__generate", "pid": 51935, "tid": 8880224,
+    "ts": 2766355977483.085, "dur": 7165441.886,
+    "args": {
+      "External id": 114,"Record function id": 0, "Ev Idx": 113
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_single_focus_scenarios__iot__fewshot_load", "pid": 51935, "tid": 8880224,
+    "ts": 2766355977529.836, "dur": 3076.644,
+    "args": {
+      "External id": 115,"Record function id": 0, "Ev Idx": 114
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_single_focus_scenarios__iot__llm_call", "pid": 51935, "tid": 8880224,
+    "ts": 2766355980876.443, "dur": 7161959.276,
+    "args": {
+      "External id": 116,"Record function id": 0, "Ev Idx": 115
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__iot__attempt_1__validate", "pid": 51935, "tid": 8880224,
+    "ts": 2766363142944.013, "dur": 4352.751,
+    "args": {
+      "External id": 117,"Record function id": 0, "Ev Idx": 116
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "validate_scenario_batch__iot__n5", "pid": 51935, "tid": 8880224,
+    "ts": 2766363142964.972, "dur": 4325.584,
+    "args": {
+      "External id": 118,"Record function id": 0, "Ev Idx": 117
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_3_generate_validate_fmsr", "pid": 51935, "tid": 8880224,
+    "ts": 2766363147350.182, "dur": 14771153.531,
+    "args": {
+      "External id": 119,"Record function id": 0, "Ev Idx": 118
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__fmsr__attempt_1__generate", "pid": 51935, "tid": 8880224,
+    "ts": 2766363147366.350, "dur": 14737282.077,
+    "args": {
+      "External id": 120,"Record function id": 0, "Ev Idx": 119
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_single_focus_scenarios__fmsr__fewshot_load", "pid": 51935, "tid": 8880224,
+    "ts": 2766363147379.891, "dur": 987.978,
+    "args": {
+      "External id": 121,"Record function id": 0, "Ev Idx": 120
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_single_focus_scenarios__fmsr__llm_call", "pid": 51935, "tid": 8880224,
+    "ts": 2766363148494.288, "dur": 14735945.552,
+    "args": {
+      "External id": 122,"Record function id": 0, "Ev Idx": 121
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__fmsr__attempt_1__validate", "pid": 51935, "tid": 8880224,
+    "ts": 2766377884694.386, "dur": 33799.369,
+    "args": {
+      "External id": 123,"Record function id": 0, "Ev Idx": 122
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "validate_scenario_batch__fmsr__n10", "pid": 51935, "tid": 8880224,
+    "ts": 2766377884747.512, "dur": 33733.451,
+    "args": {
+      "External id": 124,"Record function id": 0, "Ev Idx": 123
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_3_generate_validate_tsfm", "pid": 51935, "tid": 8880224,
+    "ts": 2766377918569.297, "dur": 12797198.715,
+    "args": {
+      "External id": 125,"Record function id": 0, "Ev Idx": 124
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__tsfm__attempt_1__generate", "pid": 51935, "tid": 8880224,
+    "ts": 2766377918593.090, "dur": 9497672.611,
+    "args": {
+      "External id": 126,"Record function id": 0, "Ev Idx": 125
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_single_focus_scenarios__tsfm__fewshot_load", "pid": 51935, "tid": 8880224,
+    "ts": 2766377918599.090, "dur": 2310.587,
+    "args": {
+      "External id": 127,"Record function id": 0, "Ev Idx": 126
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_single_focus_scenarios__tsfm__llm_call", "pid": 51935, "tid": 8880224,
+    "ts": 2766377921004.012, "dur": 9495055.852,
+    "args": {
+      "External id": 128,"Record function id": 0, "Ev Idx": 127
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__tsfm__attempt_1__validate", "pid": 51935, "tid": 8880224,
+    "ts": 2766387416337.702, "dur": 39429.937,
+    "args": {
+      "External id": 129,"Record function id": 0, "Ev Idx": 128
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "validate_scenario_batch__tsfm__n8", "pid": 51935, "tid": 8880224,
+    "ts": 2766387417543.684, "dur": 38211.870,
+    "args": {
+      "External id": 130,"Record function id": 0, "Ev Idx": 129
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__tsfm__attempt_1__repair", "pid": 51935, "tid": 8880224,
+    "ts": 2766387455824.973, "dur": 3235037.469,
+    "args": {
+      "External id": 131,"Record function id": 0, "Ev Idx": 130
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "validate_and_repair__tsfm__llm_call", "pid": 51935, "tid": 8880224,
+    "ts": 2766387455929.517, "dur": 3234808.798,
+    "args": {
+      "External id": 132,"Record function id": 0, "Ev Idx": 131
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__tsfm__attempt_1__validate_repaired", "pid": 51935, "tid": 8880224,
+    "ts": 2766390690907.152, "dur": 24800.442,
+    "args": {
+      "External id": 133,"Record function id": 0, "Ev Idx": 132
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "validate_scenario_batch__tsfm__n3", "pid": 51935, "tid": 8880224,
+    "ts": 2766390690974.486, "dur": 24718.691,
+    "args": {
+      "External id": 134,"Record function id": 0, "Ev Idx": 133
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_3_generate_validate_wo", "pid": 51935, "tid": 8880224,
+    "ts": 2766390715825.138, "dur": 5454645.122,
+    "args": {
+      "External id": 135,"Record function id": 0, "Ev Idx": 134
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__wo__attempt_1__generate", "pid": 51935, "tid": 8880224,
+    "ts": 2766390715852.055, "dur": 5415988.993,
+    "args": {
+      "External id": 136,"Record function id": 0, "Ev Idx": 135
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_single_focus_scenarios__wo__fewshot_load", "pid": 51935, "tid": 8880224,
+    "ts": 2766390715858.347, "dur": 1123.689,
+    "args": {
+      "External id": 137,"Record function id": 0, "Ev Idx": 136
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_single_focus_scenarios__wo__llm_call", "pid": 51935, "tid": 8880224,
+    "ts": 2766390717076.038, "dur": 5413713.239,
+    "args": {
+      "External id": 138,"Record function id": 0, "Ev Idx": 137
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__wo__attempt_1__validate", "pid": 51935, "tid": 8880224,
+    "ts": 2766396131886.966, "dur": 38572.335,
+    "args": {
+      "External id": 139,"Record function id": 0, "Ev Idx": 138
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "validate_scenario_batch__wo__n5", "pid": 51935, "tid": 8880224,
+    "ts": 2766396131961.467, "dur": 38486.042,
+    "args": {
+      "External id": 140,"Record function id": 0, "Ev Idx": 139
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_4_generate_validate_multiagent", "pid": 51935, "tid": 8880224,
+    "ts": 2766396170518.470, "dur": 58910732.561,
+    "args": {
+      "External id": 141,"Record function id": 0, "Ev Idx": 140
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__multiagent__attempt_1__generate", "pid": 51935, "tid": 8880224,
+    "ts": 2766396170551.136, "dur": 26367770.106,
+    "args": {
+      "External id": 142,"Record function id": 0, "Ev Idx": 141
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "construct_multiagent_scenarios__llm_call", "pid": 51935, "tid": 8880224,
+    "ts": 2766396170641.388, "dur": 26367423.891,
+    "args": {
+      "External id": 143,"Record function id": 0, "Ev Idx": 142
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__multiagent__attempt_1__validate", "pid": 51935, "tid": 8880224,
+    "ts": 2766422538348.992, "dur": 110442.573,
+    "args": {
+      "External id": 144,"Record function id": 0, "Ev Idx": 143
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "validate_scenario_batch__multiagent__n22", "pid": 51935, "tid": 8880224,
+    "ts": 2766422538392.285, "dur": 110390.196,
+    "args": {
+      "External id": 145,"Record function id": 0, "Ev Idx": 144
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__multiagent__attempt_1__repair", "pid": 51935, "tid": 8880224,
+    "ts": 2766422648871.649, "dur": 13816280.229,
+    "args": {
+      "External id": 146,"Record function id": 0, "Ev Idx": 145
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "validate_and_repair__multiagent__llm_call", "pid": 51935, "tid": 8880224,
+    "ts": 2766422648961.485, "dur": 13815975.805,
+    "args": {
+      "External id": 147,"Record function id": 0, "Ev Idx": 146
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__multiagent__attempt_1__validate_repaired", "pid": 51935, "tid": 8880224,
+    "ts": 2766436465200.545, "dur": 99006.307,
+    "args": {
+      "External id": 148,"Record function id": 0, "Ev Idx": 147
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "validate_scenario_batch__multiagent__n13", "pid": 51935, "tid": 8880224,
+    "ts": 2766436465312.131, "dur": 98884.638,
+    "args": {
+      "External id": 149,"Record function id": 0, "Ev Idx": 148
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__multiagent__attempt_2__generate", "pid": 51935, "tid": 8880224,
+    "ts": 2766436564270.103, "dur": 11614265.504,
+    "args": {
+      "External id": 150,"Record function id": 0, "Ev Idx": 149
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "construct_multiagent_scenarios__llm_call", "pid": 51935, "tid": 8880224,
+    "ts": 2766436564354.439, "dur": 11614028.873,
+    "args": {
+      "External id": 151,"Record function id": 0, "Ev Idx": 150
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__multiagent__attempt_2__validate", "pid": 51935, "tid": 8880224,
+    "ts": 2766448178575.773, "dur": 52404.398,
+    "args": {
+      "External id": 152,"Record function id": 0, "Ev Idx": 151
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "validate_scenario_batch__multiagent__n8", "pid": 51935, "tid": 8880224,
+    "ts": 2766448178668.400, "dur": 52294.188,
+    "args": {
+      "External id": 153,"Record function id": 0, "Ev Idx": 152
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__multiagent__attempt_2__repair", "pid": 51935, "tid": 8880224,
+    "ts": 2766448231048.715, "dur": 6768142.965,
+    "args": {
+      "External id": 154,"Record function id": 0, "Ev Idx": 153
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "validate_and_repair__multiagent__llm_call", "pid": 51935, "tid": 8880224,
+    "ts": 2766448231147.758, "dur": 6767850.585,
+    "args": {
+      "External id": 155,"Record function id": 0, "Ev Idx": 154
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "generate_validated_scenarios__multiagent__attempt_2__validate_repaired", "pid": 51935, "tid": 8880224,
+    "ts": 2766454999236.556, "dur": 81934.849,
+    "args": {
+      "External id": 156,"Record function id": 0, "Ev Idx": 155
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "validate_scenario_batch__multiagent__n6", "pid": 51935, "tid": 8880224,
+    "ts": 2766454999331.849, "dur": 81825.180,
+    "args": {
+      "External id": 157,"Record function id": 0, "Ev Idx": 156
+    }
+  },
+  {
+    "name": "thread_name", "ph": "M", "ts": 2766074739927.000, "pid": 51935, "tid": 8880224,
+    "args": {
+      "name": "thread 8880224 ()"
+    }
+  },
+  {
+    "name": "thread_sort_index", "ph": "M", "ts": 2766074739927.000, "pid": 51935, "tid": 8880224,
+    "args": {
+      "sort_index": 8880224
+    }
+  },
+  {
+    "name": "thread_name", "ph": "M", "ts": 2766074739927.000, "pid": 51935, "tid": 8880224,
+    "args": {
+      "name": "thread 8880224 ()"
+    }
+  },
+  {
+    "name": "thread_sort_index", "ph": "M", "ts": 2766074739927.000, "pid": 51935, "tid": 8880224,
+    "args": {
+      "sort_index": 8880224
+    }
+  },
+  {
+    "ph": "X", "cat": "Trace", "ts": 2766074739871.000, "dur": 380341497.000,
+    "pid": "Spans", "tid": "PyTorch Profiler",
+    "name": "PyTorch Profiler (0)",
+    "args": {
+      "Op count": 0
+    }
+  },
+  {
+    "name": "process_sort_index", "ph": "M", "ts": 2766074739871.000,
+    "pid": "Spans", "tid": 0,
+    "args": {
+      "sort_index": 536870912
+    }
+  },
+  {
+    "name": "Iteration Start: PyTorch Profiler", "ph": "i", "s": "g",
+    "pid": "Traces", "tid": "Trace PyTorch Profiler", "ts": 2766074739871.000
+  },
+  {
+    "name": "Record Window End", "ph": "i", "s": "g",
+    "pid": "", "tid": "", "ts": 2766455081519.000
+  }
+  ],
+  "traceName": "profiling_output/exp1_latency_baseline/chrome_trace.json"
+}

@@ -1,0 +1,136 @@
+
+  {
+    "schemaVersion": 1,
+    "deviceProperties": [
+    ],
+      "trace_id": "7E76EEA0D7C44D658B9F1D2A65128215",
+  "displayTimeUnit": "ms",
+  "baseTimeNanoseconds": 1775078550000000000,
+  "traceEvents": [
+  {
+    "ph": "X", "cat": "user_annotation", "name": "ProfilerStep#0", "pid": 52606, "tid": 8892185,
+    "ts": 2766789720409.153, "dur": 40843143.014,
+    "args": {
+      "External id": 1,"Record function id": 0, "Ev Idx": 0
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "full_pipeline", "pid": 52606, "tid": 8892185,
+    "ts": 2766789720431.407, "dur": 40843115.593,
+    "args": {
+      "External id": 2,"Record function id": 0, "Ev Idx": 1
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_0_server_descriptions", "pid": 52606, "tid": 8892185,
+    "ts": 2766789720489.586, "dur": 2145573.132,
+    "args": {
+      "External id": 3,"Record function id": 0, "Ev Idx": 2
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_1_build_asset_profile", "pid": 52606, "tid": 8892185,
+    "ts": 2766791866109.103, "dur": 575.036,
+    "args": {
+      "External id": 4,"Record function id": 0, "Ev Idx": 3
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_2_allocate_budget", "pid": 52606, "tid": 8892185,
+    "ts": 2766791866690.098, "dur": 70.557,
+    "args": {
+      "External id": 5,"Record function id": 0, "Ev Idx": 4
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_3_generate_all_focuses", "pid": 52606, "tid": 8892185,
+    "ts": 2766791866892.015, "dur": 26775869.118,
+    "args": {
+      "External id": 6,"Record function id": 0, "Ev Idx": 5
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_3_generate_validate_iot", "pid": 52606, "tid": 8892185,
+    "ts": 2766791866957.529, "dur": 12388462.891,
+    "args": {
+      "External id": 7,"Record function id": 0, "Ev Idx": 6
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_3_generate_validate_fmsr", "pid": 52606, "tid": 8892185,
+    "ts": 2766791867112.853, "dur": 26775340.383,
+    "args": {
+      "External id": 8,"Record function id": 0, "Ev Idx": 7
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_3_generate_validate_tsfm", "pid": 52606, "tid": 8892185,
+    "ts": 2766791867208.789, "dur": 15842848.868,
+    "args": {
+      "External id": 9,"Record function id": 0, "Ev Idx": 8
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_3_generate_validate_wo", "pid": 52606, "tid": 8892185,
+    "ts": 2766804255484.017, "dur": 5062047.239,
+    "args": {
+      "External id": 10,"Record function id": 0, "Ev Idx": 9
+    }
+  },
+  {
+    "ph": "X", "cat": "user_annotation", "name": "phase_4_generate_validate_multiagent", "pid": 52606, "tid": 8892185,
+    "ts": 2766818642795.099, "dur": 11920695.890,
+    "args": {
+      "External id": 11,"Record function id": 0, "Ev Idx": 10
+    }
+  },
+  {
+    "name": "thread_name", "ph": "M", "ts": 2766789720346.000, "pid": 52606, "tid": 8892185,
+    "args": {
+      "name": "thread 8892185 ()"
+    }
+  },
+  {
+    "name": "thread_sort_index", "ph": "M", "ts": 2766789720346.000, "pid": 52606, "tid": 8892185,
+    "args": {
+      "sort_index": 8892185
+    }
+  },
+  {
+    "name": "thread_name", "ph": "M", "ts": 2766789720346.000, "pid": 52606, "tid": 8892185,
+    "args": {
+      "name": "thread 8892185 ()"
+    }
+  },
+  {
+    "name": "thread_sort_index", "ph": "M", "ts": 2766789720346.000, "pid": 52606, "tid": 8892185,
+    "args": {
+      "sort_index": 8892185
+    }
+  },
+  {
+    "ph": "X", "cat": "Trace", "ts": 2766789720297.000, "dur": 40843275.000,
+    "pid": "Spans", "tid": "PyTorch Profiler",
+    "name": "PyTorch Profiler (0)",
+    "args": {
+      "Op count": 0
+    }
+  },
+  {
+    "name": "process_sort_index", "ph": "M", "ts": 2766789720297.000,
+    "pid": "Spans", "tid": 0,
+    "args": {
+      "sort_index": 536870912
+    }
+  },
+  {
+    "name": "Iteration Start: PyTorch Profiler", "ph": "i", "s": "g",
+    "pid": "Traces", "tid": "Trace PyTorch Profiler", "ts": 2766789720297.000
+  },
+  {
+    "name": "Record Window End", "ph": "i", "s": "g",
+    "pid": "", "tid": "", "ts": 2766830563679.000
+  }
+  ],
+  "traceName": "profiling_output/exp2_cache_warm/chrome_trace.json"
+}
