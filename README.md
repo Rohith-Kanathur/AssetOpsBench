@@ -17,7 +17,7 @@
 
 ## Submission
 
-- **GitHub repository:** [https://github.com/&lt;org&gt;/&lt;repo&gt;](https://github.com/org/repo)
+- **GitHub repository:** [https://github.com/Rohith-Kanathur/AssetOpsBench](https://github.com/Rohith-Kanathur/AssetOpsBench)
 - **Final report:** [`deliverables/HPML_Final_Report.pdf`](deliverables/HPML_Final_Report.pdf)
 - **Final presentation:** [`deliverables/HPML_Final_Presentation.pptx`](deliverables/HPML_Final_Presentation.pptx)
 - **Experiment-tracking dashboard:** [link to public Wandb / MLflow / TensorBoard / Comet / Neptune dashboard]
@@ -28,39 +28,66 @@ The final report PDF and the presentation file are checked into the `deliverable
 
 ## 1. Problem Statement
 
-A 2–4 sentence description of the workload, the system being optimized, and *why* the optimization matters. State whether you are targeting **training**, **inference**, or **both**, and identify the bottleneck (compute, memory bandwidth, I/O, communication, etc.) you set out to address.
+LLM-based AI agents redefine Industry 4.0 asset operations; integrating perception, reasoning, and action across complex industrial systems. Yet evaluating these agents at scale requires large, high-quality benchmark scenarios that are expensive to produce manually. AssetOpsBench, the first unified framework for industrial asset agent evaluation, initially comes with only 141 scenarios. These are handcrafted by SMEs covering a narrow set of HVAC assets (chillers and AHUs), leaving critical classes such as high-voltage power transformers excluded. Beyond asset-class coverage, scenario creation itself does not scale: every new asset type demands physically plausible, causally consistent, tool-reachable, and standards-compliant scenarios authored by subject-matter experts. This project addresses both gaps by extending AssetOpsBench with a new Smart Grid Transformer asset class and introducing a `ScenarioGeneratorAgent` that automatically generates, repairs, and validates scenarios through asset profiling, budget allocation, and constrained LLM generation stages. The optimizations target **inference** stage by reducing latency and token generation. The primary performance bottleneck with the unoptimized baseline is sequential and redundant LLM calls, time consuming domain literature retreival and blocking I/O that together dominate end-to-end wall time. The optimizations that were applied to address this include: a two-level cache (in-memory LRU + disk JSON), a thread pool offloading blocking I/O operations to run concurrently rather than sequentially, and parallelized scenario generation across focus groups. This reduces end-to-end pipeline time by up to **8×** for 50 scenarios with no measurable degradation in scenario quality (mean quality score: 74.2 ± 1.9 for optimized vs. 73.8 ± 3.0 for the baseline).
 
 ---
 
 ## 2. Model/Application Description
 
-Briefly describe the model(s) and stack you used:
-
-- **Model architecture:** e.g., Llama-3.1 8B, ResNet-50, Stable Diffusion XL.
-- **Framework:** PyTorch 2.x / JAX / TensorFlow / vLLM / TGI.
-- **Dataset:** name, size, license, and link.
-- **Custom layers or modifications:** anything you changed from the upstream reference implementation.
-- **Hardware target:** NVIDIA A100 / H100 / Jetson Orin / Cloud TPU v5e / Apple M-series / IBM AIU, etc.
+- **Model:** `meta-llama/llama-3-3-70b-instruct` served via IBM WatsonX, used as the LLM backbone across all five pipeline stages: asset profiling, budget allocation, per-domain scenario generation, validation, and repair. A lightweight supervised regression model (trained on the Mendeley transformer health dataset) is used for the `predict_health_index` tool in the Smart Grid Transformer asset class.
+- **Framework:** [LiteLLM]for unified LLM API access across providers; [Model Context Protocol (MCP)] for structured tool interfaces exposing the five industrial agent servers (IoT, FMSR, TSFM, WO, Vibration). PyTorch Profiler is used for per-phase instrumentation. Weights & Biases for experiment tracking.
+- **Dataset:** Three data sources: (1) existing AssetOpsBench chiller/AHU scenarios as few-shot style examples, (2) academic literature retrieved at runtime from ArXiv and SemanticScholar for asset profile grounding, and (3) the [Mendeley Transformer Health Dataset](https://data.mendeley.com/datasets/rz75w3fkxy/1) for training the health index predictor.
+- **Custom components:** `ScenarioGeneratorAgent` pipeline with a validate-and-repair loop enforcing; four new MCP tools for Smart Grid Transformer diagnostics grounded in IEC 60599 and IEC 60076-7 standards; two-level (L1 in-memory LRU + L2 disk) asset profile cache; AsyncBatchSemaphore for rate-limited parallel focus-group execution, thread pool offloader to offload blocking LLM calls.
+- **Hardware:** NVIDIA A100 and H100 GPUs (IBM WatsonX inference cluster)
 
 ---
 
 ## 3. Final Results Summary
 
-Replace the numbers below with your measured values. Add or remove rows to fit your study.
+All experiments use the Smart Grid Transformer asset in CouchDB-grounded mode. Times are wall-clock seconds measured via `timed_section` spans and validated against PyTorch Profiler Chrome traces.
 
-| Metric                       | Baseline | Optimized | Δ (Improvement) |
-| ---------------------------- | -------- | --------- | --------------- |
-| Top-1 Accuracy / Task Metric | XX.XX%   | XX.XX%    | ±X.XX pp        |
-| Inference Latency (p50)      | XX.XX ms | XX.XX ms  | XX% faster      |
-| Inference Throughput         | XXX tok/s| XXX tok/s | XX× higher      |
-| Training Time / Epoch        | XX s     | XX s      | XX% faster      |
-| Peak GPU Memory              | XX GB    | XX GB     | XX% less        |
-| Model Size on Disk           | XX MB    | XX MB     | XX% smaller     |
-| Energy / Sample (optional)   | X.XX J   | X.XX J    | XX% less        |
+### Scalability: Pipeline Time vs. Number of Scenarios
 
-**Hardware:** [e.g., 1× NVIDIA A100 80GB SXM, CUDA 12.4, PyTorch 2.5, Ubuntu 22.04]
+**Baseline (unoptimized)**
 
-**Headline result (one sentence):** *e.g., "Applying LoRA + 4-bit quantization reduced fine-tuning memory from 38 GB to 9 GB and cut wall-clock training time per epoch by 2.7× on a single A100, with no measurable accuracy degradation on the GLUE benchmark."*
+| Phase | N=10 | N=25 | N=50 |
+|---|---|---|---|
+| Get Server Descriptions | 2.40 s | 2.58 s | 2.20 s |
+| Build Asset Profile | 448.28 s | 338.90 s | 325.70 s |
+| Allocate Scenario Budget | 2.05 s | 3.37 s | 2.34 s |
+| Generate & Validate Single-Agent | 11.40 s | 34.79 s | 38.83 s |
+| Generate & Validate Multi-Agent | 4.05 s | 20.67 s | 39.32 s |
+| **Full Pipeline** | **468.22 s** | **400.35 s** | **408.43 s** |
+
+**Optimized (warm cache)**
+
+| Phase | N=10 | N=25 | N=50 |
+|---|---|---|---|
+| Get Server Descriptions | 1.56 s | 2.42 s | 2.16 s |
+| Build Asset Profile | **0.00 s** | **0.00 s** | **0.00 s** |
+| Allocate Scenario Budget | **0.00 s** | **0.00 s** | **0.00 s** |
+| Generate & Validate Single-Agent | **8.23 s** | **14.86 s** | **15.95 s** |
+| Generate & Validate Multi-Agent | 10.73 s | 17.28 s | 18.11 s |
+| **Full Pipeline** | **13.63 s** | **19.88 s** | **50.86 s** |
+
+Speedup: **34×** at N=10, **20×** at N=25, **8×** at N=50. The two-level cache eliminates Phase 1 (Build Asset Profile) entirely on warm runs, phase 1 is the dominant cost in the baseline (80–96% of total time). The decreasing speedup ratio at larger N reflects the time taken to generate scenarios in phase 3.
+
+### Scenario Quality: Baseline vs. Optimized
+
+50 Smart Grid Transformer scenarios generated by each pipeline (CouchDB-grounded, N=50), evaluated across 3 independent runs using the three-stage quality scheme (Static /20 + LLM Judge /30 + Dry-Run /50 = /100 composite). A score ≥ 70 is considered high quality.
+
+| Metric | Baseline | Optimized |
+|---|---|---|
+| Static Score (/20) | 18.4 ± 0.6 | 19.1 ± 0.3 |
+| LLM Judge Score (/30) | 22.2 ± 3.6 | 22.4 ± 1.8 |
+| Dry-Run Score (/50) | 33.1 ± 1.3 | 32.7 ± 2.5 |
+| **Quality Score (/100)** | **73.8 ± 3.0** | **74.2 ± 1.9** |
+
+The 0.4-point gap is well within run-to-run variance, confirming that the speed optimizations come at no cost to scenario quality. Both pipelines exceed the 70-point high-quality threshold on average.
+
+**Hardware:** NVIDIA A100 / H100 GPUs (IBM WatsonX inference cluster)
+
+**Headline result:** *Two-level caching + parallel focus-group execution + thread-pool offloading reduces end-to-end pipeline time from 408 s to 51 s (8× speedup) for 50 scenarios, with mean scenario quality score unchanged at 74.2 ± 1.9 for optimized vs. 73.8 ± 3.0 for the baseline.*
 
 ---
 
@@ -70,24 +97,23 @@ Replace the numbers below with your measured values. Add or remove rows to fit y
 .
 ├── README.md
 ├── LICENSE
-├── requirements.txt
-├── configs/                # YAML / JSON configs for every reported experiment
+├── pyproject.toml
 ├── deliverables/           # Final report (PDF) and final presentation (PPT/PDF) — same files uploaded to CourseWorks
 │   ├── HPML_Final_Report.pdf
 │   └── HPML_Final_Presentation.pptx
-├── scripts/
-│   ├── download_dataset.sh
-│   ├── run_baseline.sh
-│   └── run_optimized.sh
-├── src/
-│   ├── data/               # Data loading & preprocessing
-│   ├── models/             # Model definitions / wrappers
-│   ├── train.py            # Training entry point
-│   ├── eval.py             # Evaluation entry point
-│   └── profile.py          # Profiling entry point
-├── notebooks/              # Exploratory & analysis notebooks
-├── results/                # Logs, figures, profiler traces (small files only)
-└── docs/                   # Optional: extended methodology, design notes
+└── src/
+    ├── agent/              # LLM agent runners, CLI, and plan-execute orchestration
+    ├── couchdb/            # CouchDB setup, Docker Compose, and asset data initialisation
+    ├── evaluation/         # Evaluation utilities
+    ├── llm/                # LiteLLM wrapper and base LLM abstractions
+    ├── observability/      # Tracing, run spans, and file exporters
+    ├── scenarios/          # Base scenario models, grounding, retrieval, and prompts
+    ├── scenarios_evaluation/   # Three-stage scenario quality evaluator (static + LLM judge + dry-run)
+    ├── scenarios_optimization/ # Optimized scenario generation 
+    ├── scenarios_profiling/    # PyTorch-profiler-instrumented scenario generation pipeline
+    ├── scenarios_testing/      # Scenario generation smoke tests
+    ├── scenarios_wandb/        # W&B-integrated optimized scenario generation
+    └── servers/            # MCP tool servers (IoT, FMSR, TSFM, WO, Vibration, Utilities)
 ```
 
 ---
@@ -98,104 +124,131 @@ Replace the numbers below with your measured values. Add or remove rows to fit y
 
 ```bash
 # Clone
-git clone https://github.com/<org>/<repo>.git
-cd <repo>
-
-# (Recommended) create a clean Python environment
-python -m venv .venv && source .venv/bin/activate
-
-# Install pinned dependencies
-pip install -r requirements.txt
+git clone https://github.com/Rohith-Kanathur/AssetOpsBench.git
+cd AssetOpsBench
 ```
 
-**System requirements:** Python 3.10+, CUDA 12.x, ≥ 24 GB GPU memory for [model X]. See `requirements.txt` for pinned package versions.
+Run from the **repo root**:
+
+```bash
+uv sync
+```
+
+Activate Virtual Environment
+```bash
+source .venv/bin/activate   # macOS / Linux
+```
+
+Copy `.env.public` to `.env`
+```bash
+cp .env.public .env
+# Then edit .env and set WATSONX_APIKEY, WATSONX_PROJECT_ID, WATSONX_URL
+```
+
+Start CouchDB
+
+```bash
+docker compose -f src/couchdb/docker-compose.yaml up -d
+```
+
+Verify CouchDB is running:
+
+```bash
+curl -X GET http://localhost:5984/
+```
 
 ### B. Experiment Tracking Dashboard
 
-Public experiment-tracking dashboard with training and evaluation metrics, system profiling, and baseline vs. optimized comparisons:
-
-> **🔗 Dashboard:** [https://wandb.ai/&lt;team&gt;/&lt;project&gt;](https://wandb.ai/team/project)
->
-> *Platform used:* [Weights & Biases / MLflow / TensorBoard / Comet / Neptune / other]
-
-Verify the link opens in an incognito browser. The dashboard includes a curated **report** that walks through the optimization story. If your platform does not support public links (e.g., self-hosted MLflow), a static export is committed under `results/dashboard/` instead.
+Weights & Biases is used for run-level tracking. Logging is done for scenario generation and evaluation stages. Metrics captured: phase wise timing, llm call metrics, cache hit/miss metrics, valid/invalid scenario count and scenario evaluation scores.
+> **🔗 Dashboard:** [https://wandb.ai/rk3443-columbia-university/assetopsbench]
+> *Platform used:* [Weights & Biases]
 
 ### C. Dataset
 
-```bash
-bash scripts/download_dataset.sh
-# or follow the manual instructions in docs/data.md
-```
+Dataset used for Health Index Prediction FMSR tool is available here: https://data.mendeley.com/datasets/rz75w3fkxy/1
 
-The dataset is *not* committed to the repository. The script fetches it from [source] (license: [license]) and stores it under `data/`.
+The scenarios generated from our pipeline are available on Huggingface: TODO
 
 ### D. Training
 
 To reproduce the baseline:
 
 ```bash
-python src/train.py --config configs/baseline.yaml
+uv run python -m scenarios_profiling.generator Transformer --num-scenarios 50 --data-in-couchdb --profile --profile-dir profiling_output/exp1_latency_baseline
 ```
 
 To reproduce the optimized run:
 
 ```bash
-python src/train.py --config configs/optimized.yaml
+uv run python -m scenarios_optimization.generator Transformer --num-scenarios 50 --data-in-couchdb --profile --profile-dir profiling_output/exp1_latency_optimized
+```
+
+To reproduce the run with wandb logging, run:
+
+```bash
+uv run python -m scenarios_wandb.generator Transformer \
+  --data-in-couchdb \
+  --num-scenarios 50 \
+  --wandb \
+  --wandb-project assetopsbench \
+  --wandb-run-name transformer-50-openform
 ```
 
 ### E. Evaluation
 
 ```bash
-python src/eval.py --weights checkpoints/best_model.pth --config configs/optimized.yaml
+uv run python src/scenarios_evaluation eval_scenarios_wandb.py --wandb --wandb-project assetopsbench --wandb-run-name transformer-eval-50
 ```
 
 ### F. Profiling
 
-To regenerate the profiler traces referenced in the report:
-
-```bash
-python src/profile.py --config configs/optimized.yaml --output results/trace.json
-# View in chrome://tracing or perfetto.dev
-```
+To visualize the profiler traces referenced in the report:
+1. Run the pipelines as suggested in section `D. Training`.
+2. Profiling traces are available in `profiling_output/`
+3. Open the chrome trace json files on `https://ui.perfetto.dev/`
 
 ### G. Quickstart: Reproduce the Headline Result
 
-The following sequence reproduces the headline number in Section 3 end-to-end (≈ XX minutes on a single A100):
 
+To reproduce the headline result in `Section 3: Final Results Summary`:
+
+Run the baseline once:
 ```bash
-# 1. Set up environment
-pip install -r requirements.txt
-
-# 2. Download dataset
-bash scripts/download_dataset.sh
-
-# 3. Run optimized training (or skip if checkpoint provided in releases)
-bash scripts/run_optimized.sh
-
-# 4. Evaluate
-python src/eval.py --weights checkpoints/best_model.pth
+uv run python -m scenarios_profiling.generator Transformer --num-scenarios 50 --data-in-couchdb --profile --profile-dir profiling_output/exp1_latency_baseline
 ```
+
+Run the optimized variant twice (To see the effect of caching):
+```bash
+uv run python -m scenarios_optimization.generator Transformer --num-scenarios 50 --data-in-couchdb --profile --profile-dir profiling_output/exp1_latency_optimized
+```
+
+Open the chrome traces present in `profiling_output/` on https://ui.perfetto.dev/.
+
 
 ---
 
 ## 6. Results and Observations
 
-A short narrative (3–6 bullets) summarizing what you found. Include 1–2 representative figures from `results/` directly in this README so a reader gets the gist without opening Wandb.
+- **Exp 1 - Scalability (Baseline vs. Optimized, N=10/25/50):** The unoptimized baseline spends 80–96% of its total wall time on Phase 1 (Build Asset Profile: 326–448 s), dominated by sequential academic retrieval, PDF fetching, and LLM synthesis. The optimized pipeline with a warm two-level cache reduces this phase to 0 s, yielding end-to-end speedups of **34×** (N=10), **20×** (N=25), and **8×** (N=50). The decreasing ratio at larger N reflects the growing share of scenario-generation phases, which scale with budget but remain well below baseline even at N=50.
 
-- *Optimization 1 (e.g., torch.compile + bfloat16):* X% latency reduction, attributable to [reason].
-- *Optimization 2 (e.g., FlashAttention-2):* Y% memory reduction at long context lengths.
-- *Optimization 3 (e.g., paged KV cache):* Z× throughput gain at batch size 32.
-- *What did not work:* [briefly note any optimization that failed or regressed performance, and why you think it failed].
+- **Exp 2 - Parallelism (C=1→5 parallel focus groups, N=50):** Increasing C from fully serial (C=1, 87.4 s) to C=5 (47.3 s) delivers a **1.85× speedup**. Phase 3 (Generate & Validate Single-Agent) shows the sharpest gains: 43.9 s → 17.6 s. Returns diminish beyond C=3, suggesting that LLM API rate limits and network latency become the bottleneck at higher concurrency, not local CPU or I/O.
 
-![Baseline vs Optimized latency](results/figures/latency_comparison.png)
+- **Exp 3 - Caching (cold vs. warm cache, N=50):** A single cold run primes the disk cache; all subsequent warm runs skip Phase 1 entirely (247.4 s → 0 s), reducing total pipeline time from 302.5 s to 65.1 s, a **4.6× speedup** with no changes to generation logic. The minor increase in Phase 4 (35.3 s → 45.6 s warm) is within normal LLM API latency variance.
+
+- **Exp 4 - Combined optimizations under cold cache (Baseline vs. Optimized, both cold):** Isolating the non-caching gains; thread-pool I/O offloading and parallel focus execution; the optimized variant still achieves a **1.52× end-to-end speedup** (408.4 s → 269.0 s). Phase 1 improves by 33% (325.7 s → 216.9 s) from concurrent PDF/DB/retrieval requests; Phase 3 improves by **2.65×** (38.8 s → 14.7 s) from parallel focus-group generation.
+
+- **Quality (Baseline vs. Optimized, N=50, n=3 runs):** Speed gains come at zero quality cost. Composite quality scores are statistically indistinguishable: **74.2 ± 1.9** (optimized) vs. **73.8 ± 3.0** (baseline). Both exceed the 70-point high-quality threshold.
 
 ---
 
 ## 7. Notes
 
-- Source files live under `src/`, configuration under `configs/`, and scripts under `scripts/`.
-- Trained checkpoints are stored in [GitHub Releases / Hugging Face Hub / external bucket] — see `docs/checkpoints.md`.
-- All secrets (API keys, Wandb tokens) are loaded from environment variables. See `.env.example`.
+- All source code lives under `src/`. See Section 4 for a directory-level description of each package.
+- Profiler Chrome traces from reported experiments will be created under `profiling_output/`. Load any `chrome_trace.json` at [https://ui.perfetto.dev](https://ui.perfetto.dev) for a visual flame chart.
+- All secrets (API keys, WatsonX credentials, W&B tokens) are loaded from environment variables. Copy `.env.public` to `.env` and fill in `WATSONX_APIKEY`, `WATSONX_PROJECT_ID`, and `WATSONX_URL` before running any pipeline command.
+- The health index regression model for the Smart Grid Transformer FMSR tool is trained on the [Mendeley Transformer Health Dataset](https://data.mendeley.com/datasets/rz75w3fkxy/1) (open access).
+- LLM inference runs on remote IBM WatsonX infrastructure. GPU utilisation metrics captured by W&B therefore reflect only local host activity and do not measure true model-serving compute cost.
+- The W&B project for this work is public: [https://wandb.ai/rk3443-columbia-university/assetopsbench](https://wandb.ai/rk3443-columbia-university/assetopsbench).
 
 ### AI Use Disclosure
 
@@ -204,15 +257,15 @@ A short narrative (3–6 bullets) summarizing what you found. Include 1–2 repr
 **Did your team use any AI tool in completing this project?**
 
 - [ ] No, we did not use any AI tool.
-- [ ] Yes, we used AI assistance as described below.
+- [X] Yes, we used AI assistance as described below.
 
-**Tool(s) used:** *e.g., ChatGPT, Claude, GitHub Copilot, Cursor*
+**Tool(s) used:** *e.g., Claude, Cursor*
 
-**Specific purpose:** *e.g., debugged a CUDA OOM error, clarified SM occupancy, polished prose in the report's introduction*
+**Specific purpose:** **
 
-**Sections affected:** *e.g., src/profile.py setup, README §6 results narrative, report §V Discussion*
+**Sections affected:** **
 
-**How we verified correctness:** *e.g., re-ran every reported experiment ourselves; confirmed profiler-trace interpretations against the raw traces in results/; rewrote AI-suggested code in our own words and confirmed it produces the same numbers as the version we hand-wrote.*
+**How we verified correctness:** **
 
 By submitting this project, the team confirms that the analysis, interpretations, and conclusions are our own, and that any AI assistance is fully disclosed above. The same disclosure block appears as an appendix in the final report.
 
