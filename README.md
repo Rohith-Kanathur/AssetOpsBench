@@ -168,8 +168,6 @@ Weights & Biases is used for run-level tracking. Logging is done for scenario ge
 
 Dataset used for Health Index Prediction FMSR tool is available here: https://data.mendeley.com/datasets/rz75w3fkxy/1
 
-The scenarios generated from our pipeline are available on Huggingface: TODO
-
 ### D. Training
 
 To reproduce the baseline:
@@ -277,6 +275,12 @@ Open the chrome traces present in `profiling_output/` on https://ui.perfetto.dev
 
 
 By submitting this project, the team confirms that the analysis, interpretations, and conclusions are our own, and that any AI assistance is fully disclosed above.
+
+### Novelty and Contribution
+
+Open source Pull Request Submitted to AssetOpsBench: TODO
+
+The scenarios generated from our pipeline are available on Huggingface: TODO
 
 ### License
 
