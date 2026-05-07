@@ -127,5 +127,5 @@ class Planner:
             f"{name}:\n{desc}" for name, desc in server_descriptions.items()
         )
         prompt = _PLAN_PROMPT.format(servers=servers_text, question=question)
-        result = self._llm.generate(prompt)
-        return parse_plan(result.text)
+        raw = self._llm.generate(prompt)
+        return parse_plan(raw)

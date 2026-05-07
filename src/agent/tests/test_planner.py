@@ -5,20 +5,20 @@ from agent.plan_execute.planner import Planner, parse_plan
 _TWO_STEP = """\
 #Task1: List all available IoT sites
 #Server1: iot
-#Tool1: get_sites
+#Tool1: sites
 #Dependency1: None
 #ExpectedOutput1: A list of site names
 
 #Task2: Get assets at site MAIN
 #Server2: iot
-#Tool2: get_assets
+#Tool2: assets
 #Dependency2: #S1
 #ExpectedOutput2: A list of asset IDs"""
 
 _MULTI_DEP = """\
 #Task1: Get sites
 #Server1: iot
-#Tool1: get_sites
+#Tool1: sites
 #Dependency1: None
 #ExpectedOutput1: Sites
 
@@ -59,8 +59,8 @@ class TestParsePlan:
 
     def test_tool_names(self):
         plan = parse_plan(_TWO_STEP)
-        assert plan.steps[0].tool == "get_sites"
-        assert plan.steps[1].tool == "get_assets"
+        assert plan.steps[0].tool == "sites"
+        assert plan.steps[1].tool == "assets"
 
     def test_tool_name_signature_stripped(self):
         """LLM sometimes copies the 'tool(params)' format from server descriptions.
@@ -70,18 +70,18 @@ class TestParsePlan:
         raw = (
             "#Task1: Get sites\n"
             "#Server1: iot\n"
-            "#Tool1: get_sites()\n"
+            "#Tool1: sites()\n"
             "#Dependency1: None\n"
             "#ExpectedOutput1: Sites\n\n"
             "#Task2: Get assets\n"
             "#Server2: iot\n"
-            "#Tool2: get_assets(site_name: string)\n"
+            "#Tool2: assets(site_name: string)\n"
             "#Dependency2: #S1\n"
             "#ExpectedOutput2: Assets"
         )
         plan = parse_plan(raw)
-        assert plan.steps[0].tool == "get_sites"
-        assert plan.steps[1].tool == "get_assets"
+        assert plan.steps[0].tool == "sites"
+        assert plan.steps[1].tool == "assets"
 
     def test_tool_args_always_empty(self):
         """Planner no longer generates args — tool_args is always {}."""
@@ -122,13 +122,13 @@ class TestParsePlan:
         raw = (
             "#Task1: Get sites\n"
             "#Server1: iot\n"
-            "#Tool1: get_sites\n"
+            "#Tool1: sites\n"
             "#Args1: {}\n"
             "#Dependency1: None\n"
             "#ExpectedOutput1: Sites\n\n"
             "#Task2: Get assets\n"
             "#Server2: iot\n"
-            "#Tool2: get_assets\n"
+            "#Tool2: assets\n"
             '#Args2: {"site_name": "MAIN"}\n'
             "#Dependency2: #S1\n"
             "#ExpectedOutput2: Assets"
@@ -144,13 +144,11 @@ class TestPlanner:
         planner = Planner(llm)
         plan = planner.generate_plan(
             "List all assets",
-            {
-                "iot": "  - get_sites(): List sites\n  - get_assets(site_name: string): List assets"
-            },
+            {"iot": "  - sites(): List sites\n  - assets(site_name: string): List assets"},
         )
         assert len(plan.steps) == 2
         assert plan.steps[0].server == "iot"
-        assert plan.steps[1].tool == "get_assets"
+        assert plan.steps[1].tool == "assets"
 
     def test_generate_plan_prompt_contains_question(self, mock_llm, monkeypatch):
         captured = []
@@ -160,7 +158,7 @@ class TestPlanner:
 
         Planner(llm).generate_plan(
             "What sensors exist for CH-1?",
-            {"iot": "  - get_sites(): List sites"},
+            {"iot": "  - sites(): List sites"},
         )
         assert "What sensors exist for CH-1?" in captured[0]
 
@@ -172,10 +170,7 @@ class TestPlanner:
 
         Planner(llm).generate_plan(
             "Q",
-            {
-                "iot": "  - get_sites(): List sites",
-                "utilities": "  - current_date_time(): Get time",
-            },
+            {"iot": "  - sites(): List sites", "utilities": "  - current_date_time(): Get time"},
         )
         assert "iot" in captured[0]
         assert "utilities" in captured[0]
@@ -187,5 +182,5 @@ class TestPlanner:
         original = llm.generate
         llm.generate = lambda p, **kw: (captured.append(p), original(p))[1]
 
-        Planner(llm).generate_plan("Q", {"iot": "  - get_sites(): List sites"})
+        Planner(llm).generate_plan("Q", {"iot": "  - sites(): List sites"})
         assert "#Args" not in captured[0]

@@ -28,9 +28,9 @@ from ..runner import AgentRunner
 class _TokenMeter(LLMBackend):
     """Wraps an :class:`LLMBackend` and sums token usage across calls.
 
-    ``Planner`` / ``Executor`` call :meth:`generate` and use :attr:`LLMResult.text`;
-    this wrapper transparently accumulates token fields from the inner backend's
-    :meth:`generate_with_usage` on every call.  Totals are
+    ``Planner`` / ``Executor`` call ``generate()`` and only need a string;
+    this wrapper transparently pulls usage from the inner backend's
+    ``generate_with_usage()`` and accumulates it in-place.  Totals are
     reset at the start of each :meth:`PlanExecuteRunner.run` call so
     per-run span attributes reflect that run alone.
     """
@@ -44,24 +44,16 @@ class _TokenMeter(LLMBackend):
         self.input_tokens = 0
         self.output_tokens = 0
 
-    def generate(
-        self,
-        prompt: str,
-        temperature: float = 0.0,
-        max_tokens: int | None = None,
-    ) -> LLMResult:
-        result = self._inner.generate_with_usage(prompt, temperature, max_tokens)
+    def generate(self, prompt: str, temperature: float = 0.0) -> str:
+        result = self._inner.generate_with_usage(prompt, temperature)
         self.input_tokens += result.input_tokens
         self.output_tokens += result.output_tokens
-        return result
+        return result.text
 
     def generate_with_usage(
-        self,
-        prompt: str,
-        temperature: float = 0.0,
-        max_tokens: int | None = None,
+        self, prompt: str, temperature: float = 0.0
     ) -> LLMResult:
-        result = self._inner.generate_with_usage(prompt, temperature, max_tokens)
+        result = self._inner.generate_with_usage(prompt, temperature)
         self.input_tokens += result.input_tokens
         self.output_tokens += result.output_tokens
         return result
@@ -162,7 +154,7 @@ class PlanExecuteRunner(AgentRunner):
             summarization_started = time.perf_counter()
             answer = self._meter.generate(
                 _SUMMARIZE_PROMPT.format(question=question, results=results_text)
-            ).text
+            )
             summarization_ms = (time.perf_counter() - summarization_started) * 1000
             duration_ms = (time.perf_counter() - run_started) * 1000
 

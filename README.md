@@ -137,7 +137,7 @@ Explore all scenarios [HF-Dataset](https://huggingface.co/datasets/ibm-research/
 ## AI Agents
 ### Domain-Specific Agents (Important tools)
 - **IoT Agent**: `get_sites`, `get_history`, `get_assets`, `get_sensors`  
-- **FMSR Agent**: `get_failure_modes`, `get_failure_mode_sensor_mapping`, …  
+- **FMSR Agent**: `get_sensors`, `get_failure_modes`, `get_failure_sensor_mapping`  
 - **TSFM Agent**: `forecasting`, `timeseries_anomaly_detection`  
 - **WO Agent**: `generate_work_order`  
 

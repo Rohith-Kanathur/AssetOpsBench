@@ -4,25 +4,15 @@ This directory contains the MCP servers and infrastructure for the AssetOpsBench
 
 ## Contents
 
-- [AssetOpsBench MCP Environment](#assetopsbench-mcp-environment)
-  - [Contents](#contents)
-  - [Prerequisites](#prerequisites)
-  - [Quick Start](#quick-start)
-    - [1. Install dependencies](#1-install-dependencies)
-    - [2. Configure environment](#2-configure-environment)
-    - [3. Start CouchDB](#3-start-couchdb)
-    - [4. Run an agent](#4-run-an-agent)
-  - [Environment Variables](#environment-variables)
-  - [MCP Servers](#mcp-servers)
-  - [Example queries](#example-queries)
-  - [Agents](#agents)
-    - [Usage](#usage)
-    - [Common flags](#common-flags)
-    - [Runner-specific flags](#runner-specific-flags)
-    - [Examples](#examples)
-  - [Observability](#observability)
-  - [Running Tests](#running-tests)
-  - [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Environment Variables](#environment-variables)
+- [MCP Servers](#mcp-servers) — full reference in [docs/mcp-servers.md](docs/mcp-servers.md)
+- [Example queries](#example-queries)
+- [Agents](#agents)
+- [Observability](#observability)
+- [Running Tests](#running-tests)
+- [Architecture](#architecture)
 
 ---
 

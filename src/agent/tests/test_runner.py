@@ -23,7 +23,7 @@ from llm import LLMBackend, LLMResult
 _TWO_STEP_PLAN = """\
 #Task1: Get IoT sites
 #Server1: iot
-#Tool1: get_sites
+#Tool1: sites
 #Dependency1: None
 #ExpectedOutput1: List of site names
 
@@ -36,7 +36,7 @@ _TWO_STEP_PLAN = """\
 _FINAL_ANSWER = "Sites: MAIN. Current time: 2026-02-18T13:00:00."
 
 _MOCK_TOOLS = [
-    {"name": "get_sites", "description": "List IoT sites", "parameters": []},
+    {"name": "sites", "description": "List IoT sites", "parameters": []},
     {"name": "current_date_time", "description": "Get current datetime", "parameters": []},
 ]
 _TOOL_RESPONSE = json.dumps({"sites": ["MAIN"]})
@@ -61,7 +61,7 @@ def _patch_mcp(tool_response: str = _TOOL_RESPONSE):
 def _make_step(
     n: int,
     server: str = "iot",
-    tool: str = "get_sites",
+    tool: str = "sites",
     deps: list[int] | None = None,
     expected_output: str = "",
 ) -> PlanStep:
@@ -83,14 +83,9 @@ class _CapturingLLM:
         self.prompts: list[str] = []
         self._response = response
 
-    def generate(self, prompt: str, **_kw) -> LLMResult:
+    def generate(self, prompt: str, **_kw) -> str:
         self.prompts.append(prompt)
-        return LLMResult(
-            text=self._response,
-            input_tokens=1,
-            output_tokens=1,
-            total_tokens=2,
-        )
+        return self._response
 
 
 # ── orchestrator tests ────────────────────────────────────────────────────────
@@ -147,27 +142,14 @@ class _UsageReportingLLM(LLMBackend):
     def __init__(self, items: list[tuple[str, int, int]]) -> None:
         self._items = iter(items)
 
-    def generate(
-        self,
-        prompt: str,
-        temperature: float = 0.0,
-        max_tokens: int | None = None,
-    ) -> LLMResult:
-        return self.generate_with_usage(prompt, temperature, max_tokens)
+    def generate(self, prompt: str, temperature: float = 0.0) -> str:
+        return self.generate_with_usage(prompt, temperature).text
 
     def generate_with_usage(
-        self,
-        prompt: str,
-        temperature: float = 0.0,
-        max_tokens: int | None = None,
+        self, prompt: str, temperature: float = 0.0
     ) -> LLMResult:
         text, in_tok, out_tok = next(self._items, ("", 0, 0))
-        return LLMResult(
-            text=text,
-            input_tokens=in_tok,
-            output_tokens=out_tok,
-            total_tokens=in_tok + out_tok,
-        )
+        return LLMResult(text=text, input_tokens=in_tok, output_tokens=out_tok)
 
 
 @pytest.mark.anyio
@@ -261,7 +243,7 @@ async def test_executor_step_result_carries_resolved_args(sequential_llm):
     llm = sequential_llm(['{"site_name": "MAIN"}'])
     executor = Executor(llm, server_paths={"iot": Path("/fake/server.py")})
 
-    step = _make_step(1, tool="get_assets")
+    step = _make_step(1, tool="assets")
     with (
         patch("agent.plan_execute.executor._list_tools", new=AsyncMock(return_value=_MOCK_TOOLS)),
         patch("agent.plan_execute.executor._call_tool", new=AsyncMock(return_value="{}")),
@@ -279,7 +261,7 @@ async def test_executor_tool_call_exception_recorded_as_error(sequential_llm):
     llm = sequential_llm(['{}'])
     executor = Executor(llm, server_paths={"iot": Path("/fake/server.py")})
 
-    step = _make_step(1, tool="get_sites")
+    step = _make_step(1, tool="sites")
     with (
         patch("agent.plan_execute.executor._list_tools", new=AsyncMock(return_value=_MOCK_TOOLS)),
         patch("agent.plan_execute.executor._call_tool", new=AsyncMock(side_effect=RuntimeError("timeout"))),
@@ -296,15 +278,15 @@ async def test_executor_calls_llm_to_generate_args(sequential_llm):
     from pathlib import Path
 
     llm = sequential_llm([
-        '{}',                                       # step 1: get_sites (no args)
-        '{"site_name": "MAIN", "asset_id": "CH-1"}',  # step 2: get_sensors
+        '{}',                                       # step 1: sites (no args)
+        '{"site_name": "MAIN", "asset_id": "CH-1"}',  # step 2: sensors
     ])
     executor = Executor(llm, server_paths={"iot": Path("/fake/server.py")})
 
     plan = Plan(
         steps=[
-            _make_step(1, tool="get_sites"),
-            _make_step(2, tool="get_sensors", deps=[1]),
+            _make_step(1, tool="sites"),
+            _make_step(2, tool="sensors", deps=[1]),
         ],
         raw="",
     )
@@ -334,8 +316,8 @@ async def test_executor_prior_step_results_in_llm_prompt():
 
     plan = Plan(
         steps=[
-            _make_step(1, tool="get_sites"),
-            _make_step(2, tool="get_sensors", deps=[1]),
+            _make_step(1, tool="sites"),
+            _make_step(2, tool="sensors", deps=[1]),
         ],
         raw="",
     )
@@ -359,7 +341,7 @@ async def test_executor_no_prior_context_shows_none_in_prompt():
     llm = _CapturingLLM('{}')
     executor = Executor(llm, server_paths={"iot": Path("/fake/server.py")})  # type: ignore[arg-type]
 
-    step = _make_step(1, tool="get_sites")
+    step = _make_step(1, tool="sites")
     with (
         patch("agent.plan_execute.executor._list_tools", new=AsyncMock(return_value=_MOCK_TOOLS)),
         patch("agent.plan_execute.executor._call_tool", new=AsyncMock(return_value="{}")),
@@ -379,9 +361,9 @@ async def test_executor_context_accumulates_across_steps():
 
     plan = Plan(
         steps=[
-            _make_step(1, tool="get_sites"),
-            _make_step(2, tool="get_assets", deps=[1]),
-            _make_step(3, tool="get_sensors", deps=[2]),
+            _make_step(1, tool="sites"),
+            _make_step(2, tool="assets", deps=[1]),
+            _make_step(3, tool="sensors", deps=[2]),
         ],
         raw="",
     )
@@ -404,18 +386,18 @@ async def test_pipeline_uses_llm_args_for_each_step(sequential_llm):
     planner_output = (
         "#Task1: Get IoT sites\n"
         "#Server1: iot\n"
-        "#Tool1: get_sites\n"
+        "#Tool1: sites\n"
         "#Dependency1: None\n"
         "#ExpectedOutput1: List of site names\n\n"
         "#Task2: Get assets at the site from step 1\n"
         "#Server2: iot\n"
-        "#Tool2: get_assets\n"
+        "#Tool2: assets\n"
         "#Dependency2: #S1\n"
         "#ExpectedOutput2: List of assets"
     )
     llm = sequential_llm([
         planner_output,            # planner call
-        '{}',                      # arg resolution for step 1 (get_sites needs no args)
+        '{}',                      # arg resolution for step 1 (sites needs no args)
         '{"site_name": "MAIN"}',   # arg resolution for step 2 (uses step 1 result)
         "Final answer.",           # summarisation
     ])
@@ -441,7 +423,7 @@ async def test_resolve_args_with_llm_uses_context(mock_llm):
     ctx = {1: StepResult(step_number=1, task="t", server="a",
                          response='{"assets": ["CH-1", "CH-2"]}')}
     result = await _resolve_args_with_llm(
-        "What sensors does CH-1 have?", "get sensors", "get_sensors", "", ctx, llm,
+        "What sensors does CH-1 have?", "get sensors", "sensors", "", ctx, llm,
     )
     assert result["asset_id"] == "CH-1"
 
@@ -458,7 +440,7 @@ async def test_resolve_args_with_llm_fallback_on_bad_json(mock_llm):
 async def test_resolve_args_with_llm_question_in_prompt():
     llm = _CapturingLLM('{"site_name": "MAIN"}')
     await _resolve_args_with_llm(
-        "What sites exist?", "List sites", "get_sites", "", {}, llm  # type: ignore[arg-type]
+        "What sites exist?", "List sites", "sites", "", {}, llm  # type: ignore[arg-type]
     )
     assert "What sites exist?" in llm.prompts[0]
 
@@ -466,8 +448,8 @@ async def test_resolve_args_with_llm_question_in_prompt():
 @pytest.mark.anyio
 async def test_resolve_args_with_llm_tool_in_prompt():
     llm = _CapturingLLM('{}')
-    await _resolve_args_with_llm("Q", "List IoT sites", "get_sites", "", {}, llm)  # type: ignore[arg-type]
-    assert "get_sites" in llm.prompts[0]
+    await _resolve_args_with_llm("Q", "List IoT sites", "sites", "", {}, llm)  # type: ignore[arg-type]
+    assert "sites" in llm.prompts[0]
 
 
 @pytest.mark.anyio
@@ -475,7 +457,7 @@ async def test_resolve_args_with_llm_schema_in_prompt():
     """Tool parameter schema appears in the prompt so LLM uses correct names."""
     llm = _CapturingLLM('{"site_name": "MAIN"}')
     await _resolve_args_with_llm(  # type: ignore[arg-type]
-        "Q", "List assets", "get_assets", "site_name: string", {}, llm
+        "Q", "List assets", "assets", "site_name: string", {}, llm
     )
     assert "site_name: string" in llm.prompts[0]
 
@@ -555,16 +537,16 @@ def test_parse_json_empty_object_returns_empty_dict():
 
 
 def test_parse_tool_call_plain_json():
-    raw = '{"tool": "get_sites", "args": {}}'
+    raw = '{"tool": "sites", "args": {}}'
     result = _parse_tool_call(raw)
-    assert result["tool"] == "get_sites"
+    assert result["tool"] == "sites"
     assert result["args"] == {}
 
 
 def test_parse_tool_call_with_markdown_fence():
-    raw = '```json\n{"tool": "get_history", "args": {"site_name": "MAIN"}}\n```'
+    raw = '```json\n{"tool": "history", "args": {"site_name": "MAIN"}}\n```'
     result = _parse_tool_call(raw)
-    assert result["tool"] == "get_history"
+    assert result["tool"] == "history"
     assert result["args"]["site_name"] == "MAIN"
 
 
@@ -576,9 +558,9 @@ def test_parse_tool_call_null_tool():
 
 
 def test_parse_tool_call_embedded_json():
-    raw = 'Here is my response: {"tool": "get_sites", "args": {}} done.'
+    raw = 'Here is my response: {"tool": "sites", "args": {}} done.'
     result = _parse_tool_call(raw)
-    assert result["tool"] == "get_sites"
+    assert result["tool"] == "sites"
 
 
 def test_parse_tool_call_unrecoverable_returns_direct_answer():
