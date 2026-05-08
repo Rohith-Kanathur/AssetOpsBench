@@ -276,11 +276,11 @@ Open the chrome traces present in `profiling_output/` on https://ui.perfetto.dev
 
 By submitting this project, the team confirms that the analysis, interpretations, and conclusions are our own, and that any AI assistance is fully disclosed above.
 
-### Novelty and Contribution
+## 8. Bonus
 
-Open source Pull Request Submitted to AssetOpsBench: TODO
+Open source Pull Request Submitted to AssetOpsBench: https://github.com/IBM/AssetOpsBench/pull/288
 
-The scenarios generated from our pipeline are available on Huggingface: TODO
+The scenarios generated from our pipeline are available on Huggingface: https://huggingface.co/datasets/rohithkanathur/assetopsbench-transformer-scenarios-dataset
 
 ### License
 
