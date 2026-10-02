@@ -21,20 +21,50 @@ PYTHONPATH=src python -m scenarios.generation --asset-class Transformer
 ```
 
 After installing the project, the equivalent command is
-`scenario-generate --asset-class Transformer`. Defaults: five scenarios across
-IoT, FMSR, TSFM, WO and Vibration; Codex / GPT-6 Astra / `xhigh` / `fast`.
+`scenario-generate --asset-class Transformer`. Defaults: 50 positive and 2 negative
+scenarios, allocated by the agent; Codex / GPT-6 Astra / `xhigh` / `fast`.
 
 ```bash
-scenario-generate run /path/to/run --asset-class Chiller --count 2 --domains IoT WO
+scenario-generate --asset-class Transformer --scenario-counts '{"positive":5,"negative":1}'
+scenario-generate --asset-class Transformer --scenario-plan '{"iot":{"positive":2,"negative":1},"multiagent":{"positive":1}}'
 scenario-generate run /path/to/run --followup "Check the unresolved source claims."
 scenario-generate check /path/to/run
 scenario-generate stop /path/to/run
 ```
 
-Override generation settings with `--harness`, `--model`, `--reasoning-effort`
-and `--service-tier`. Codex is implemented today; `harnesses.py` contains the
-command-builder boundary for future clients. Requested settings and prompt hashes
-are saved with each invocation. Unsupported model settings surface as CLI errors.
+## Arguments
+
+| Argument | Meaning / default |
+| --- | --- |
+| `[action]` | `run` (default), `check`, `stop`, or `build`. |
+| `[directory]` | New output directory or saved run. New runs default to the local cache. |
+| `--asset-class NAME` | Required for a new generation. |
+| `--scenario-counts JSON` | Positive/negative totals; the agent chooses the domain mix. Defaults to 50 positive, 2 negative. |
+| `--scenario-plan JSON` | Exact positive/negative counts per domain. Mutually exclusive with totals. |
+| `--harness NAME` | `codex`, currently the only implementation. |
+| `--model MODEL` | `gpt-6-astra`. |
+| `--reasoning-effort LEVEL` | `xhigh`. |
+| `--service-tier TIER` | `fast`. |
+| `--repository PATH` | Environment source checkout; current directory. |
+| `--ref REF` | Committed environment revision; `HEAD`. |
+| `--followup TEXT` | Fresh session continuing saved files and database; retains the saved budget. |
+| `-h`, `--help` | Show usage. |
+
+Plan keys are `iot`, `fmsr`, `tsfm`, `wo`, `vibration`, and `multiagent`.
+Each value contains `positive` and/or `negative` nonnegative integers; omitted
+entries mean zero. At least one scenario is required. Capitalized domain names
+and `multi-agent` are normalized. `multiagent` combines at least two tool domains.
+
+A positive scenario must be answerable with the environment; a negative scenario
+intentionally tests an unsupported request or missing evidence. This budget counts
+scenarios, not tokens or money. The agent saves its allocation and reports any
+shortfall without substituting one polarity for another. `check` enforces both
+the supplied budget and the per-domain allocation. There are no separate count or
+domain flags.
+
+Requested model settings and prompt hashes are saved per invocation. Unsupported
+model settings surface as CLI errors. `harnesses.py` is the boundary for future
+clients; authentication stays with the native client.
 
 ## Environment
 

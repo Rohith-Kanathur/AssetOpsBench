@@ -7,8 +7,8 @@ import json
 from pathlib import Path
 from typing import Callable
 
+from .budget import DOMAINS, validate_budget
 
-DOMAINS = {"IoT", "FMSR", "TSFM", "WO", "Vibration"}
 
 
 def local_file(workspace: Path, name: str) -> Path:
@@ -45,8 +45,7 @@ def check_contract(workspace: Path) -> dict:
             actual = hashlib.sha256(path.read_bytes()).hexdigest()
             if actual != evidence["sha256"]:
                 errors.append(f"Source checksum mismatch: {evidence['path']}")
-    if len(scenarios) != request["count"] or {s["type"] for s in scenarios} != set(request["domains"]):
-        errors.append("Scenario count or domains do not match request.json")
+    errors.extend(validate_budget(request, scenarios, read_json(workspace, "output/allocation.json")))
     if len({s["id"] for s in scenarios}) != len(scenarios):
         errors.append("Duplicate scenario IDs")
     check_ids = {item["scenario_id"] for item in checks}
@@ -61,6 +60,12 @@ def check_contract(workspace: Path) -> dict:
             errors.append(f"Scenario {sid}: unresolved source IDs")
         if sid not in check_ids:
             errors.append(f"Scenario {sid}: missing tool checks")
+        if scenario.get("positive") is True and scenario.get("type") == "multiagent":
+            servers = {call["tool"].split(".", 1)[0]
+                       for check in checks if check["scenario_id"] == sid
+                       for call in check.get("calls", [])}
+            if len(servers & (set(DOMAINS) - {"multiagent"})) < 2:
+                errors.append(f"Scenario {sid}: positive multiagent tool checks must span at least two domain servers")
         if scenario.get("positive") is False and not scenario.get("missing_evidence"):
             errors.append(f"Scenario {sid}: missing insufficient-data explanation")
     for check in checks:
@@ -103,7 +108,7 @@ def check_grounding(scenarios: list[dict], invoke: Callable) -> tuple[list[str],
         detail = call(sid, "iot.asset_detail", args)
         if detail.get("asset_id") != asset or detail.get("site_name") != site:
             errors.append(f"Scenario {sid}: unresolved asset/site")
-        if scenario["type"] == "Vibration":
+        if str(scenario.get("type", "")).lower() == "vibration":
             result = call(sid, "vibration.list_vibration_sensors", args)
             if not result.get("sensors"):
                 errors.append(f"Scenario {sid}: no vibration sensors")

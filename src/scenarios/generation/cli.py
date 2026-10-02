@@ -8,7 +8,7 @@ import uuid
 
 from . import runtime
 from .harnesses import DEFAULT_MODEL, DEFAULT_REASONING, DEFAULT_TIER, HARNESSES
-from .review import DOMAINS
+from .budget import parse_budget
 from .workspace import audit_baseline, prepare
 
 
@@ -18,8 +18,11 @@ def main(argv=None):
     parser.add_argument("action", nargs="?", default="run", choices=("run", "check", "stop", "build"))
     parser.add_argument("directory", type=Path, nargs="?", help="Saved generation directory")
     parser.add_argument("--asset-class", help="Asset class to generate scenarios for")
-    parser.add_argument("--count", type=int, default=5, help="Number of scenarios")
-    parser.add_argument("--domains", nargs="+", choices=sorted(DOMAINS), default=sorted(DOMAINS))
+    budget = parser.add_mutually_exclusive_group()
+    budget.add_argument("--scenario-counts", metavar="JSON",
+                        help='Positive/negative totals to allocate (default: {"positive":50,"negative":2})')
+    budget.add_argument("--scenario-plan", metavar="JSON",
+                        help="Positive/negative counts per domain; omitted entries request zero")
     parser.add_argument("--repository", type=Path, default=Path.cwd(), help="Environment source checkout")
     parser.add_argument("--ref", default="HEAD", help="Committed environment revision")
     parser.add_argument("--harness", choices=HARNESSES, default="codex", help="Generation harness")
@@ -44,6 +47,13 @@ def main(argv=None):
             if not args.followup:
                 parser.error("directory already exists; use --followup to continue it")
             request = json.loads((destination / "workspace/request.json").read_text())
+            if args.scenario_counts is not None or args.scenario_plan is not None:
+                try:
+                    supplied = parse_budget(args.scenario_counts, args.scenario_plan)
+                except ValueError as exc:
+                    parser.error(str(exc))
+                if any(request.get(key) != value for key, value in supplied.items()):
+                    parser.error("follow-up budget must match the saved request")
             if args.asset_class and args.asset_class != request["asset_class"]:
                 parser.error("follow-up asset class must match the saved request")
         else:
@@ -51,26 +61,29 @@ def main(argv=None):
                 parser.error("--followup requires an existing generation directory")
             if not args.asset_class or not args.asset_class.strip():
                 parser.error("--asset-class is required for a new generation")
-            domains = list(dict.fromkeys(args.domains))
-            if args.count < len(domains):
-                parser.error("--count must allow at least one scenario per requested domain")
+            try:
+                budget = parse_budget(args.scenario_counts, args.scenario_plan)
+            except ValueError as exc:
+                parser.error(str(exc))
             prepare(args.repository.resolve(), destination, ref=args.ref)
             errors = audit_baseline(destination)
             if errors:
                 raise RuntimeError("\n".join(errors))
-            request = {"asset_class": args.asset_class, "count": args.count, "domains": domains}
+            request = {"asset_class": args.asset_class.strip(), **budget}
             (destination / "workspace/request.json").write_text(json.dumps(request, indent=2) + "\n")
         print(f"Generation directory: {destination}", flush=True)
         runtime.configure(destination, Path.home() / ".codex", Path.home() / ".kaggle")
         runtime.run(destination, args.model, args.followup, harness=args.harness,
                     reasoning_effort=args.reasoning_effort, service_tier=args.service_tier)
     elif args.action == "check":
-        review = Path(__file__).with_name("review.py").resolve()
+        package = Path(__file__).parent.resolve()
         runtime.start(destination)
         with (destination / "review.json").open("w") as out:
             runtime.compose(destination, "run", "--rm", "-T", "--volume",
-                            f"{review}:/opt/generation/review.py:ro", "agent", "python",
-                            "/opt/generation/review.py", stdout=out, timeout=300)
+                            f"{package}:/opt/review/scenarios/generation:ro",
+                            "--env", "PYTHONPATH=/opt/review:/workspace/src",
+                            "agent", "python", "-m", "scenarios.generation.review",
+                            stdout=out, timeout=300)
         print(f"Saved live checks to {destination / 'review.json'}")
     else:
         runtime.stop(destination)

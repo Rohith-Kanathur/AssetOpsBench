@@ -39,7 +39,7 @@ All new generation code lives in `src/scenarios/generation`. The
 
 | Concern | Approach |
 | --- | --- |
-| User surface | Asset class, count and domains are request inputs. Defaults: Codex, GPT-6 Astra, extra-high reasoning, fast service. |
+| User surface | Asset class and JSON positive/negative budgets are request inputs; supply totals or per-domain quotas. Defaults: Codex, GPT-6 Astra, extra-high reasoning, fast service. |
 | Native execution | Codex can search, edit files, run Python and call MCP tools. A small command-builder boundary allows other harnesses later. |
 | Environment | Export the chosen committed environment with its existing tools, fixtures and models. Initialize the normal manifest in a separate database. |
 | Missing asset support | Research failure modes and sensor relationships, prepare evidence-backed data, and add only missing diagnostic capabilities. |
@@ -70,9 +70,9 @@ container. A separate dataset service is an optional future boundary if needed.
 
 ## First execution
 
-After reviewing the normal command, run it for Transformer with five scenarios:
-one each for IoT, FMSR, TSFM, WO and Vibration. An unsupported domain should yield
-an explicit insufficient-data scenario or a reported gap. Keep observed values,
+Run the normal command for Transformer with a small explicit JSON budget across
+IoT, FMSR, TSFM, WO, Vibration and multiagent. Keep positive and negative counts
+separate. An unsupported positive quota must remain a reported shortfall. Keep observed values,
 derived relationships and synthetic workflow records clearly distinguished.
 
 Inspect the short README, scenarios, profile, sources, environment setup and
