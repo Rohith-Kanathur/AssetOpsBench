@@ -201,6 +201,18 @@ mcp/couchdb/sample_data/bulk_docs.json
 .env
 mcp/servers/tsfm/artifacts/tsfm_models/
 src/tmp/
+src/scenarios/tmp/
 
 # Observability artifacts (OTLP-JSON traces + per-run trajectory JSON).
 traces/
+# ignore generated scenarios
+generated_scenarios.json
+logs/
+# ignore generated scenario outputs and manual scenario analyses
+generated/
+
+# Raw benchmark evidence stays local; retain reports, plots, and scenario inputs.
+benchmarks/runs/**/repetition-*/
+benchmarks/runs/**/generation-evidence/
+benchmarks/runs/**/cases.json
+benchmarks/runs/**/checksums.sha256
