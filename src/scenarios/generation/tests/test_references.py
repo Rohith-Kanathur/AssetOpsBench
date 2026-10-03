@@ -10,18 +10,16 @@ from scenarios.generation.budget import DOMAINS
 
 
 PACKAGE = Path(__file__).resolve().parents[1]
-REPOSITORY = PACKAGE.parents[2]
 EXAMPLES = json.loads((PACKAGE / "references/examples.json").read_text())["examples"]
+SOURCE_ROWS = json.loads((PACKAGE / "references/source-rows.json").read_text())
 
 
 def test_examples_cover_domains_and_retain_exact_source_row_provenance():
     assert Counter(example["type"] for example in EXAMPLES) == {domain: 3 for domain in DOMAINS}
     for example in EXAMPLES:
         source = example["source"]
-        path = REPOSITORY / source["path"]
-        text = path.read_text()
-        rows = json.loads(text) if path.suffix == ".json" else [json.loads(line) for line in text.splitlines() if line.strip()]
-        row = next(row for row in rows if row["id"] == source["row_id"])
+        row = next(item["row"] for item in SOURCE_ROWS
+                   if item["path"] == source["path"] and item["row"]["id"] == source["row_id"])
         serialized = json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
         assert hashlib.sha256(serialized).hexdigest() == source["sha256"]
 

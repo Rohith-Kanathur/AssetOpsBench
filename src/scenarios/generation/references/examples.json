@@ -1,6 +1,7 @@
 {
   "description": "Curated adaptations of existing benchmark utterances: phrasing and task intent, with identifiers and fixed answers removed and inconsistent rubrics corrected.",
   "source_hash": "SHA-256 of the complete source row serialized as sorted compact JSON with UTF-8 and ensure_ascii=false.",
+  "source_snapshot": "source-rows.json contains the selected original rows preserved at commit 66bca546001a05f8132f6372fcf616afec540b06 on codex/reference-scenario-generator-20261002. Original rubrics are provenance, not validated answers for a new environment.",
   "usage": "Replace placeholders with verified current references; discover available tools and rebuild expected behavior from actual evidence. Source rows are provenance for the examples, not evidence for a new scenario.",
   "examples": [
     {
