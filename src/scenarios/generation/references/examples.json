@@ -1,0 +1,133 @@
+{
+  "description": "Curated adaptations of existing benchmark utterances: phrasing and task intent, with identifiers and fixed answers removed and inconsistent rubrics corrected.",
+  "source_hash": "SHA-256 of the complete source row serialized as sorted compact JSON with UTF-8 and ensure_ascii=false.",
+  "usage": "Replace placeholders with verified current references; discover available tools and rebuild expected behavior from actual evidence. Source rows are provenance for the examples, not evidence for a new scenario.",
+  "examples": [
+    {
+      "type": "iot",
+      "source": {"path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl", "row_id": 6, "sha256": "2203ccc380457730f4f9980dfd918d30f7f2160fcec07873acfc0210676dc470"},
+      "category": "Knowledge Query",
+      "text": "Get the asset details for <asset> at <site>.",
+      "characteristic_form": "Use iot.asset_detail; report the returned identity and attributes, with evidence references."
+    },
+    {
+      "type": "iot",
+      "source": {"path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl", "row_id": 44, "sha256": "5ad11219e97e95e0aeb4caf729f39b19725dbbbc1578a1020733b5d13bea546e"},
+      "category": "Knowledge Query",
+      "text": "Which measurements are monitored on <asset> at <site>?",
+      "characteristic_form": "Use iot.installed_sensors and iot.measured_sensors; distinguish configured channels from channels containing readings."
+    },
+    {
+      "type": "iot",
+      "source": {"path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl", "row_id": 46, "sha256": "a4a67a26d9c3448111b96d76e34938d3897062968a65740f29c40f0796d05a62"},
+      "category": "Data Retrieval",
+      "text": "Retrieve <sensor> readings for <asset> at <site> between <start> and <end>, and save them in a file.",
+      "characteristic_form": "Use iot.stream_extent and iot.history with the same resolved window; return the complete data file and disclose gaps and interval boundaries."
+    },
+    {
+      "type": "fmsr",
+      "source": {"path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl", "row_id": 101, "sha256": "7203545fb0eb8528353a77bb257752b256c5b9fbe40dd5e0525d45ed018bc8f0"},
+      "category": "Knowledge Query",
+      "text": "List the known failure modes for <asset-class>.",
+      "characteristic_form": "Use fmsr.get_failure_modes for the requested class; return the recorded modes, separating catalog knowledge from a diagnosis of any asset."
+    },
+    {
+      "type": "fmsr",
+      "source": {"path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl", "row_id": 109, "sha256": "09ad61a3707511d1050958fe948561ba3c668fe4f714e9caae0bcb7bc5ea7c37"},
+      "category": "Recommendation",
+      "text": "Which failure modes of <asset> at <site> can we monitor using the installed sensors?",
+      "characteristic_form": "Use fmsr.get_failure_modes and iot.installed_sensors; link candidate modes only through cited, applicable sensor mappings and disclose uncovered modes."
+    },
+    {
+      "type": "fmsr",
+      "source": {"path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl", "row_id": 112, "sha256": "0e24eefa3e5d9f52d3dd8c3fb82af31bee6c69af551935ef7da9dfb04641e018"},
+      "category": "Recommendation",
+      "text": "If <failure-mode> is a concern for <asset> at <site>, which installed measurement should we monitor first, and why?",
+      "characteristic_form": "Use fmsr.get_failure_modes and iot.installed_sensors; justify the monitoring priority with cited evidence, distinguishing a relevant measurement from a validated diagnostic."
+    },
+    {
+      "type": "tsfm",
+      "source": {"path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl", "row_id": 212, "sha256": "5d42426253477c2105b6e20e7dac075f7e3daf633e2c1356a4aca2a2565a51e9"},
+      "category": "Model Selection",
+      "text": "Find a forecasting model for <measurement> with a context length of <observations>, and return only the matching model identifiers.",
+      "characteristic_form": "Use tsfm.find_models and tsfm.describe_models; verify task, domain and context support against the current catalog without assuming an example model exists."
+    },
+    {
+      "type": "tsfm",
+      "source": {"path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl", "row_id": 217, "sha256": "d462e4b398e030417233112a06d33f8b63780822043250bd74caa6510cc01ad3"},
+      "category": "Forecasting",
+      "text": "Forecast <sensor> for <asset> at <site> from <dataset-file>, using <timestamp-column> as the time axis and a horizon of <horizon>.",
+      "characteristic_form": "Use tsfm.data_quality and tsfm.run_recipe with a supported forecasting configuration; save the forecast and state its units, horizon, data coverage and limitations."
+    },
+    {
+      "type": "tsfm",
+      "source": {"path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl", "row_id": 222, "sha256": "4b00a87544fe64726210861dee9d2d91d3114a44deebf7a01fb4b9f4777bdce8"},
+      "category": "Anomaly Detection",
+      "text": "Find unusual changes in <sensor> for <asset> at <site> between <start> and <end>, and show when they occurred.",
+      "characteristic_form": "Use tsfm.data_quality and tsfm.run_recipe with a supported anomaly task; return the scored intervals and distinguish statistical anomalies from confirmed physical failures."
+    },
+    {
+      "type": "wo",
+      "source": {"path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl", "row_id": 402, "sha256": "63590e469fb66cc7c01b73f8633d110d26971914b76c540a02fc5337ffeb5b5f"},
+      "category": "Data Retrieval",
+      "text": "Show the preventive work orders for <asset> at <site> between <start> and <end>.",
+      "characteristic_form": "Use wo.list_workorders and wo.get_workorder; apply the requested asset, site, work type and time filters and return the actual matching orders."
+    },
+    {
+      "type": "wo",
+      "source": {"path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl", "row_id": 423, "sha256": "7252b593b228d74500d32ec90d9cdc66aa695dbd2a3c8795052a499692217627"},
+      "category": "Decision Support",
+      "text": "Using the work-order history for <asset> at <site> up to <cutoff>, which maintenance tasks should I prioritize for <next-window>?",
+      "characteristic_form": "Use wo.list_workorders and wo.get_workorder; justify priorities from recorded status, priority and scheduling evidence, disclosing missing cost or risk information."
+    },
+    {
+      "type": "wo",
+      "source": {"path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl", "row_id": 424, "sha256": "424269f85880cf40f82870065fa723c573acc0769c4ee3b89ffe7014f952057f"},
+      "category": "Decision Support",
+      "text": "Can we bundle corrective work orders for <asset> at <site> between <start> and <end>? Each bundle should contain at least two orders within a two-week window; show the details.",
+      "characteristic_form": "Use wo.list_workorders and wo.get_schedule_calendar; propose feasible bundles satisfying the explicit constraints, explain unbundled orders, and avoid assuming a fixed number of bundles."
+    },
+    {
+      "type": "vibration",
+      "source": {"path": "src/scenarios/local/vibration_utterance.json", "row_id": 309, "sha256": "822eda670e7bc98957c8e590efe1446cd6e631cc565a17983a5d65c9e95ba599"},
+      "category": "Data Retrieval",
+      "text": "What vibration sensors are available for <asset> at <site>?",
+      "characteristic_form": "Use vibration.list_vibration_sensors; report the actual available channels rather than assuming names from an example."
+    },
+    {
+      "type": "vibration",
+      "source": {"path": "src/scenarios/local/vibration_utterance.json", "row_id": 322, "sha256": "d5e782e4e34dba278f292e89eace2244e3d300bc6526e09e2cc7975afd5a95c0"},
+      "category": "Diagnostic",
+      "text": "A technician reports that <asset> at <site> vibrates more than usual. Review <sensor> between <start> and <end>, show the five strongest frequency peaks, and explain what they suggest.",
+      "characteristic_form": "Use vibration.get_vibration_data and vibration.compute_fft_spectrum; interpret peaks only with applicable speed and machine information, and qualify any fault or severity conclusion."
+    },
+    {
+      "type": "vibration",
+      "source": {"path": "src/scenarios/local/vibration_utterance.json", "row_id": 315, "sha256": "a61f876728e344f5e655390d2b26737f0341a1e534e163e7adc7861cfb24bb9c"},
+      "category": "Diagnostic",
+      "text": "Review the vibration signal for <asset> at <site> between <start> and <end>. I do not have a speed measurement; what can we still learn?",
+      "characteristic_form": "Use vibration.get_vibration_data and vibration.diagnose_vibration; report supported statistics and spectra, explicitly retain missing-speed warnings and omit unsupported shaft or severity conclusions."
+    },
+    {
+      "type": "multiagent",
+      "source": {"path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl", "row_id": 621, "sha256": "9ac9d6e46d565821c958b3f397ee6d24d0523d14bf029583e73652bcf6d220e2"},
+      "category": "Decision Support",
+      "text": "Check <sensor> on <asset> at <site> between <start> and <end> for anomalies. After reviewing the evidence and existing work, should I open a work order?",
+      "characteristic_form": "Use iot.history, a supported tsfm.run_recipe and wo.list_workorders; connect observations to a justified recommendation, check existing work, and keep a recommendation distinct from authorization to create an order."
+    },
+    {
+      "type": "multiagent",
+      "source": {"path": "src/scenarios/huggingface/asset/compressor_utterance.jsonl", "row_id": 1007, "sha256": "a23bd50576137389da135e3a89c8a3df49beca6ca3393a54a6d0acf02897ef66"},
+      "category": "Predictive Maintenance",
+      "text": "Based on readings for <asset> at <site> between <start> and <end>, is <failure-mode> a concern for the coming week, and should I schedule preventive maintenance?",
+      "characteristic_form": "Use iot.history, tsfm.profile_series, fmsr.get_failure_modes and wo.list_workorders; weigh observed trends and cited mechanisms without using later failure labels or inventing calibrated failure probabilities."
+    },
+    {
+      "type": "multiagent",
+      "source": {"path": "src/scenarios/huggingface/asset/hydrolicpump_utterance.jsonl", "row_id": 2005, "sha256": "83eb639c589dcd0e3d08d85b289bd039b53a5439b4c8c6d5023b188dd12b4662"},
+      "category": "Condition Assessment",
+      "text": "Could <failure-mode> explain the changes in <asset> at <site> between <start> and <end>? Identify the strongest sensor evidence and suggest the next maintenance step.",
+      "characteristic_form": "Use iot.history, tsfm.data_quality, fmsr.get_failure_modes and wo.list_workorders; assess cited mechanisms against the available records, distinguish independent samples from a time series, and state what would confirm the suspected cause."
+    }
+  ]
+}

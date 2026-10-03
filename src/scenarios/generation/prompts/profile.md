@@ -1,42 +1,92 @@
 # Prepare the requested asset environment
 
-Read `request.json` for the asset class and requested scope. Inspect the existing
-MCP tools, schemas and data first. Reuse suitable assets, sensor streams, failure
-modes and diagnostics. Add data only for a demonstrated gap. Extend a server only
-when its existing tools cannot express the needed operation.
+Read `request.json` and inspect the live tools, schemas and data before choosing
+what to build. Server source is in `src/servers`; loaders and collection schemas
+are in `src/couchdb`. The normal fixtures are loaded. Reuse relevant records and
+capabilities, preserving them when adding data or tools for a demonstrated gap.
 
-Server source is under `src/servers`; collection schemas and loaders are under
-`src/couchdb`. The database connection is configured and the normal repository
-fixtures are loaded. Preserve existing records when adding to this environment.
+## Inspect coverage and research the asset
 
-1. Inspect the available evidence. For gaps, search primary literature and
-   datasets using web search, `kaggle`, `kagglehub`, `huggingface_hub` or `ucimlrepo`.
-   Check licenses, columns, units and labels before downloading bounded samples.
-   Store raw files in `data/raw` and transformations in `scripts`.
-2. Research missing failure modes and sensor relationships. Save
-   `output/profile.json` with `asset_class`, `description`, `failure_modes`,
-   `sensor_mapping`, `available_capabilities` and `gaps`. Cite each relationship;
-   distinguish relevant measurements from validated diagnostic methods.
-3. Prepare missing data with the existing loader and a repeatable `scripts/seed.py`
-   when needed. Preserve units and original time axes. Identify synthetic IDs,
-   records and work orders. Independent samples do not establish a time series;
-   failure labels belong in reference evidence, not ordinary sensor channels.
-4. Add missing diagnostics to the appropriate MCP server. Cite calculation rules
-   and test known cases and invalid inputs. Learned predictors require documented
-   labels, held-out validation and reproducible training. Preserve generic behavior.
-5. Refresh MCP sessions after edits and exercise the resulting environment.
-   Use `mcphub.ToolUniverse` with `load_tools()` and `run(...)` for fresh connections.
-   Save the calls and results. Document setup and any additions in
-   `output/environment.md`, including commands to reproduce the environment.
+Discover tool definitions and exercise relevant reads. Record actual asset class,
+site, asset identifiers, installed versus measured channels, units, sampling and
+time coverage. Resolve any identifier aliases across servers through evidence.
+Catalog knowledge describes an asset class; it does not diagnose an instance.
 
-Save `output/sources.json` as records with `id`, `url`, `version`, `license`,
-`kind` (`observed`, `simulated`, `derived`, or `synthetic`), `files` (workspace-relative
-paths and SHA-256 hashes), and `transform` where applicable. For existing fixtures,
-use their documented provenance and a `repository:<revision>:<path>` reference
-when no public URL is available. Distinguish original datasets, mirrors and
-literature. Preserve unsupported claims as gaps.
+Cover each facet using documented existing evidence or targeted new research.
+Reuse adequate research and receipts before making additional searches:
 
-Use configured clients without reading or printing credential files. If access
-or consent is unavailable, record the gap and use accessible evidence. Keep work
-within the requested scope, use CPU-scale methods, and capture dependency versions.
-Once the profile, environment and tool checks are ready, follow `generate.md`.
+- `diagnostics`: monitoring methods, degradation indicators, validation and limits.
+- `maintenance`: inspection practices, scheduling and work-order context.
+- `sensors`: modalities, placement, units, sampling and signal interpretation.
+- `failure_modes`: physical mechanisms, fault signatures and operational risks.
+- `standards`: applicable standards or industry conventions, edition and scope.
+- `operational_tasks`: realistic operator and manager questions and decisions.
+
+When academic search is needed, use `research.search_papers(query, limit=5)`; it saves
+query/results receipts and returns their metadata with the papers. Preserve these
+receipts and inspect relevant source text. Web search can supply official standards,
+manuals and other primary evidence. Mark abstract-only evidence as such. Cite the
+particular claim supported by a source; a title or search result alone is not
+support for a threshold, diagnostic rule or validated predictor. For a sparse
+facet, record the missing support rather than filling it with uncited certainty.
+For standards, verify applicability to the equipment and measurement before using
+a threshold; an inaccessible specification remains a documented limitation.
+
+For missing data, inspect accessible datasets through `kaggle`, `kagglehub`,
+`huggingface_hub`, `ucimlrepo` or other suitable clients. Verify licenses, columns,
+units and labels before downloading bounded samples. Save raw files in `data/raw`
+and transformations in `scripts`. Independent samples do not establish a time
+series, and failure labels belong in reference evidence rather than sensor channels.
+
+## Prepare and verify the environment
+
+Add data with the existing loader and a repeatable `scripts/seed.py` where needed.
+Retain original time axes, units and provenance; identify synthetic assets, records
+and work orders. Extend an appropriate server when existing tools cannot express
+a needed operation. The available capabilities may grow during this work.
+
+Cite calculation rules and test known cases and invalid inputs. Learned predictors
+require documented labels, held-out validation and reproducible training. Preserve
+generic server behavior and use CPU-scale methods. Reconnect MCP after edits:
+`mcphub.ToolUniverse` with `load_tools()` and `run(...)` provides fresh connections.
+Exercise each addition, saving real calls and responses. Record preparation,
+dependencies, tests and reproducible commands in `output/environment.md`.
+
+Save `output/sources.json` records with `id`, `url`, `version`, `license`, `kind`
+(`observed`, `simulated`, `derived`, or `synthetic`), `files` (workspace-relative
+paths and SHA-256 hashes), and `transform` where applicable. Link downloaded text,
+search receipts, datasets and live tool responses. Use documented fixture provenance
+and `repository:<revision>:<path>` when no public URL exists. Identify each source
+as literature, original data, a mirror or a derived artifact in its description.
+Use configured clients without reading or printing credential files; record access
+gaps and proceed with accessible evidence.
+
+## Save the final verified profile
+
+Write `output/profile.json` describing the environment after preparation:
+
+- `asset_class`, `description`: nonempty strings matching the requested class.
+- `operator_tasks`, `manager_tasks`: nonempty lists of realistic task descriptions.
+- `assets`: coverage records with `site`, `asset_id`, `asset_class`, `source_ids`
+  and applicable `iot`/`vibration` objects containing `sensors`, `start`, `end` and
+  `total_observations`. Record per-server aliases when present. Empty coverage is
+  a gap, not evidence that an instance is available.
+- `failure_modes`: records with `name`, `description` and `source_ids`.
+- `sensor_mapping`: records with `failure_mode`, `sensors`, `source_ids` and the
+  relationship's limitations. Separate useful measurements from validated tests.
+- `available_capabilities`: domain-keyed lists of discovered tool strings or
+  `{tool, description}` objects, reflecting verified additions as well as existing tools.
+- `research`: an object with all six facet keys above. Each value has `status`
+  (`supported`, `gap` or `not_applicable`), a nonempty `summary` and `source_ids`.
+  Supported claims cite evidence; gaps and inapplicability explain the limitation.
+- `gaps`: records with `id`, `dependency`, `reason` and applicable `source_ids`.
+
+Link coverage and physical relationships to retained evidence. Keep the profile
+current after any later tool or data changes. Before drafting scenarios, run:
+
+`python -m scenarios.generation.review --workspace /workspace --stage profile`
+
+Read its JSON findings, repair the artifacts and rerun until profile checks pass.
+The checker checks structure and evidence references; assess scientific support
+yourself. Then read `generate.md` and the applicable entries in
+`references/examples.json`.
