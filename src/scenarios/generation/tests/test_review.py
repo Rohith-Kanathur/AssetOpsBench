@@ -11,7 +11,7 @@ def profile_fixture():
     return {"asset_class": "Transformer", "description": "Recorded asset evidence",
             "operator_tasks": ["Inspect the asset"], "manager_tasks": ["Plan maintenance"],
             "assets": [{"site": "S1", "asset_id": "T1", "sensors": ["oil_temperature"],
-                        "source_ids": ["fixture"]}],
+                        "source_ids": ["fixture"], "data_source_ids": ["fixture"]}],
             "failure_modes": [], "sensor_mapping": [], "gaps": [{"id": "missing-channel"}],
             "available_capabilities": {"iot": ["iot.asset_detail"]},
             "research": {key: {"status": "gap", "summary": "Not available in this fixture",
@@ -27,13 +27,13 @@ def save_contract(workspace, request, scenarios, allocation, tools=("iot.asset_d
     for scenario in scenarios:
         scenario.update(text=f"Inspect T1 at S1 for issue {scenario['id']}", category="Inspection",
                         characteristic_form="Read iot.asset_detail and inspect the recorded evidence", source_ids=["fixture"],
-                        grounding={"scope": "asset", "site": "S1", "asset_id": "T1"})
+                        grounding={"scope": "asset", "site": "S1", "asset_id": "T1", "data_source_ids": ["fixture"]})
         if scenario["positive"] is False:
             scenario["missing_evidence"] = [{"dependency": "Requested measurements", "reason": "Unavailable",
                                             "gap_ids": ["missing-channel"], "response_files": ["output/response.json"]}]
     values = {
         "profile": profile_fixture(), "allocation": allocation, "scenarios": scenarios,
-        "sources": [{"id": "fixture", "kind": "observed", "url": "repository:HEAD:fixture.json",
+        "sources": [{"id": "fixture", "kind": "observed", "role": "data", "url": "repository:HEAD:fixture.json",
                      "files": [{"path": "output/response.json",
                                 "sha256": hashlib.sha256(evidence.read_bytes()).hexdigest()}]}],
         "tool_checks": [{"scenario_id": s["id"], "calls": [

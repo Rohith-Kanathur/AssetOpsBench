@@ -38,6 +38,25 @@ units and labels before downloading bounded samples. Save raw files in `data/raw
 and transformations in `scripts`. Independent samples do not establish a time
 series, and failure labels belong in reference evidence rather than sensor channels.
 
+## Ground every data artifact
+
+Start from verified existing records or acquired real datasets. Every operational
+data artifact must trace to retained observed records, including synthetic extensions.
+Use only sources relevant to the asset, modality and task; an unrelated dataset or
+a literature citation alone does not ground invented measurements.
+
+For extensions, derive ranges, distributions and relationships from those records.
+Retain the original sample, field mapping, reproducible transformation, parameters
+and random seed. Explain which values are observed versus generated, assumptions
+and limits. Preserve units and time semantics. Synthetic registry identities and
+work orders may adapt documented source records, with their fictional status explicit.
+Ground failure-mode knowledge and maintenance rules in relevant papers or manuals;
+keep that knowledge distinct from evidence of measured behavior.
+
+If suitable data cannot be acquired, record the gap and report a scenario shortfall.
+Do not substitute an arbitrary fixture to satisfy the quota. Existing data can be
+reused when its provenance is verified; downloading new data is not required.
+
 ## Prepare and verify the environment
 
 Add data with the existing loader and a repeatable `scripts/seed.py` where needed.
@@ -61,15 +80,29 @@ as literature, original data, a mirror or a derived artifact in its description.
 Use configured clients without reading or printing credential files; record access
 gaps and proceed with accessible evidence.
 
+Mark operational data sources with `role: "data"`. Only original observed records
+use `kind: "observed"`; code, literature and tool receipts are not data roots.
+For derived, simulated or synthetic data, require:
+
+- `input_source_ids`: retained data sources, each ultimately tracing to observed data.
+- `transform`: `script`, `description`, `field_mapping` (output field to input
+  column and transformation), `assumptions` and `limitations`. Values are nonempty
+  strings except `field_mapping`, which is an object of string pairs.
+- Include the transformation script among the source's checksummed `files`.
+
+Every seeded dataset and file used by a scenario must appear in this manifest.
+
 ## Save the final verified profile
 
 Write `output/profile.json` describing the environment after preparation:
 
 - `asset_class`, `description`: nonempty strings matching the requested class.
 - `operator_tasks`, `manager_tasks`: nonempty lists of realistic task descriptions.
-- `assets`: coverage records with `site`, `asset_id`, `asset_class`, `source_ids`
+- `assets`: coverage records with `site`, `asset_id`, `asset_class`, `source_ids`,
+  `data_source_ids` (the operational records, distinct from literature or receipts)
   and applicable `iot`/`vibration` objects containing `sensors`, `start`, `end` and
-  `total_observations`. Record per-server aliases when present. Empty coverage is
+  `total_observations`. Each populated coverage object also names its own
+  `data_source_ids`. Record per-server aliases when present. Empty coverage is
   a gap, not evidence that an instance is available.
 - `failure_modes`: records with `name`, `description` and `source_ids`.
 - `sensor_mapping`: records with `failure_mode`, `sensors`, `source_ids` and the

@@ -115,6 +115,13 @@ The profile describes verified capabilities after preparation. Sensor coverage a
 relevant tools can grow as the agent adds support. Human examples guide voice and
 complexity; their identities and answers do not establish facts in the new environment.
 
+All operational data must be grounded in verified existing records or real datasets.
+Synthetic extensions retain their observed inputs, field mappings and reproducible
+transformations. Literature grounds domain knowledge; it does not replace data
+provenance. Missing suitable data leaves a documented gap and any resulting quota
+shortfall. The checker rejects missing or circular data lineage; relevance and
+transformation fidelity still require review.
+
 The agent can run `python -m scenarios.generation.review --workspace /workspace --stage profile`
 before drafting, or `--stage all` before finishing. Both use the read-only checker
 supplied by the runtime. The prompts define the research, profile and scenario

@@ -12,10 +12,12 @@ from typing import Callable
 
 from .budget import validate_budget
 from .contracts import TOOL, string, strings, validate_profile, validate_scenarios
+from .data_grounding import validate_data_references, validate_data_sources
 
-SCOPE = ("Validates artifact structure, budgets, evidence links/checksums, discovered tool names "
+SCOPE = ("Validates artifact structure, budgets, declared data lineage, evidence links/checksums, discovered tool names "
          "and read-only live entity/coverage checks. Saved response files are declarations, "
-         "not independent proof of execution or diagnosis. Semantic/operator review is still required.")
+         "not independent proof of execution or diagnosis. Data relevance, transformation fidelity "
+         "and semantic/operator review are still required.")
 
 
 def local_file(workspace: Path, name: str) -> Path:
@@ -79,6 +81,9 @@ def check_contract(workspace: Path, stage="all", tools=None) -> dict:
                     errors.append(f"Source checksum mismatch: {evidence['path']}")
             except (OSError, ValueError, TypeError) as exc:
                 errors.append(str(exc))
+    data_errors, grounded = validate_data_sources(sources)
+    errors.extend(data_errors)
+    errors.extend(validate_data_references(profile, grounded))
     profile_errors, warnings = validate_profile(profile, source_ids, tools)
     errors.extend(profile_errors)
     report["warnings"].extend(warnings)
@@ -96,6 +101,7 @@ def check_contract(workspace: Path, stage="all", tools=None) -> dict:
     scenarios = [s for s in raw_scenarios if isinstance(s, dict)]
     if len(scenarios) != len(raw_scenarios):
         errors.append("Scenarios must be objects")
+    errors.extend(validate_data_references({}, grounded, scenarios))
     raw_checks = load("output/tool_checks.json", list)
     checks = []
     for item in raw_checks:

@@ -61,6 +61,10 @@ Save `output/scenarios.json` as a list of objects containing:
   Asset scope identifies a real instance and resolves each referenced channel and
   interval. Class scope identifies the requested asset class for catalog questions;
   outside FMSR, include `justification` explaining why no instance is required.
+  Asset scope also requires `data_source_ids` covering all operational input
+  records/files used by the case. These must satisfy the data-grounding rules in
+  `profile.md`, including for synthetic extensions and supported parts of negatives.
+  For an absent asset or stream, cite the registry or dataset establishing the gap.
   `workorder_ids` contains existing prerequisite orders only; record newly created
   orders separately in `output_workorder_ids` after checking their receipts.
 - `missing_evidence`: required for a negative case, a list of objects with
