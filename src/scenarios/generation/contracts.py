@@ -151,6 +151,8 @@ def validate_scenarios(scenarios, source_ids, profile, checks, tools=None):
         if scope == "class":
             if not string(ground.get("asset_class")):
                 errors.append(f"{label}: class grounding requires asset_class")
+            elif isinstance(profile, dict) and string(profile.get("asset_class")) and ground["asset_class"].casefold().strip() != profile["asset_class"].casefold().strip():
+                errors.append(f"{label}: grounded class does not match profile")
             if row.get("type") != "fmsr" and not string(ground.get("justification")):
                 errors.append(f"{label}: class scope outside FMSR requires justification")
             if ground.get("sensors") or ground.get("workorder_ids") or ground.get("output_workorder_ids"):
