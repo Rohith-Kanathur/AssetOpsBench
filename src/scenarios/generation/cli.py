@@ -15,7 +15,7 @@ from .workspace import audit_baseline, prepare
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("action", nargs="?", default="run", choices=("run", "check", "stop", "build"))
+    parser.add_argument("action", nargs="?", default="run", choices=("run", "check", "inspect", "watch", "stop", "build"))
     parser.add_argument("directory", type=Path, nargs="?", help="Saved generation directory")
     parser.add_argument("--asset-class", help="Asset class to generate scenarios for")
     budget = parser.add_mutually_exclusive_group()
@@ -74,16 +74,19 @@ def main(argv=None):
         print(f"Generation directory: {destination}", flush=True)
         runtime.configure(destination, Path.home() / ".codex", Path.home() / ".kaggle")
         runtime.run(destination, args.model, args.followup, harness=args.harness,
-                    reasoning_effort=args.reasoning_effort, service_tier=args.service_tier)
+                    reasoning_effort=args.reasoning_effort, service_tier=args.service_tier,
+                    env_file=args.repository.expanduser().resolve() / ".env")
     elif args.action == "check":
-        package = Path(__file__).parent.resolve()
-        runtime.start(destination)
-        with (destination / "review.json").open("w") as out:
-            runtime.compose(destination, "run", "--rm", "-T", "--volume",
-                            f"{package}:/opt/review/scenarios/generation:ro",
-                            "--env", "PYTHONPATH=/opt/review:/workspace/src",
-                            "agent", "python", "-m", "scenarios.generation.review",
-                            stdout=out, timeout=300)
+        from .progress import write_index
+        report = runtime.check(destination)
+        write_index(destination)
         print(f"Saved live checks to {destination / 'review.json'}")
+        raise SystemExit(bool(report["errors"]))
+    elif args.action in {"inspect", "watch"}:
+        from .progress import inspect_run, watch_run
+        if args.action == "inspect":
+            print(inspect_run(destination))
+        else:
+            watch_run(destination)
     else:
         runtime.stop(destination)

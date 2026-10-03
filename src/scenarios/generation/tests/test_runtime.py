@@ -35,6 +35,7 @@ def test_native_tools_and_mcp_are_available():
     assert command[command.index("--model") + 1] == "gpt-6-astra"
     assert 'model_reasoning_effort="xhigh"' in command
     assert 'service_tier="fast"' in command
+    assert 'mcp_servers.research.args=["-m","scenarios.generation.research"]' in command
 
 
 def test_explicit_model_settings_override_defaults():
@@ -71,3 +72,84 @@ def test_failed_initialization_is_not_marked_complete(tmp_path, monkeypatch):
     with pytest.raises(subprocess.CalledProcessError):
         runtime.start(tmp_path)
     assert not (tmp_path / "initialized.json").exists()
+
+
+def test_only_research_key_is_loaded_from_dotenv(tmp_path, monkeypatch):
+    from scenarios.generation.runtime import research_environment
+
+    monkeypatch.delenv("SEMANTIC_SCHOLAR_API_KEY", raising=False)
+    monkeypatch.delenv("UNRELATED_TEST_SECRET", raising=False)
+    path = tmp_path / ".env"
+    path.write_text("SEMANTIC_SCHOLAR_API_KEY=private-test-key\nUNRELATED_TEST_SECRET=other\n")
+    environment = research_environment(path)
+    assert environment["SEMANTIC_SCHOLAR_API_KEY"] == "private-test-key"
+    assert "UNRELATED_TEST_SECRET" not in environment
+    monkeypatch.setenv("SEMANTIC_SCHOLAR_API_KEY", "exported-key")
+    assert research_environment(path)["SEMANTIC_SCHOLAR_API_KEY"] == "exported-key"
+
+
+def test_run_repairs_failed_checks_before_marking_complete(tmp_path, monkeypatch):
+    from scenarios.generation import runtime
+
+    (tmp_path / "workspace/output").mkdir(parents=True)
+    (tmp_path / "workspace/request.json").write_text('{"asset_class":"AHU"}')
+    monkeypatch.setattr(runtime, "start", lambda _: None)
+    calls = []
+    monkeypatch.setattr(runtime, "compose", lambda *args, **kwargs: calls.append((args, kwargs)))
+    results = iter([{"errors": ["Missing operator tasks"]}, {"errors": []}])
+    monkeypatch.setattr(runtime, "check", lambda _: next(results))
+    runtime.run(tmp_path, env_file=tmp_path / "absent.env")
+    assert len(calls) == 2
+    assert "output/review.json" in calls[1][1]["input"]
+    assert json.loads((tmp_path / "status.json").read_text())["status"] == "complete"
+    assert json.loads((tmp_path / "logs/run-1.json").read_text())["validation_status"] == "failed"
+    assert json.loads((tmp_path / "logs/review-1.json").read_text())["errors"] == ["Missing operator tasks"]
+    assert json.loads((tmp_path / "logs/run-2.json").read_text())["validation_status"] == "passed"
+
+
+def test_unresolved_checks_leave_run_incomplete(tmp_path, monkeypatch):
+    import pytest
+    from scenarios.generation import runtime
+
+    (tmp_path / "workspace/output").mkdir(parents=True)
+    (tmp_path / "workspace/request.json").write_text('{"asset_class":"AHU"}')
+    monkeypatch.setattr(runtime, "start", lambda _: None)
+    monkeypatch.setattr(runtime, "compose", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "check", lambda _: {"errors": ["Unresolved evidence"]})
+    with pytest.raises(ValueError, match="incomplete"):
+        runtime.run(tmp_path, env_file=tmp_path / "absent.env")
+    assert len(list((tmp_path / "logs").glob("codex-*.jsonl"))) == 3
+    assert json.loads((tmp_path / "status.json").read_text())["status"] == "incomplete"
+
+
+def test_nonzero_checker_exit_cannot_report_success(tmp_path, monkeypatch):
+    import subprocess
+    from scenarios.generation import runtime
+
+    (tmp_path / "workspace/output").mkdir(parents=True)
+    monkeypatch.setattr(runtime, "start", lambda _: None)
+
+    def fail(*args, **kwargs):
+        kwargs["stdout"].write('{"errors":[]}')
+        raise subprocess.CalledProcessError(2, "checker")
+
+    monkeypatch.setattr(runtime, "compose", fail)
+    assert runtime.check(tmp_path)["errors"] == ["Checker exited with status 2; see review.stderr"]
+
+
+def test_interrupted_process_records_failure(tmp_path, monkeypatch):
+    import pytest
+    from scenarios.generation import runtime
+
+    (tmp_path / "workspace/output").mkdir(parents=True)
+    (tmp_path / "workspace/request.json").write_text('{"asset_class":"AHU"}')
+    monkeypatch.setattr(runtime, "start", lambda _: None)
+
+    def interrupt(*args, **kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(runtime, "compose", interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        runtime.run(tmp_path, env_file=tmp_path / "absent.env")
+    assert json.loads((tmp_path / "status.json").read_text())["status"] == "failed"
+    assert json.loads((tmp_path / "logs/run-1.json").read_text())["process_status"] == "failed"

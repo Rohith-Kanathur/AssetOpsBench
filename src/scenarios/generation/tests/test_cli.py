@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -25,7 +26,8 @@ def test_one_command_accepts_an_asset_and_preserves_generation_settings(tmp_path
     request = json.loads((target / "workspace/request.json").read_text())
     assert request == {"asset_class": "AHU", key: expected}
     assert calls[0][0][1] == "gpt-6-astra"
-    assert calls[0][1] == {"harness": "codex", "reasoning_effort": "xhigh", "service_tier": "fast"}
+    assert calls[0][1] == {"harness": "codex", "reasoning_effort": "xhigh", "service_tier": "fast",
+                           "env_file": Path.cwd() / ".env"}
 
 
 def test_existing_directory_is_not_overwritten(tmp_path):

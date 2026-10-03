@@ -29,6 +29,8 @@ scenario-generate --asset-class Transformer --scenario-counts '{"positive":5,"ne
 scenario-generate --asset-class Transformer --scenario-plan '{"iot":{"positive":2,"negative":1},"multiagent":{"positive":1}}'
 scenario-generate run /path/to/run --followup "Check the unresolved source claims."
 scenario-generate check /path/to/run
+scenario-generate inspect /path/to/run
+scenario-generate watch /path/to/run
 scenario-generate stop /path/to/run
 ```
 
@@ -36,7 +38,7 @@ scenario-generate stop /path/to/run
 
 | Argument | Meaning / default |
 | --- | --- |
-| `[action]` | `run` (default), `check`, `stop`, or `build`. |
+| `[action]` | `run` (default), `check`, `inspect`, `watch`, `stop`, or `build`. |
 | `[directory]` | New output directory or saved run. New runs default to the local cache. |
 | `--asset-class NAME` | Required for a new generation. |
 | `--scenario-counts JSON` | Positive/negative totals; the agent chooses the domain mix. Defaults to 50 positive, 2 negative. |
@@ -85,15 +87,54 @@ It has native shell, file editing and web search; the Docker socket, host checko
 and Git history are not mounted. Credentials remain accessible to the native
 clients in the container. No credentials belong in prompts or Git.
 
+Set `SEMANTIC_SCHOLAR_API_KEY` in the selected repository's private `.env` or
+export it in your shell. Exported values take precedence. Only this research key
+is forwarded from dotenv; the file is not mounted. The generation-only MCP tool
+`research.search_papers` saves query receipts and paper results automatically.
+The key is not placed in command arguments, saved configuration or receipts.
+
+## Generation principles
+
+```mermaid
+flowchart TD
+  A["Asset class + scenario budget"] --> B["Inspect data and tools"]
+  B --> C["Evolving asset profile<br/>Operator tasks · Manager tasks · Coverage"]
+  R["Research and source evidence"] --> C
+  C --> D{"Relevant capability missing?"}
+  D -->|Yes| E["Acquire data or author tools"]
+  E --> F["Exercise and verify additions"]
+  F --> C
+  D -->|No| G["Draft operator scenarios"]
+  H["Human examples by domain"] --> G
+  G --> I["Check evidence and scenarios"]
+  I -->|Findings| C
+  I -->|Pass| J["Ready for spot-check"]
+```
+
+The profile describes verified capabilities after preparation. Sensor coverage and
+relevant tools can grow as the agent adds support. Human examples guide voice and
+complexity; their identities and answers do not establish facts in the new environment.
+
+The agent can run `python -m scenarios.generation.review --workspace /workspace --stage profile`
+before drafting, or `--stage all` before finishing. Both use the read-only checker
+supplied by the runtime. The prompts define the research, profile and scenario
+contracts; the agent chooses how to complete the work.
+
 ## Results
 
 The command prints its output directory, under `~/.cache/assetopsbench/generation`
 by default. Open `workspace/output/README.md` for scenarios, sources, capabilities
 and gaps. Raw data and agent traces stay in this local directory.
 
-`check` verifies source hashes, requested coverage, evidence files, tool discovery
-and live asset/sensor/window/work-order references. Inspect generated algorithms
-and source interpretation separately before using them. `stop` retains the
-volume for review; a follow-up starts it again without reseeding.
+`run` checks the saved results after Codex finishes and allows up to two repair
+attempts. It records process and validation status separately; unresolved errors
+leave the run incomplete. `check` verifies profile structure, source references,
+hashes, budgets, duplicates, tools and applicable live grounding. It does not
+establish scientific validity or operator realism. Review those separately.
+
+`inspect` shows status, recent events and linked artifacts. `watch` follows live
+messages, searches and tool activity; Ctrl-C stops only the viewer. `logs/index.md`
+is the saved evidence index. Native events, research receipts and each attempt's
+checks remain available. `stop` retains the database for later review or follow-up.
 
 Tests: `python -m pytest src/scenarios/generation/tests -q`.

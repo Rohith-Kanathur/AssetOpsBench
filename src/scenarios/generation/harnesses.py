@@ -22,6 +22,10 @@ def codex_command(model: str = DEFAULT_MODEL, reasoning_effort: str = DEFAULT_RE
                         f'{prefix}.args=["-m","servers.{name}.main"]',
                         "-c", f"{prefix}.startup_timeout_sec=60",
                         "-c", f"{prefix}.tool_timeout_sec=120"])
+    command.extend(["-c", 'mcp_servers.research.command="python"', "-c",
+                    'mcp_servers.research.args=["-m","scenarios.generation.research"]', "-c",
+                    'mcp_servers.research.env_vars=["SEMANTIC_SCHOLAR_API_KEY","SCENARIO_RESEARCH_LOG"]',
+                    "-c", "mcp_servers.research.tool_timeout_sec=120"])
     command.extend(["--model", model, "-c", f"model_reasoning_effort={json.dumps(reasoning_effort)}",
                     "-c", f"service_tier={json.dumps(service_tier)}"])
     return command + ["-"]
