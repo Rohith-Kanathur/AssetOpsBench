@@ -160,7 +160,7 @@ def test_subset_execution_retains_full_cohort_and_rejects_model_changes(tmp_path
     save(root / "scenarios.json", [{"id": i, "positive": True, "type": "iot", "text": f"Question {i}"} for i in (1, 2)])
     monkeypatch.setattr(sandbox, "snapshot", lambda *_: None)
     executed, reports = [], []
-    def execute(root, case, scenario, runner, model, *args):
+    def execute(root, case, scenario, runner, model, *args, **kwargs):
         executed.append(scenario["id"])
         record = json.loads((case / "result.json").read_text())
         record["status"] = "completed"

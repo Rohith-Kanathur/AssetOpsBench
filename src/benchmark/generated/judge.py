@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import subprocess
 from tempfile import TemporaryDirectory
 import tempfile
@@ -61,6 +62,7 @@ class ClaudeJudge(LLMBackend):
         audit.mkdir(exist_ok=True)
         (audit / "prompt.txt").write_text(prompt)
         name = f"assetops-judge-{uuid4().hex[:12]}"
+        (audit / "container.json").write_text(json.dumps({"name": name}) + "\n")
         with TemporaryDirectory(prefix="assetops-judge-auth-") as temporary:
             auth_home = Path(temporary)
             prepare_auth(auth_home, "claude")
@@ -120,6 +122,11 @@ def judge_case(case_dir: Path, *, model: str = JUDGE_MODEL, timeout: float = 600
         previous = json.loads(target.read_text())
         if previous.get("fingerprint") == fingerprint and previous.get("status") == "completed":
             return previous
+        archive = case_dir / "judging-attempts" / str(time.time_ns())
+        archive.mkdir(parents=True)
+        shutil.move(str(target), archive / "judge.json")
+        if (case_dir / "judging").exists():
+            shutil.move(str(case_dir / "judging"), archive / "judging")
     record = {"model": model, "fingerprint": fingerprint, "status": "pending",
               "evidence_version": EVIDENCE_VERSION, "evidence_access": "read-only full files",
               "evaluator_trace": "judging/events.jsonl", "separate_session": True}

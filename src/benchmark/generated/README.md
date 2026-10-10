@@ -96,3 +96,9 @@ The evaluation command accepts only general-execution runs.
 
 Run artifacts stay in ignored `results/`, `output/` or `generated/`, or outside
 this checkout. Never commit credentials, downloaded private data or trajectories.
+
+For separate Harbor tasks/trials and ATIF trajectories for **Codex Astra
+creation → the full execution matrix → Claude Code / Fable 5.1 judging**, see
+[the Harbor adapter](../harbor/README.md). The existing commands remain available;
+`scenario-evaluate --no-judge` also supports saving executions for a separate
+judging stage.

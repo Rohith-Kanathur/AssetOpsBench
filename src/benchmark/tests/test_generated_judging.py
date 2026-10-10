@@ -64,6 +64,19 @@ def test_execution_failure_does_not_invoke_judge(case):
     assert backend.calls == 0
 
 
+def test_judge_retry_preserves_failed_grade_and_native_events(case):
+    failed = judge_case(case, backend=Backend('not JSON'))
+    audit = case / 'judging'
+    audit.mkdir()
+    (audit / 'events.jsonl').write_text('original native event\n')
+    completed = judge_case(case, backend=Backend(passing()))
+    assert completed['status'] == 'completed'
+    archives = list((case / 'judging-attempts').iterdir())
+    assert len(archives) == 1
+    assert json.loads((archives[0] / 'judge.json').read_text()) == failed
+    assert (archives[0] / 'judging/events.jsonl').read_text() == 'original native event\n'
+
+
 def test_judge_mounts_only_full_evidence_readonly_with_isolated_auth(case, monkeypatch):
     (case / "workspace").mkdir()
     (case / "workspace/report.json").write_text('{"full": true}')

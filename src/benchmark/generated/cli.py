@@ -158,10 +158,11 @@ def coding_case(case, runner, model, timeout, credentials=None):
         shutil.rmtree(auth, ignore_errors=True)
 
 
-def execute_case(root, case, scenario, runner, model, timeout, credentials, retry=False, settings=None):
+def execute_case(root, case, scenario, runner, model, timeout, credentials, retry=False, settings=None, *, judge=True):
     previous = json.loads((case / "result.json").read_text())
     if previous["status"] == "completed" or previous["status"] == "error" and not retry:
-        judge_case(case)
+        if judge:
+            judge_case(case)
         return load_case(case)
     if previous["status"] in {"error", "running"} or (case / "workspace").exists():
         if (case / "compose.json").exists():
@@ -192,7 +193,8 @@ def execute_case(root, case, scenario, runner, model, timeout, credentials, retr
         record.update(status="error", error=type(exc).__name__)
     record["duration_seconds"] = round(time.monotonic() - started, 3)
     private_json(case / "result.json", record)
-    judge_case(case)
+    if judge:
+        judge_case(case)
     return load_case(case)
 
 
@@ -211,6 +213,7 @@ def main(argv=None):
     parser.add_argument("--max-output-tokens", type=int, default=8192)
     parser.add_argument("--reasoning-effort")
     parser.add_argument("--temperature", type=float)
+    parser.add_argument("--no-judge", action="store_true", help="Save executions for a separate judging stage")
     args = parser.parse_args(argv)
     if args.jobs < 1 or args.timeout <= 0:
         parser.error("jobs and timeout must be positive")
@@ -272,7 +275,7 @@ def main(argv=None):
     report()
     with ThreadPoolExecutor(max_workers=args.jobs) as pool:
         futures = {pool.submit(execute_case, root, case, scenario, runner, model,
-                               args.timeout, credentials, args.retry_failed, settings): (case, runner, model, scenario["id"])
+                               args.timeout, credentials, args.retry_failed, settings, judge=not args.no_judge): (case, runner, model, scenario["id"])
                    for case, scenario, runner, model in planned if str(scenario["id"]) in selected}
         for future in as_completed(futures):
             _, runner, model, sid = futures[future]

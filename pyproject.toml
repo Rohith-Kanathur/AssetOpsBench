@@ -42,6 +42,7 @@ dependencies = [
 [project.scripts]
 scenario-generate = "scenarios.generation.cli:main"
 scenario-evaluate = "benchmark.generated.cli:main"
+scenario-harbor = "benchmark.harbor.cli:main"
 scenario-judge = "benchmark.generated.judge:main"
 plan-execute = "agent.cli:main"
 claude-agent = "agent.claude_agent.cli:main"
@@ -80,6 +81,9 @@ otel = [
     "opentelemetry-sdk>=1.27.0",
     "opentelemetry-exporter-otlp-proto-http>=1.27.0",
     "opentelemetry-instrumentation-httpx>=0.48b0",
+]
+harbor = [
+    "harbor==0.24.0",
 ]
 
 [tool.uv]

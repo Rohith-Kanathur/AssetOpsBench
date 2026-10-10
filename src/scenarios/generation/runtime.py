@@ -185,6 +185,7 @@ def run(destination: Path, model: str = DEFAULT_MODEL, followup: str | None = No
                         "reasoning_effort": reasoning_effort, "service_tier": service_tier,
                         "started_at": now(), "process_status": "running", "validation_status": "pending",
                         "semantic_scholar_authenticated": bool(environment.get("SEMANTIC_SCHOLAR_API_KEY")),
+                        "prompt": prompt, "command": command,
                         "prompt_hashes": {n: hashlib.sha256((workspace / n).read_bytes()).hexdigest()
                                           for n in ("profile.md", "generate.md", "references/examples.json")}}
             meta_path = logs / f"run-{sequence}.json"
