@@ -122,7 +122,54 @@ Some tasks focus on a single domain, others are multi-step end-to-end workflows.
 
 ---
 
+## Scenario Generation
+
+`ScenarioGeneratorAgent` uses Codex to prepare an asset environment and write grounded
+operator and manager tasks. It reuses suitable records and tools, adding support
+only where needed. All operational data, including synthetic extensions, must
+retain real source evidence.
+
+![Scenario generation workflow: research and build the asset environment in an isolated sandbox, then draft scenarios, exercise them on live data, and repair them until the verifier passes.](docs/figures/scenario-generation.png)
+
+[Editable diagram source](docs/figures/scenario-generation.html).
+
+Generation uses Codex CLI with its native login. The evaluated agents use one
+shared **Stirrup harness with MCP tools and Docker code execution**. The generator
+researches, prepares and exercises the environment; evaluated agents receive only
+the operator request, permitted input data and the final tools.
+
+Negatives test limitations such as wrong sites, absent sensor channels or
+unsupported diagnoses. Checks validate structure and grounding; executing the
+scenarios separately verifies complete workflows.
+
+After [setup](./src/scenarios/generation/README.md#run), generate **20 positive and
+5 negative** scenarios by default, with the agent choosing the domain mix:
+
+```bash
+scenario-generate --asset Transformer
+```
+
+Use `--counts` for different totals or `--plan` for counts per domain.
+[Generation commands and outputs](./src/scenarios/generation/README.md) ·
+[Evaluation and reports](./src/benchmark/generated/README.md)
+
+---
+
 ## Leaderboards
+
+### Current evaluation
+
+Compare 25 validated human-authored Chiller scenarios with 25 generated Chiller
+scenarios, and evaluate generated Transformer scenarios separately. Use the same
+Stirrup harness, tools, prompt and limits across models. Score saved executions
+with Fable 5.1 in an independent, read-only Claude Code session.
+
+Execution can use TokenRouter, Vercel AI Gateway or direct provider API keys.
+[Commands, frozen inputs and reporting](src/benchmark/generated/README.md).
+Earlier multi-harness experiments are historical and are not results for this setup.
+No rerun of the new validated cohort has been published here.
+
+### Earlier benchmark results
 
 - To be revised (WIP with latest models)
 - Evaluated with **7 Large Language Models**

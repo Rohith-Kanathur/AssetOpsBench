@@ -2,6 +2,28 @@
 
 Offline scoring of saved agent trajectories against ground-truth scenarios.
 
+## Current paper evaluation setup
+
+Use the same **Stirrup agent with code execution enabled** for human-authored
+Chiller, synthetic Chiller, and synthetic Transformer scenarios. Each run gets
+the domain MCP tools and an isolated Docker workspace for shell commands,
+Python, and file reads/writes. Keep the harness, tools, prompt, and run limits
+fixed across models. MCP-only runs are earlier compatibility checks, not the
+current paper evaluation setup.
+
+Use `scenario-evaluate` for the current pipeline. It records API usage and cache
+reads and grades the full saved evidence using Fable 5.1 through Claude Code
+subscription auth. [Commands](../src/benchmark/generated/README.md).
+
+Save the complete execution and artifacts before independent scoring. Report
+missing-data cases separately from answerable cases; preserve the original
+questions and references and flag mismatches rather than rewriting them.
+
+FMSR should read the recovered, stored failure-mode catalog; no additional LLM
+backend is needed for that lookup. Do not add an LLM fallback to fill missing
+catalog entries. The separate legacy `generate_failure_modes` tool generates
+additional modes and is not part of recovering the original catalog.
+
 The evaluation module follows the three-stage pattern used by SWE-bench,
 HELM, and τ-bench:
 
