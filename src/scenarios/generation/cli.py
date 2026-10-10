@@ -9,13 +9,13 @@ import uuid
 from . import runtime
 from .harnesses import DEFAULT_MODEL, DEFAULT_REASONING, DEFAULT_TIER, HARNESSES
 from .budget import DEFAULT_COUNTS, parse_budget
-from .modes import DEFAULT_MODE, MODES
+from .modes import DEFAULT_MODE
 from .environment import DEFAULT_POLICY, POLICIES, policy
 from .workspace import audit_baseline, prepare
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__,
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False,
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("action", nargs="?", default="run", choices=("run", "check", "inspect", "watch", "stop", "build"))
     parser.add_argument("directory", type=Path, nargs="?", help="Saved generation directory")
@@ -27,26 +27,18 @@ def main(argv=None):
                         help="Positive/negative counts per domain; omitted entries request zero")
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Environment source checkout")
     parser.add_argument("--ref", default="HEAD", help="Committed environment revision")
-    parser.add_argument("--mode", choices=MODES,
-                        help="Evaluation capabilities (default: general-execution; mcp-only is legacy compatibility)")
+    parser.add_argument("--seed", type=Path,
+                        help="Prepared snapshot supplying database and input files; code still comes from --repo/--ref")
     parser.add_argument("--environment", choices=POLICIES,
-                        help="Preparation policy: extend data/tools (default) or use the existing surface; independent of --mode")
+                        help="Preparation policy: extend data/tools (default) or preserve the starting data and tools")
     parser.add_argument("--harness", choices=HARNESSES, default="codex", help="Generation harness")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Generation model")
     parser.add_argument("--reasoning", default=DEFAULT_REASONING, help="Model reasoning effort")
     parser.add_argument("--tier", default=DEFAULT_TIER, help="Generation service tier")
-    parser.add_argument("--temperature", type=float,
-                        help="Sampling temperature (0–2). Rejected by the current Codex harness, which does not expose this setting.")
     parser.add_argument("--followup", help="Continue a saved generation session")
     args = parser.parse_args(argv)
-    if args.temperature is not None:
-        if args.action != "run":
-            parser.error("--temperature only applies to run")
-        try:
-            HARNESSES[args.harness](args.model, args.reasoning, args.tier,
-                                   temperature=args.temperature)
-        except ValueError as exc:
-            parser.error(str(exc))
+    if args.seed is not None and args.action != "run":
+        parser.error("--seed only applies to run")
     if args.action == "build":
         runtime.build()
         return
@@ -64,10 +56,16 @@ def main(argv=None):
                 parser.error("directory already exists; use --followup to continue it")
             request = json.loads((destination / "workspace/request.json").read_text())
             saved_mode = request.get("generation_mode")
-            if saved_mode not in MODES:
-                parser.error("saved run has no generation mode; start a new generation instead of reclassifying legacy results")
-            if args.mode is not None and args.mode != saved_mode:
-                parser.error("follow-up generation mode must match the saved request")
+            if saved_mode != DEFAULT_MODE:
+                parser.error("saved run does not use general execution; start a new generation")
+            if args.seed is not None:
+                from .seed import describe
+                try:
+                    seed = describe(args.seed)
+                except (OSError, ValueError) as exc:
+                    parser.error(str(exc))
+                if request.get("seed") != {"sha256": seed["sha256"]}:
+                    parser.error("follow-up seed must match the saved request")
             if args.environment is not None and args.environment != policy(request):
                 parser.error("follow-up environment policy must match the saved request")
             if args.counts is not None or args.plan is not None:
@@ -88,19 +86,29 @@ def main(argv=None):
                 budget = parse_budget(args.counts, args.plan)
             except ValueError as exc:
                 parser.error(str(exc))
+            seed = None
+            if args.seed is not None:
+                from .seed import describe
+                try:
+                    seed = describe(args.seed)
+                except (OSError, ValueError) as exc:
+                    parser.error(str(exc))
             prepare(args.repo.resolve(), destination, ref=args.ref)
             errors = audit_baseline(destination)
             if errors:
                 raise RuntimeError("\n".join(errors))
             request = {"asset_class": args.asset.strip(),
-                       "generation_mode": args.mode or DEFAULT_MODE,
+                       "generation_mode": DEFAULT_MODE,
                        "environment_policy": args.environment or DEFAULT_POLICY, **budget}
+            if seed is not None:
+                from .seed import prepare as prepare_seed
+                prepare_seed(args.seed, destination, seed)
+                request["seed"] = {"sha256": seed["sha256"]}
             (destination / "workspace/request.json").write_text(json.dumps(request, indent=2) + "\n")
         print(f"Generation directory: {destination}", flush=True)
         runtime.configure(destination, Path.home() / ".codex", Path.home() / ".kaggle")
         runtime.run(destination, args.model, args.followup, harness=args.harness,
                     reasoning_effort=args.reasoning, service_tier=args.tier,
-                    temperature=args.temperature,
                     env_file=args.repo.expanduser().resolve() / ".env")
     elif args.action == "check":
         from .progress import write_index

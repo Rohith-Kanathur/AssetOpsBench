@@ -10,7 +10,7 @@ from scenarios.generation.review import check_contract
 from scenarios.generation.tests.test_review import one_contract, replace_artifact
 
 
-def fixture(workspace, mode="mcp-only", positive=True):
+def fixture(workspace, mode="general-execution", positive=True):
     one_contract(workspace, positive)
     request = json.loads((workspace / "request.json").read_text())
     request["generation_mode"] = mode
@@ -31,25 +31,20 @@ def helper_output(workspace, mode):
     return rows
 
 
-def test_mode_specific_prompt_does_not_restrict_the_generator_itself(tmp_path):
-    (tmp_path / "request.json").write_text('{"generation_mode":"mcp-only"}')
+def test_general_execution_guidance_is_always_available(tmp_path):
+    (tmp_path / "request.json").write_text('{"generation_mode":"general-execution"}')
     for name in ("profile.md", "generate.md"):
         (tmp_path / name).write_text("Base guidance\n")
     write_guidance(tmp_path)
     for name in ("profile.md", "generate.md"):
         text = (tmp_path / name).read_text()
-        assert "Evaluation mode: MCP only" in text
-        assert "You, the generator, still have" in text
-        assert "Evaluation mode: general execution" not in text
+        assert "Evaluation mode: general execution" in text
+        assert "shell/Python" in text
 
 
-def test_mcp_only_accepts_an_answer_and_rejects_a_helper_export(tmp_path):
-    fixture(tmp_path)
-    assert check_contract(tmp_path)["errors"] == []
-    rows = json.loads((tmp_path / "output/scenarios.json").read_text())
-    rows[0]["execution"]["requires"].append("general-execution")
-    replace_artifact(tmp_path, "scenarios", rows)
-    assert any("unavailable in mcp-only" in error for error in check_contract(tmp_path)["errors"])
+def test_old_mcp_only_request_cannot_be_used_for_new_generation(tmp_path):
+    fixture(tmp_path, "mcp-only")
+    assert any("invalid generation_mode" in e for e in check_contract(tmp_path)["errors"])
 
 
 def test_general_execution_declares_outputs_without_manual_execution_evidence(tmp_path):
@@ -62,7 +57,7 @@ def test_general_execution_declares_outputs_without_manual_execution_evidence(tm
 
 
 def test_general_execution_output_requires_its_capability(tmp_path):
-    rows = helper_output(tmp_path, "mcp-only")
+    rows = helper_output(tmp_path, "general-execution")
     rows[0]["execution"]["requires"] = ["mcp"]
     replace_artifact(tmp_path, "scenarios", rows)
     assert any("requires general-execution capability" in e for e in check_contract(tmp_path)["errors"])

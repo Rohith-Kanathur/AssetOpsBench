@@ -90,10 +90,9 @@ Stirrup cases also retain `native/api-usage.json`, cache-read tokens and
 provider-reported cost. Missing provider billing fields are reported as unknown,
 not zero. Cache probes are not inserted into evaluation runs.
 
-Native Codex, Claude Code, ZCode and the earlier SDK adapters remain available
-through explicit runner overrides for compatibility or startup smoke checks.
-They are not the default paper harness. Legacy generation modes remain readable;
-new generation defaults to MCP tools plus code execution.
+Native Codex, Claude Code and ZCode remain available through explicit runner
+overrides for startup smoke checks. They are not the default paper harness.
+The evaluation command accepts only general-execution runs.
 
 Run artifacts stay in ignored `results/`, `output/` or `generated/`, or outside
 this checkout. Never commit credentials, downloaded private data or trajectories.

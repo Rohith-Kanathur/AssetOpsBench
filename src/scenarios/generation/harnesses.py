@@ -1,7 +1,6 @@
 """Native harness command builders; add another builder when its runtime is supported."""
 
 import json
-import math
 
 DEFAULT_MODEL = "gpt-6-astra"
 DEFAULT_REASONING = "xhigh"
@@ -10,15 +9,7 @@ SERVERS = ("iot", "fmsr", "tsfm", "wo", "vibration", "utilities")
 
 
 def codex_command(model: str = DEFAULT_MODEL, reasoning_effort: str = DEFAULT_REASONING,
-                  service_tier: str = DEFAULT_TIER, *, temperature: float | None = None) -> list[str]:
-    if temperature is not None:
-        if not math.isfinite(temperature) or not 0 <= temperature <= 2:
-            raise ValueError("temperature must be a finite number between 0 and 2")
-        raise ValueError(
-            "The Codex CLI harness does not expose temperature control. "
-            "Omit --temperature to use its native settings; setting temperature requires "
-            "a harness and model that support it. No temperature override was applied."
-        )
+                  service_tier: str = DEFAULT_TIER) -> list[str]:
     command = ["codex", "exec", "--ignore-user-config", "--ephemeral",
                "--skip-git-repo-check", "--json", "--color", "never",
                # Docker provides isolation; no host tree or Docker socket is mounted.

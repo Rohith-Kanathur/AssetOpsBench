@@ -10,17 +10,16 @@ from scenarios.generation.tests.test_cli import prepare_stub
 from scenarios.generation.tests.test_review import one_contract, replace_artifact
 
 
-@pytest.mark.parametrize("mode", ["mcp-only", "general-execution"])
-def test_environment_policy_is_orthogonal_to_execution_mode(tmp_path, monkeypatch, mode):
+def test_existing_environment_policy_is_retained_on_followup(tmp_path, monkeypatch):
     destination = tmp_path / "run"
     monkeypatch.setattr(cli, "prepare", prepare_stub)
     monkeypatch.setattr(cli, "audit_baseline", lambda _: [])
     monkeypatch.setattr(runtime, "configure", lambda *args: None)
     monkeypatch.setattr(runtime, "run", lambda *args, **kwargs: None)
-    cli.main(["run", str(destination), "--asset", "Chiller", "--mode", mode, "--environment", "existing"])
+    cli.main(["run", str(destination), "--asset", "Chiller", "--environment", "existing"])
     request = json.loads((destination / "workspace/request.json").read_text())
     assert request["environment_policy"] == "existing"
-    assert request["generation_mode"] == mode
+    assert request["generation_mode"] == "general-execution"
     cli.main(["run", str(destination), "--followup", "Continue"])
     with pytest.raises(SystemExit):
         cli.main(["run", str(destination), "--followup", "Continue", "--environment", "extend"])

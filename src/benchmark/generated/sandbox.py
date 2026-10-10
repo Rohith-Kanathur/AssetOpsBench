@@ -79,8 +79,8 @@ def snapshot(generation, destination):
     if state.get("status") != "complete":
         raise ValueError("Generation must pass its checks before evaluation")
     request = json.loads((workspace / "request.json").read_text())
-    if request.get("generation_mode") not in {"mcp-only", "general-execution"}:
-        raise ValueError("Generation has no declared evaluation mode")
+    if request.get("generation_mode") != "general-execution":
+        raise ValueError("Generation must use general execution; start a new generation")
     original = generation / "request.json"
     if original.exists() and json.loads(original.read_text()) != request:
         raise ValueError("Generation request changed after execution")

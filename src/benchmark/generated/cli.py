@@ -22,7 +22,6 @@ from . import sandbox
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULTS = {
     "general-execution": {"stirrup": "litellm_proxy/openai/gpt-5.6-luna"},
-    "mcp-only": {"stirrup": "litellm_proxy/openai/gpt-5.6-luna"},
 }
 KEYS = ("ZAI_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "LITELLM_API_KEY",
         "LITELLM_BASE_URL", "TOKENROUTER_API_KEY", "TOKENROUTER_BASE_URL",
@@ -35,8 +34,9 @@ def slug(value):
 
 def runner_models(runners, mode):
     """Expand one model or a model list per runner into distinct executions."""
-    supported = {"stirrup"} | ({"codex", "claude-code", "zcode"} if mode == "general-execution"
-                              else {"openai-agent", "claude-agent"})
+    supported = {"stirrup", "codex", "claude-code", "zcode"}
+    if mode != "general-execution":
+        raise ValueError("Evaluation requires general execution; start a new generation")
     if not isinstance(runners, dict) or not runners or set(runners) - supported:
         raise ValueError(f"{mode} supports these runners: {', '.join(sorted(supported))}")
     pairs = []
@@ -158,48 +158,6 @@ def coding_case(case, runner, model, timeout, credentials=None):
         shutil.rmtree(auth, ignore_errors=True)
 
 
-def sdk_case(case, runner, model, endpoints, timeout, credentials):
-    private_json(case / "config/mcp-host.json", {"mcpServers": endpoints})
-    environment = {**os.environ, **credentials, "PYTHONPATH": str(ROOT), "OTEL_SDK_DISABLED": "true"}
-    environment.pop("AGENT_TRAJECTORY_DIR", None)
-    (case / "native").mkdir(exist_ok=True)
-    command = [sys.executable, "-m", "benchmark.generated.sdk_worker", "--runner",
-               "openai" if runner == "openai-agent" else "claude", "--model", model,
-               "--mcp-config", str(case / "config/mcp-host.json"), "--question-file",
-               str(case / "config/question.txt"), "--output", str(case / "native/result.json"),
-               "--timeout", str(timeout)]
-    auth = case / "auth" if runner == "claude-agent" else None
-    try:
-        if auth is not None:
-            api_auth = any(environment.get(name) for name in
-                           ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN"))
-            for prefix, key in (("litellm_proxy/", "LITELLM_API_KEY"), ("tokenrouter/", "TOKENROUTER_API_KEY")):
-                api_auth |= model.startswith(prefix) and bool(environment.get(key))
-            if not api_auth:
-                prepare_auth(auth, "claude")
-            auth.mkdir(parents=True, exist_ok=True, mode=0o700)
-            environment.update(HOME=str(auth), CLAUDE_CONFIG_DIR=str(auth / ".claude"),
-                               CLAUDE_CODE_DISABLE_AUTO_MEMORY="1", ENABLE_CLAUDEAI_MCP_SERVERS="false")
-            for name in ("CLAUDE_CODE_SIMPLE", "CLAUDE_CODE_SAFE_MODE"):
-                environment.pop(name, None)
-        with (case / "execution.log").open("w") as log:
-            result = subprocess.Popen(command, cwd=case / "workspace", env=environment,
-                                      stdout=log, stderr=log, start_new_session=True)
-            try:
-                result.wait(timeout=timeout + 90)
-            except subprocess.TimeoutExpired:
-                os.killpg(result.pid, signal.SIGKILL)
-                result.wait()
-                raise
-        path = case / "native/result.json"
-        if not path.exists():
-            raise RuntimeError(f"SDK process exited {result.returncode} without a result")
-        return json.loads(path.read_text())
-    finally:
-        if auth is not None:
-            shutil.rmtree(auth, ignore_errors=True)
-
-
 def execute_case(root, case, scenario, runner, model, timeout, credentials, retry=False, settings=None):
     previous = json.loads((case / "result.json").read_text())
     if previous["status"] == "completed" or previous["status"] == "error" and not retry:
@@ -227,7 +185,7 @@ def execute_case(root, case, scenario, runner, model, timeout, credentials, retr
             elif runner in {"codex", "claude-code", "zcode"}:
                 execution = coding_case(case, runner, model, timeout, credentials)
             else:
-                execution = sdk_case(case, runner, model, endpoints, timeout, credentials)
+                raise ValueError(f"Unsupported runner: {runner}")
             record.update(execution, runner=runner, model=model)
         record["artifacts"] = sandbox.artifact_inventory(case, scenario)
     except Exception as exc:

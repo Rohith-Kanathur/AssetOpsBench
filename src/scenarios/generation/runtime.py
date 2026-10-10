@@ -45,6 +45,8 @@ def configure(destination: Path, auth_home: Path, kaggle_home: Path) -> Path:
     if request_path.exists() and policy(json.loads(request_path.read_text())) == "existing":
         mounts.append(f"{(workspace / 'src').resolve()}:/workspace/src:ro")
         environment[BASELINE_ENV] = "/opt/generation/environment-baseline.json"
+    if (destination / "seed.json").is_file():
+        mounts.append(f"{(workspace / 'data/seed-database').resolve()}:/workspace/data/seed-database:ro")
     mounts.append(f"{(auth_home / 'auth.json').resolve()}:/root/.codex/auth.json:ro")
     if kaggle_home.is_dir():
         mounts.append(f"{kaggle_home.resolve()}:/run/kaggle-auth:ro")
@@ -105,31 +107,50 @@ def ensure_image() -> None:
 
 
 def start(destination: Path) -> None:
-    """Initialize the normal fixtures once, keeping data from later sessions."""
+    """Initialize the prepared seed or default data once, retaining it on resume."""
+    request_path = destination / "workspace/request.json"
+    request = json.loads(request_path.read_text()) if request_path.exists() else {}
+    expected_seed = request.get("seed")
+    if expected_seed:
+        seed_path = destination / "seed.json"
+        if not seed_path.is_file() or json.loads(seed_path.read_text()).get("sha256") != expected_seed.get("sha256"):
+            raise ValueError("Prepared seed is missing or differs from the saved request")
+    marker = destination / "initialized.json"
+    if marker.exists() and expected_seed and json.loads(marker.read_text()).get("seed") != expected_seed["sha256"]:
+        raise ValueError("Initialized database does not match the requested seed")
     ensure_image()
     compose(destination, "up", "-d", "--wait", "database")
-    marker = destination / "initialized.json"
     if not marker.exists():
-        compose(destination, "run", "--rm", "-T", "agent", "python", "-m", "couchdb.init_data")
-        marker.write_text(json.dumps({"manifest": "src/couchdb/scenarios_data/default/manifest.json"}) + "\n")
-    request_path = destination / "workspace/request.json"
+        if (destination / "seed.json").is_file():
+            from .seed import verify
+            seed = verify(destination)
+            compose(destination, *execution_arguments(destination), "agent", "python", "-m",
+                    "scenarios.generation.seed", "restore", "/workspace/data/seed-database")
+            initialized = {"seed": seed["sha256"]}
+        else:
+            compose(destination, "run", "--rm", "-T", "agent", "python", "-m", "couchdb.init_data")
+            initialized = {"manifest": "src/couchdb/scenarios_data/default/manifest.json"}
+        marker.write_text(json.dumps(initialized) + "\n")
     baseline_path = destination / "environment-baseline.json"
     if (request_path.exists() and policy(json.loads(request_path.read_text())) == "existing"
             and not baseline_path.exists()):
         result = compose(destination, *execution_arguments(destination), "agent", "python", "-m",
                          "scenarios.generation.environment", capture_output=True, text=True)
         baseline = json.loads((destination / "baseline.json").read_text())
+        if (destination / "seed.json").is_file():
+            seed = json.loads((destination / "seed.json").read_text())
+            baseline["files"].update(seed["files"])
         baseline["databases"] = json.loads(result.stdout)
         baseline_path.write_text(json.dumps(baseline, indent=2) + "\n")
 
 
 def run(destination: Path, model: str = DEFAULT_MODEL, followup: str | None = None, *,
         harness: str = "codex", reasoning_effort: str = DEFAULT_REASONING,
-        service_tier: str = DEFAULT_TIER, temperature: float | None = None,
+        service_tier: str = DEFAULT_TIER,
         env_file: Path | None = None) -> None:
     from .progress import write_index
 
-    command = HARNESSES[harness](model, reasoning_effort, service_tier, temperature=temperature)
+    command = HARNESSES[harness](model, reasoning_effort, service_tier)
     workspace = destination / "workspace"
     for name in ("profile.md", "generate.md"):
         (workspace / name).write_text((HERE / "prompts" / name).read_text())
@@ -162,8 +183,6 @@ def run(destination: Path, model: str = DEFAULT_MODEL, followup: str | None = No
             metadata = {"request": json.loads((workspace / "request.json").read_text()),
                         "harness": harness, "requested_model": model,
                         "reasoning_effort": reasoning_effort, "service_tier": service_tier,
-                        # None means no override, not temperature zero.
-                        "requested_temperature": temperature,
                         "started_at": now(), "process_status": "running", "validation_status": "pending",
                         "semantic_scholar_authenticated": bool(environment.get("SEMANTIC_SCHOLAR_API_KEY")),
                         "prompt_hashes": {n: hashlib.sha256((workspace / n).read_bytes()).hexdigest()
@@ -186,7 +205,7 @@ def run(destination: Path, model: str = DEFAULT_MODEL, followup: str | None = No
             metadata.update(process_status="succeeded", exit_code=0, finished_at=now())
             meta_path.write_text(json.dumps(metadata, indent=2) + "\n")
             if json.loads((workspace / "request.json").read_text()) != requested:
-                raise ValueError("Generation changed the requested asset, budget or mode")
+                raise ValueError("Generation changed the requested asset, budget, seed or environment policy")
             save_status(destination, "checking", attempt=sequence)
             report = check(destination)
             review_path = logs / f"review-{sequence}.json"

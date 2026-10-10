@@ -1,7 +1,8 @@
 # Environment policy: existing
 
-Use the selected checkout's existing asset records, fixtures, catalogs, models
-and MCP implementations. The harness initializes the normal fixtures once.
+Use the existing asset records, catalogs, models and MCP implementations.
+The harness initializes the prepared seed, or the checkout's default data when
+no seed was supplied, once.
 Keep that input surface fixed throughout preparation and scenario generation.
 
 Continue academic research, reading papers and learning the asset's physics,

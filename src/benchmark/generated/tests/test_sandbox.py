@@ -200,7 +200,7 @@ def test_shared_outputs_are_inventoried_once_without_private_resources(tmp_path)
 def test_zcode_selection_uses_distinct_image_and_only_coding_plan_key(tmp_path, monkeypatch):
     assert cli.runner_models({"zcode": "GLM-5.3"}, "general-execution") == [("zcode", "GLM-5.3")]
     assert set(cli.DEFAULTS["general-execution"]) == {"stirrup"}
-    with pytest.raises(ValueError, match="supports these runners"):
+    with pytest.raises(ValueError, match="general execution"):
         cli.runner_models({"zcode": "GLM-5.3"}, "mcp-only")
     save(tmp_path / "compose.json", {"services": {}})
     monkeypatch.setattr(cli, "prepare_auth", lambda *args: pytest.fail("No personal login should be copied"))

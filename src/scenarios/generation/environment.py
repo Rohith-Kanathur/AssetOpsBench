@@ -37,11 +37,12 @@ def load_baseline():
 
 def audit_source(workspace, baseline):
     from .workspace import PACKAGES
+    from .seed import digest as file_digest
 
     errors = []
     for name, digest in baseline["files"].items():
         path = workspace / name
-        if path.is_symlink() or not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+        if path.is_symlink() or not path.is_file() or file_digest(path) != digest:
             errors.append(f"Existing environment source changed: {name}")
     for package in PACKAGES:
         for path in (workspace / package).rglob("*"):

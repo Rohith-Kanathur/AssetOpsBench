@@ -7,7 +7,7 @@ from pathlib import Path, PurePosixPath
 
 from .contracts import TOOL, string, strings
 
-MODES = ("mcp-only", "general-execution")
+MODES = ("general-execution",)
 DEFAULT_MODE = "general-execution"
 GAP_KINDS = {"missing_data", "unknown_asset", "unknown_site", "missing_sensor",
              "missing_history", "unsupported_diagnosis", "unsupported_model",
@@ -43,8 +43,6 @@ def validate_execution(request, scenarios, local_file, tools=None):
         if not strings(requires, True) or not set(requires) <= {"mcp", "general-execution"}:
             errors.append(f"{label}: execution.requires must list mcp and/or general-execution")
             requires = []
-        if mode == "mcp-only" and "general-execution" in requires:
-            errors.append(f"{label}: general execution is unavailable in mcp-only mode")
         inputs = execution.get("input_files")
         if not strings(inputs):
             errors.append(f"{label}: execution.input_files must be a path list")

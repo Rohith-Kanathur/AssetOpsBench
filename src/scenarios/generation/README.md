@@ -28,8 +28,8 @@ scenarios, allocated by the agent; MCP tools and code execution;
 Codex / GPT-6 Astra / `xhigh` / `fast` for generation.
 
 ```bash
-scenario-generate --asset Transformer --mode general-execution --counts '{"positive":5,"negative":1}'
-scenario-generate --asset Chiller --environment existing
+scenario-generate --asset Transformer --counts '{"positive":5,"negative":1}'
+scenario-generate --asset Chiller --environment existing --seed /path/to/prepared/snapshot
 scenario-generate --asset Transformer --plan '{"iot":{"positive":2,"negative":1},"multiagent":{"positive":1}}'
 scenario-generate run /path/to/run --followup "Check the unresolved source claims."
 scenario-generate check /path/to/run
@@ -47,16 +47,15 @@ scenario-generate stop /path/to/run
 | `--asset NAME` | Required for a new generation. |
 | `--counts JSON` | Positive/negative totals; the agent chooses the domain mix. Defaults to 20 positive, 5 negative. |
 | `--plan JSON` | Exact positive/negative counts per domain. Mutually exclusive with totals. |
-| `--mode MODE` | `general-execution` (default). `mcp-only` remains for legacy compatibility. |
-| `--environment POLICY` | `extend` (default) permits grounded preparation; `existing` uses only the selected checkout's data and tools. Independent of `--mode`. |
+| `--environment POLICY` | `extend` (default) permits grounded preparation; `existing` preserves the starting data and tools. |
+| `--seed PATH` | Prepared snapshot supplying database records and public input files. Without it, use the selected checkout's default data. |
 | `--harness NAME` | `codex`, currently the only implementation. |
 | `--model MODEL` | `gpt-6-astra`. |
 | `--reasoning LEVEL` | `xhigh`. |
 | `--tier TIER` | `fast`. |
-| `--temperature FLOAT` | Optional request in `[0, 2]`. The current Codex CLI harness cannot apply temperature and rejects this option before preparing a run. |
 | `--repo PATH` | Environment source checkout; current directory. |
 | `--ref REF` | Committed environment revision; `HEAD`. |
-| `--followup TEXT` | Fresh session continuing saved files and database; retains the saved budget and generation mode. |
+| `--followup TEXT` | Fresh session continuing saved files and database; retains the saved budget, seed and environment policy. |
 | `-h`, `--help` | Show usage. |
 
 Plan keys are `iot`, `fmsr`, `tsfm`, `wo`, `vibration`, and `multiagent`.
@@ -72,8 +71,8 @@ the supplied budget and the per-domain allocation. There are no separate count o
 domain flags.
 
 The generator uses Codex CLI through its native login. Evaluation uses Stirrup
-with MCP tools, shell/Python analysis and file creation. Legacy MCP-only runs
-remain readable but are not a separate track in the current study. Scenario contracts
+with MCP tools, shell/Python analysis and file creation. All new runs use general
+execution; there is no mode switch. Scenario contracts
 declare required capabilities and input/output files. The harness records execution
 automatically; the generator does not write tool-call ledgers or execution receipts.
 Prepared outputs, rubrics and generator scripts are not evaluation inputs. During
@@ -82,23 +81,16 @@ the generated server implementation remains private to the tool container.
 
 Negatives test missing data, wrong asset/site, absent channels, insufficient
 coverage or unsupported domain conclusions. Missing file-writing capability and
-runtime failures do not qualify. Follow-ups cannot change mode. Legacy results
-without a mode remain readable and checkable with a compatibility warning; start
-a new generation to evaluate either declared mode.
+runtime failures do not qualify. Old MCP-only runs cannot be resumed or evaluated
+with this pipeline; their saved artifacts remain available for inspection.
 
 Requested model settings and prompt hashes are saved per invocation. Unsupported
 model settings surface as CLI errors. `harnesses.py` is the boundary for future
 clients; authentication stays with the native client.
 
-Temperature is not configurable through the current Codex CLI harness. Do not
-report these runs as `temperature=0`: `requested_temperature: null` in the run
-metadata means no override was requested. Explicit requests, including
-`--temperature 0`, fail before creating a workspace or starting containers.
-An effective override requires a harness and model that support temperature.
-Even then, temperature zero alone does not guarantee identical scenarios when
-live research results, data, or tool implementations change. Retain the actual
-scenarios, reference answers, environment/data snapshot, and evaluation outputs
-alongside the configuration used for the reported results.
+Generation temperature is not configurable through the Codex CLI. Retain the
+actual scenarios, reference answers, environment/data snapshot and evaluation
+outputs alongside the configuration used for the reported results.
 
 ## Environment
 
@@ -117,10 +109,21 @@ inputs must be declared. Task mutations are exercised on disposable copies and
 restored; native TSFM run/result ledgers are outputs, not added input data.
 
 The command builds its Docker image if needed, starts an isolated CouchDB volume,
-and loads the repository's normal default manifest. Follow-up sessions reuse the
-saved source and database. It does not connect to or modify the host database.
-Preparing a different starting environment is an experiment setup choice, outside
-the generation prompt. The agent reads only its asset/scope request and normal
+and loads the repository's normal default manifest unless `--seed` is supplied.
+With `--seed`, it verifies the prepared snapshot's data hashes, copies only
+`database/` and public `inputs/`, and restores those database exports instead.
+The snapshot's code, human questions, reference answers and validation reports
+are not copied. Code continues to come from `--repo` / `--ref`. The seed must
+contain `database/`, `inputs/` and a `manifest.json` listing their SHA-256 hashes;
+it can be the same prepared snapshot used by `scenario-evaluate --snapshot`.
+
+Seed records are readable under `data/seed-database/`, public files retain their
+workspace-relative paths, and `data/seed-manifest.json` records their origin hashes.
+`existing` checks include these files as well as the initialized database.
+Follow-ups reuse saved copies and reject a different seed. A missing or invalid
+seed fails instead of falling back to repository data. The host database is never
+used or modified. This is experiment setup, outside the generation prompt.
+The agent reads its asset/scope request, prepared data and normal
 instructions in [profile.md](prompts/profile.md) and [generate.md](prompts/generate.md).
 
 The container mounts the generated workspace and read-only Codex/Kaggle credentials.

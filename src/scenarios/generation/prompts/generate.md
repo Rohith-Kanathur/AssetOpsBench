@@ -27,8 +27,8 @@ scenarios combine a coherent workflow across at least two tool domains.
 
 Use the profile's grounded asset records and final tools, reusing suitable data
 and capabilities within the selected environment policy. Positive
-tasks must be fully answerable through the final environment and evaluation
-capabilities in `generation_mode`, including intermediate data transfers. Negative
+tasks must be fully answerable through the final environment using MCP tools and
+general code execution, including intermediate data transfers. Negative
 tasks test a real domain evidence gap, with the missing dependency recorded. Keep the positive/negative quotas separate. If a requested quota cannot
 be supported, preserve completed work and explain the shortfall in the README;
 never relabel a requested positive as negative to fill the count.

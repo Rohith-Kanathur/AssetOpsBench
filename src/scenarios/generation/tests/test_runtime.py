@@ -47,20 +47,6 @@ def test_explicit_model_settings_override_defaults():
     assert 'service_tier="default"' in command
 
 
-def test_codex_cannot_silently_ignore_zero_temperature():
-    with pytest.raises(ValueError, match="does not expose temperature"):
-        codex_command(temperature=0)
-
-
-def test_temperature_fails_before_runtime_side_effects(tmp_path, monkeypatch):
-    from scenarios.generation import runtime
-
-    monkeypatch.setattr(runtime, "start", lambda _: pytest.fail("must not start containers"))
-    with pytest.raises(ValueError, match="does not expose temperature"):
-        runtime.run(tmp_path, temperature=0)
-    assert list(tmp_path.iterdir()) == []
-
-
 def test_existing_database_is_not_reseeded(tmp_path, monkeypatch):
     from scenarios.generation import runtime
 
@@ -108,7 +94,7 @@ def test_run_repairs_failed_checks_before_marking_complete(tmp_path, monkeypatch
     from scenarios.generation import runtime
 
     (tmp_path / "workspace/output").mkdir(parents=True)
-    (tmp_path / "workspace/request.json").write_text('{"asset_class":"AHU","generation_mode":"mcp-only"}')
+    (tmp_path / "workspace/request.json").write_text('{"asset_class":"AHU","generation_mode":"general-execution"}')
     monkeypatch.setattr(runtime, "start", lambda _: None)
     calls = []
     monkeypatch.setattr(runtime, "compose", lambda *args, **kwargs: calls.append((args, kwargs)))
@@ -121,7 +107,6 @@ def test_run_repairs_failed_checks_before_marking_complete(tmp_path, monkeypatch
     assert json.loads((tmp_path / "logs/run-1.json").read_text())["validation_status"] == "failed"
     assert json.loads((tmp_path / "logs/review-1.json").read_text())["errors"] == ["Missing operator tasks"]
     assert json.loads((tmp_path / "logs/run-2.json").read_text())["validation_status"] == "passed"
-    assert json.loads((tmp_path / "logs/run-2.json").read_text())["requested_temperature"] is None
 
 
 def test_unresolved_checks_leave_run_incomplete(tmp_path, monkeypatch):
@@ -129,7 +114,7 @@ def test_unresolved_checks_leave_run_incomplete(tmp_path, monkeypatch):
     from scenarios.generation import runtime
 
     (tmp_path / "workspace/output").mkdir(parents=True)
-    (tmp_path / "workspace/request.json").write_text('{"asset_class":"AHU","generation_mode":"mcp-only"}')
+    (tmp_path / "workspace/request.json").write_text('{"asset_class":"AHU","generation_mode":"general-execution"}')
     monkeypatch.setattr(runtime, "start", lambda _: None)
     monkeypatch.setattr(runtime, "compose", lambda *args, **kwargs: None)
     monkeypatch.setattr(runtime, "check", lambda _: {"errors": ["Unresolved evidence"]})
@@ -159,7 +144,7 @@ def test_interrupted_process_records_failure(tmp_path, monkeypatch):
     from scenarios.generation import runtime
 
     (tmp_path / "workspace/output").mkdir(parents=True)
-    (tmp_path / "workspace/request.json").write_text('{"asset_class":"AHU","generation_mode":"mcp-only"}')
+    (tmp_path / "workspace/request.json").write_text('{"asset_class":"AHU","generation_mode":"general-execution"}')
     monkeypatch.setattr(runtime, "start", lambda _: None)
 
     def interrupt(*args, **kwargs):
@@ -177,14 +162,14 @@ def test_generation_cannot_change_the_frozen_mode_or_budget(tmp_path, monkeypatc
     from scenarios.generation import runtime
 
     (tmp_path / "workspace/output").mkdir(parents=True)
-    request = {"asset_class": "AHU", "generation_mode": "mcp-only",
+    request = {"asset_class": "AHU", "generation_mode": "general-execution",
                "scenario_counts": {"positive": 8, "negative": 2}}
     path = tmp_path / "workspace/request.json"
     path.write_text(json.dumps(request))
     monkeypatch.setattr(runtime, "start", lambda _: None)
 
     def change_request(*args, **kwargs):
-        path.write_text(json.dumps({**request, "generation_mode": "general-execution"}))
+        path.write_text(json.dumps({**request, "scenario_counts": {"positive": 99, "negative": 2}}))
 
     monkeypatch.setattr(runtime, "compose", change_request)
     checked = []
@@ -214,7 +199,7 @@ def test_runtime_saves_native_events_without_agent_authored_log_files(tmp_path, 
     from scenarios.generation import runtime
 
     (tmp_path / "workspace/output").mkdir(parents=True)
-    (tmp_path / "workspace/request.json").write_text('{"asset_class":"AHU","generation_mode":"mcp-only"}')
+    (tmp_path / "workspace/request.json").write_text('{"asset_class":"AHU","generation_mode":"general-execution"}')
     monkeypatch.setattr(runtime, "start", lambda _: None)
     events = '{"type":"item.completed","item":{"type":"command_execution","exit_code":0}}\n'
 

@@ -1,14 +1,15 @@
 # Prepare the requested asset environment
 
 Read `request.json` and inspect the live tools, schemas and data before choosing
-what to build. `generation_mode` specifies the evaluated agent's capabilities;
-follow the selected mode guidance below when planning operator/manager tasks.
-Evaluation uses the final MCP environment recorded in the profile. The independent
+what to build. The evaluated agent always has MCP tools, shell/Python and file
+access. Evaluation uses the final MCP environment recorded in the profile.
 `environment_policy` controls whether preparation may extend its data and tools.
-The generator retains its preparation tools in either mode. Server source is in `src/servers`; loaders and collection schemas
-are in `src/couchdb`. The normal fixtures are loaded. Use research to establish
-the asset's data and capability needs; reuse suitable records and tools while
-preparing the environment to support them.
+Server source is in `src/servers`; loaders and collection schemas are in
+`src/couchdb`. The harness has initialized the starting database. If a prepared
+seed was supplied, its original records and hashes are in `data/seed-database/`
+and `data/seed-manifest.json`; other public inputs keep their original paths.
+Otherwise, the selected checkout's default records are loaded. Use research to
+establish the asset's data and capability needs while respecting this policy.
 
 ## Inspect coverage and research the asset
 
