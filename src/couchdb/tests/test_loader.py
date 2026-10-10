@@ -52,6 +52,8 @@ def test_failure_mode_collection_parses_shared_json() -> None:
 
     assert cfg["format"] == "json"
     assert cfg["primary_key"] == ["asset_class"]
-    assert len(docs) == 1
-    assert docs[0]["asset_class"] == "pump"
-    assert docs[0]["failure_modes"] == ["seal leakage", "impeller wear"]
+    by_class = {doc["asset_class"]: doc for doc in docs}
+    assert sorted(by_class) == ["ahu", "chiller", "pump"]
+    assert by_class["pump"]["failure_modes"] == ["seal leakage", "impeller wear"]
+    assert "Evaporator Water side fouling" in by_class["chiller"]["failure_modes"]
+    assert len(by_class["ahu"]["failure_modes"]) == 5
