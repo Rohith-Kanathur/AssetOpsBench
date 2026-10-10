@@ -31,6 +31,8 @@ _RUBRIC_KEYS = (
 
 _PROMPT_TEMPLATE = """You are a critical reviewer tasked with evaluating the effectiveness and accuracy of an AI agent's response to a given task. Your goal is to determine whether the agent has successfully accomplished the task correctly based on the expected or characteristic behavior.
 
+The characteristic answer defines successful behavior for this scenario. A request may contain a false assumption or depend on evidence that the environment cannot supply. When the characteristic answer establishes such a limitation, evaluate whether the agent checked the relevant evidence, completed the supported parts, and explained the specific unsupported conclusion or action. Correctly doing so can satisfy task completion and result verification. Do not require the agent to produce an unsupported result or perform an unsupported action. A generic refusal or a claim of insufficient data without the required checks and supported findings does not satisfy the characteristic answer. Apply all six criteria to this expected behavior.
+
 Evaluation Criteria:
 1. **Task Completion:**
    - Verify if the agent executed all necessary actions (e.g., using the correct tools, retrieving data, performing the required analysis).
@@ -43,7 +45,7 @@ Evaluation Criteria:
 
 3. **Generalized Result Verification:**
    - **Task Type Verification:** Based on the task type (forecasting, anomaly detection, classification, etc.), verify if the agent has returned the expected results.
-       - For **forecasting** tasks: Ensure that the agent generated a forecast for the specified future period.
+       - For **forecasting** tasks: When the characteristic answer supports a forecast, ensure that the agent generated it for the specified future period. When it establishes insufficient evidence for that forecast, verify the required checks, supported findings, and explanation of the limitation instead.
        - For **anomaly detection** tasks: Verify that anomalies are detected as expected (if anomalies were anticipated).
        - For other tasks (e.g., classification), ensure the task result matches the expected format and value.
    - **Comparison with Expected Output:** Check if the result matches the expected format, values, or outcomes as outlined in the characteristic answer.
