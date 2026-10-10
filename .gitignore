@@ -204,3 +204,9 @@ src/tmp/
 
 # Observability artifacts (OTLP-JSON traces + per-run trajectory JSON).
 traces/
+
+# Generated runs and reports stay local.
+/benchmarks/runs/
+/results/
+/generated/
+/output/
