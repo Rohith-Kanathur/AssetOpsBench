@@ -1,0 +1,237 @@
+{
+  "description": "Curated adaptations of existing benchmark utterances: operator phrasing and reference-answer patterns, with source-specific results identified for recalculation in each new environment.",
+  "source_hash": "SHA-256 of the complete source row serialized as sorted compact JSON with UTF-8 and ensure_ascii=false.",
+  "source_snapshot": "source-rows.json contains the selected original rows preserved at commit 66bca546001a05f8132f6372fcf616afec540b06 on codex/reference-scenario-generator-20261002. Original rubrics are provenance, not validated answers for a new environment. The two negative_examples retain human corpus rows 507 and 510 from the pinned Hugging Face revision in their source URLs; their rubrics describe insufficiency although the source has no explicit positive/negative field.",
+  "usage": "Follow the task scope in generate.md: lookup examples illustrate intermediate retrieval steps, not eligible standalone scenarios. Replace all placeholders with verified current references and exercised results. Adaptation notes retain concrete source answers to illustrate the expected specificity; recompute them for the new environment. Source rows are provenance for the examples, not evidence for a new scenario.",
+  "examples": [
+    {
+      "type": "iot",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 6,
+        "sha256": "2203ccc380457730f4f9980dfd918d30f7f2160fcec07873acfc0210676dc470"
+      },
+      "category": "Knowledge Query",
+      "text": "Get the asset details for <asset> at <site>.",
+      "characteristic_form": "Use iot.asset_detail; report the returned identity and attributes, with evidence references."
+    },
+    {
+      "type": "iot",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 44,
+        "sha256": "5ad11219e97e95e0aeb4caf729f39b19725dbbbc1578a1020733b5d13bea546e"
+      },
+      "category": "Knowledge Query",
+      "text": "Which measurements are monitored on <asset> at <site>?",
+      "characteristic_form": "Use iot.installed_sensors and iot.measured_sensors; distinguish configured channels from channels containing readings."
+    },
+    {
+      "type": "iot",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 46,
+        "sha256": "a4a67a26d9c3448111b96d76e34938d3897062968a65740f29c40f0796d05a62"
+      },
+      "category": "Data Retrieval",
+      "text": "Retrieve <sensor> readings for <asset> at <site> between <start> and <end>, and save them in a file.",
+      "characteristic_form": "Expected <verified_row_count> observations spanning <verified_first_timestamp> through <verified_last_timestamp>, with <verified_gaps> and <verified_key_values_and_units>. Use iot.stream_extent and iot.history with the same resolved window; return the complete data file and verify its contents."
+    },
+    {
+      "type": "fmsr",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 101,
+        "sha256": "7203545fb0eb8528353a77bb257752b256c5b9fbe40dd5e0525d45ed018bc8f0"
+      },
+      "category": "Knowledge Query",
+      "text": "List the known failure modes for <asset-class>.",
+      "characteristic_form": "Use fmsr.get_failure_modes for the requested class; return the recorded modes, separating catalog knowledge from a diagnosis of any asset."
+    },
+    {
+      "type": "fmsr",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 109,
+        "sha256": "09ad61a3707511d1050958fe948561ba3c668fe4f714e9caae0bcb7bc5ea7c37"
+      },
+      "category": "Recommendation",
+      "text": "Which failure modes of <asset> at <site> can we monitor using the installed sensors?",
+      "characteristic_form": "Use fmsr.get_failure_modes and iot.installed_sensors; link candidate modes only through cited, applicable sensor mappings and disclose uncovered modes."
+    },
+    {
+      "type": "fmsr",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 112,
+        "sha256": "0e24eefa3e5d9f52d3dd8c3fb82af31bee6c69af551935ef7da9dfb04641e018"
+      },
+      "category": "Recommendation",
+      "text": "If <failure-mode> is a concern for <asset> at <site>, which installed measurement should we monitor first, and why?",
+      "characteristic_form": "Prioritize <verified_sensor_names> because <cited_relationship_to_failure_mode>. Use fmsr.get_failure_modes and iot.installed_sensors to establish the applicable mapping and available channels; distinguish monitoring relevance from a validated diagnostic."
+    },
+    {
+      "type": "tsfm",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 513,
+        "sha256": "f4fedc035c93f3244a70ea12e73c2e6f6010cea065839cd10417b25c466ea940"
+      },
+      "category": "Forecasting",
+      "text": "What is the forecast for <asset>'s <sensor> at <site> for <future-window>, based on <observed-window>?",
+      "characteristic_form": "Expected <verified_forecast_values_and_units> over <verified_horizon_and_timestamps>, supported by <verified_observed_values>. Use iot.history, tsfm.data_quality and tsfm.run_recipe; verify the selected method and inputs, state numeric tolerance where outputs are determined, and define acceptance criteria where valid methods can differ.",
+      "adaptation_note": "Source row 513 identifies a constant observed value of 45.5 and a forecast retaining 45.5. Recompute observed and forecast values for the new asset and method; constant history alone does not justify every model producing the same forecast."
+    },
+    {
+      "type": "tsfm",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 217,
+        "sha256": "d462e4b398e030417233112a06d33f8b63780822043250bd74caa6510cc01ad3"
+      },
+      "category": "Forecasting",
+      "text": "Forecast <sensor> for <asset> at <site> from <dataset-file>, using <timestamp-column> as the time axis and a horizon of <horizon>.",
+      "characteristic_form": "Use tsfm.data_quality and tsfm.run_recipe with a supported forecasting configuration; save the forecast and state its units, horizon, data coverage and limitations."
+    },
+    {
+      "type": "tsfm",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 222,
+        "sha256": "4b00a87544fe64726210861dee9d2d91d3114a44deebf7a01fb4b9f4777bdce8"
+      },
+      "category": "Anomaly Detection",
+      "text": "Find unusual changes in <sensor> for <asset> at <site> between <start> and <end>, and show when they occurred.",
+      "characteristic_form": "Use tsfm.data_quality and tsfm.run_recipe with a supported anomaly task; return the scored intervals and distinguish statistical anomalies from confirmed physical failures."
+    },
+    {
+      "type": "wo",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 402,
+        "sha256": "63590e469fb66cc7c01b73f8633d110d26971914b76c540a02fc5337ffeb5b5f"
+      },
+      "category": "Data Retrieval",
+      "text": "Show the preventive work orders for <asset> at <site> between <start> and <end>.",
+      "characteristic_form": "Expected <verified_count> preventive work orders with identifiers <verified_order_ids>. Use wo.list_workorders and wo.get_workorder to establish the matches for the requested asset, site, work type and interval.",
+      "adaptation_note": "Source row 402 specifies 31 matching preventive orders. Preserve this concrete-answer pattern and calculate the new count and identifiers from the prepared environment."
+    },
+    {
+      "type": "wo",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 423,
+        "sha256": "7252b593b228d74500d32ec90d9cdc66aa695dbd2a3c8795052a499692217627"
+      },
+      "category": "Decision Support",
+      "text": "Using the work-order history for <asset> at <site> up to <cutoff>, which maintenance tasks should I prioritize for <next-window>?",
+      "characteristic_form": "Use wo.list_workorders and wo.get_workorder; justify priorities from recorded status, priority and scheduling evidence, disclosing missing cost or risk information."
+    },
+    {
+      "type": "wo",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 424,
+        "sha256": "424269f85880cf40f82870065fa723c573acc0769c4ee3b89ffe7014f952057f"
+      },
+      "category": "Decision Support",
+      "text": "Can we bundle corrective work orders for <asset> at <site> between <start> and <end>? Each bundle should contain at least two orders within a two-week window; show the details.",
+      "characteristic_form": "A verified feasible solution has <verified_bundle_count> bundles with sizes <verified_bundle_sizes> and order membership <verified_order_ids_by_bundle>. Use wo.list_workorders and wo.get_schedule_calendar; check two-week windows, minimum sizes, complete membership and unbundled orders. Accept alternative bundles satisfying the same constraints when the request does not determine a unique grouping.",
+      "adaptation_note": "Source row 424 specifies three bundles with sizes 15, 6 and 2. Derive new memberships and sizes from the prepared records; distinguish a verified feasible solution from a uniquely required solution."
+    },
+    {
+      "type": "vibration",
+      "source": {
+        "path": "src/scenarios/local/vibration_utterance.json",
+        "row_id": 309,
+        "sha256": "822eda670e7bc98957c8e590efe1446cd6e631cc565a17983a5d65c9e95ba599"
+      },
+      "category": "Data Retrieval",
+      "text": "What vibration sensors are available for <asset> at <site>?",
+      "characteristic_form": "Use vibration.list_vibration_sensors; report the actual available channels rather than assuming names from an example."
+    },
+    {
+      "type": "vibration",
+      "source": {
+        "path": "src/scenarios/local/vibration_utterance.json",
+        "row_id": 322,
+        "sha256": "d5e782e4e34dba278f292e89eace2244e3d300bc6526e09e2cc7975afd5a95c0"
+      },
+      "category": "Diagnostic",
+      "text": "A technician reports that <asset> at <site> vibrates more than usual. Review <sensor> between <start> and <end>, show the five strongest frequency peaks, and explain what they suggest.",
+      "characteristic_form": "Expected the five frequency/amplitude pairs <verified_peaks_with_units>, with <supported_interpretation_and_limitations>. Use vibration.get_vibration_data and vibration.compute_fft_spectrum; verify sample rate, interval and frequency resolution, and interpret peaks only with applicable speed and machine information."
+    },
+    {
+      "type": "vibration",
+      "source": {
+        "path": "src/scenarios/local/vibration_utterance.json",
+        "row_id": 315,
+        "sha256": "a61f876728e344f5e655390d2b26737f0341a1e534e163e7adc7861cfb24bb9c"
+      },
+      "category": "Diagnostic",
+      "text": "Review the vibration signal for <asset> at <site> between <start> and <end>. I do not have a speed measurement; what can we still learn?",
+      "characteristic_form": "Use vibration.get_vibration_data and vibration.diagnose_vibration; report supported statistics and spectra, explicitly retain missing-speed warnings and omit unsupported shaft or severity conclusions."
+    },
+    {
+      "type": "multiagent",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 621,
+        "sha256": "9ac9d6e46d565821c958b3f397ee6d24d0523d14bf029583e73652bcf6d220e2"
+      },
+      "category": "Decision Support",
+      "text": "Check <sensor> on <asset> at <site> between <start> and <end> for anomalies. After reviewing the evidence and existing work, should I open a work order?",
+      "characteristic_form": "Expected unusual intervals <verified_intervals_and_values>, existing relevant work <verified_order_ids_or_empty_result>, and recommendation <supported_decision_and_reason>. Use iot.history, a supported tsfm.run_recipe and wo.list_workorders to establish these findings; keep a recommendation distinct from authorization to create an order."
+    },
+    {
+      "type": "multiagent",
+      "source": {
+        "path": "src/scenarios/huggingface/asset/compressor_utterance.jsonl",
+        "row_id": 1007,
+        "sha256": "a23bd50576137389da135e3a89c8a3df49beca6ca3393a54a6d0acf02897ef66"
+      },
+      "category": "Predictive Maintenance",
+      "text": "Based on readings for <asset> at <site> between <start> and <end>, is <failure-mode> a concern for the coming week, and should I schedule preventive maintenance?",
+      "characteristic_form": "Use iot.history, tsfm.profile_series, fmsr.get_failure_modes and wo.list_workorders; weigh observed trends and cited mechanisms without using later failure labels or inventing calibrated failure probabilities."
+    },
+    {
+      "type": "multiagent",
+      "source": {
+        "path": "src/scenarios/huggingface/asset/hydrolicpump_utterance.jsonl",
+        "row_id": 2005,
+        "sha256": "83eb639c589dcd0e3d08d85b289bd039b53a5439b4c8c6d5023b188dd12b4662"
+      },
+      "category": "Condition Assessment",
+      "text": "Could <failure-mode> explain the changes in <asset> at <site> between <start> and <end>? Identify the strongest sensor evidence and suggest the next maintenance step.",
+      "characteristic_form": "Use iot.history, tsfm.data_quality, fmsr.get_failure_modes and wo.list_workorders; assess cited mechanisms against the available records, distinguish independent samples from a time series, and state what would confirm the suspected cause."
+    }
+  ],
+  "negative_examples": [
+    {
+      "type": "multiagent",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 510,
+        "sha256": "76fa2512e0bb6acfe4eb4a30ec6748ab40a016b83e36f27441077c6758a530cc",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/scenarios/all_utterance.jsonl"
+      },
+      "category": "Missing history",
+      "text": "What are the anomaly detection results for <asset>'s <sensor-a> and <sensor-b> between <start> and <end> at <site>?",
+      "characteristic_form": "Use iot.measured_sensors, iot.stream_extent and iot.history to establish whether both channels cover the requested interval. When the required data is absent, explain the exact gap, report supported observations and request the necessary coverage instead of inventing anomaly results.",
+      "adaptation_note": "The human rubric for row 510 explicitly expects absent history for the requested interval. Establish that absence anew in this environment."
+    },
+    {
+      "type": "multiagent",
+      "source": {
+        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "row_id": 507,
+        "sha256": "4dcd4ceefbd028ce0ad32a923adc19881c34f0665cd61b026f9be53399d74576",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/scenarios/all_utterance.jsonl"
+      },
+      "category": "Insufficient predictive evidence",
+      "text": "What is the predicted <measurement> for <asset> at <site> next week, based on the readings between <start> and <end>?",
+      "characteristic_form": "Expected observed coverage <verified_interval_and_count> and values <verified_range_or_constant_value>; the unsupported conclusion is <specific_prediction_claim_and_reason>. Use iot.history and tsfm.profile_series to establish those findings and check the selected method prerequisites. Report any defensible baseline and its verified values separately.",
+      "adaptation_note": "Human row 507 expects an insufficiency response from idle-period power readings. Zero-valued data alone is not proof that forecasting is impossible; verify the particular requested claim and model prerequisites before labeling a new case negative."
+    }
+  ]
+}
