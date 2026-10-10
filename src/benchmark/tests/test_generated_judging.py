@@ -123,10 +123,12 @@ def test_report_retains_missing_grades_and_failed_executions(tmp_path):
     ]
     path = write_report(tmp_path, rows, chart=False)
     text = path.read_text()
-    assert "2/3 | 1/3 | 1/3 (33%) | 0/2 (0%) | 1/1 (100%)" in text
+    assert "2/3 | 1/3 | 1/3 (33%)" in text
     with (tmp_path / "cases.csv").open() as handle:
         saved = list(csv.DictReader(handle))
     assert len(saved) == 3
+    assert "positive" not in saved[0]
+    assert "Negative" not in text and "Positive" not in text
     assert saved[1]["strict_pass"] == ""
     assert saved[2]["error"] == "Timeout"
 
@@ -155,8 +157,8 @@ def test_strict_chart_counts_all_planned_cases_and_rejects_hallucinations(tmp_pa
          "status": "completed", "grading": {"status": "completed", "score": {"details": hallucinations}}},
     ]
     text = write_report(tmp_path, rows).read_text()
-    assert heights[0] == pytest.approx([100 / 3, 50, 0])
-    assert heights[1] == [0, 0]  # No negative scenarios for this model.
+    assert heights[0] == pytest.approx([100 / 3])
+    assert heights[1] == [0]
     assert heights[2] == [100, 100, 100, 100, 100, 0]  # Criteria use judged cases only.
     for filename in ("strict_pass.png", "criteria.png"):
         assert filename in text
@@ -242,7 +244,7 @@ def test_full_two_mode_ledger_retains_all_forty_planned_executions(tmp_path):
             for index in range(10)]
     report = write_report(tmp_path, rows, chart=False).read_text()
     assert "20 scenarios · 40 executions planned" in report
-    assert report.count("0/10 | 0/10 | 0/10 (0%) | 0/8 (0%) | 0/2 (0%)") == 4
+    assert report.count("0/10 | 0/10 | 0/10 (0%)") == 4
     with (tmp_path / "cases.csv").open() as handle:
         assert len(list(csv.DictReader(handle))) == 40
 

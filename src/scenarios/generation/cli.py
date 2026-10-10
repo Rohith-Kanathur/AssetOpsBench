@@ -8,7 +8,7 @@ import uuid
 
 from . import runtime
 from .harnesses import DEFAULT_MODEL, DEFAULT_REASONING, DEFAULT_TIER, HARNESSES
-from .budget import DEFAULT_COUNTS, parse_budget
+from .budget import DEFAULT_COUNT, parse_budget
 from .modes import DEFAULT_MODE
 from .environment import DEFAULT_POLICY, POLICIES, policy
 from .workspace import audit_baseline, prepare
@@ -21,10 +21,10 @@ def main(argv=None):
     parser.add_argument("directory", type=Path, nargs="?", help="Saved generation directory")
     parser.add_argument("--asset", help="Asset class to generate scenarios for")
     budget = parser.add_mutually_exclusive_group()
-    budget.add_argument("--counts", metavar="JSON",
-                        help=f"Positive/negative totals to allocate (default: {json.dumps(DEFAULT_COUNTS)})")
+    budget.add_argument("--count", type=int,
+                        help=f"Total scenarios to allocate across domains (default: {DEFAULT_COUNT})")
     budget.add_argument("--plan", metavar="JSON",
-                        help="Positive/negative counts per domain; omitted entries request zero")
+                        help='Scenario counts per domain, e.g. {"iot":10,"multiagent":15}; omitted domains request zero')
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="Environment source checkout")
     parser.add_argument("--ref", default="HEAD", help="Committed environment revision")
     parser.add_argument("--seed", type=Path,
@@ -68,9 +68,9 @@ def main(argv=None):
                     parser.error("follow-up seed must match the saved request")
             if args.environment is not None and args.environment != policy(request):
                 parser.error("follow-up environment policy must match the saved request")
-            if args.counts is not None or args.plan is not None:
+            if args.count is not None or args.plan is not None:
                 try:
-                    supplied = parse_budget(args.counts, args.plan)
+                    supplied = parse_budget(args.count, args.plan)
                 except ValueError as exc:
                     parser.error(str(exc))
                 if any(request.get(key) != value for key, value in supplied.items()):
@@ -83,7 +83,7 @@ def main(argv=None):
             if not args.asset or not args.asset.strip():
                 parser.error("--asset is required for a new generation")
             try:
-                budget = parse_budget(args.counts, args.plan)
+                budget = parse_budget(args.count, args.plan)
             except ValueError as exc:
                 parser.error(str(exc))
             seed = None

@@ -174,7 +174,7 @@ def execute_case(root, case, scenario, runner, model, timeout, credentials, retr
         case.mkdir(parents=True)
         private_json(case / "scenario.json", scenario)
     started = time.monotonic()
-    record = {"scenario_id": scenario["id"], "positive": scenario.get("positive"),
+    record = {"scenario_id": scenario["id"],
               "domain": scenario["type"], "runner": runner, "model": model,
               "status": "running", "answer": "", "trajectory": {}}
     private_json(case / "result.json", record)
@@ -251,7 +251,7 @@ def main(argv=None):
             if case in seen:
                 parser.error("Scenario or model identifiers collide after filename normalization")
             seen.add(case)
-            expected = {"scenario_id": scenario["id"], "positive": scenario.get("positive"),
+            expected = {"scenario_id": scenario["id"],
                         "domain": scenario["type"], "runner": runner, "model": model}
             result_path, scenario_path = case / "result.json", case / "scenario.json"
             if result_path.exists():

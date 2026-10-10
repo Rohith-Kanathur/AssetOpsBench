@@ -217,7 +217,7 @@ def run(destination: Path, model: str = DEFAULT_MODEL, followup: str | None = No
             meta_path.write_text(json.dumps(metadata, indent=2) + "\n")
             if not report["errors"]:
                 save_status(destination, "complete", attempt=sequence,
-                            counts={k: report.get(k) for k in ("positive", "negative")})
+                            counts=report.get("counts", {}), scenario_count=report.get("scenario_count", 0))
                 write_index(destination)
                 return
             save_status(destination, "repairing" if attempt < 2 else "incomplete",

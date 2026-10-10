@@ -106,7 +106,6 @@ def validate_profile(profile, source_ids, tools=None):
 
 def validate_scenarios(scenarios, source_ids, profile, tools=None):
     errors, warnings, seen = [], [], set()
-    gaps = {g.get("id") for g in profile.get("gaps", []) if isinstance(g, dict) and string(g.get("id"))} if isinstance(profile, dict) else set()
     texts = []
     for row in scenarios:
         sid = row.get("id")
@@ -137,8 +136,9 @@ def validate_scenarios(scenarios, source_ids, profile, tools=None):
                 errors.append(f"{label}: characteristic_form must name concrete qualified tools")
             if tools is not None:
                 errors.extend(f"{label}: unavailable rubric tool {n}" for n in sorted(names - set(tools)))
-        if type(row.get("positive")) is not bool:
-            errors.append(f"{label}: positive must be a boolean")
+        for obsolete in ("positive", "negative", "missing_evidence"):
+            if obsolete in row:
+                errors.append(f"{label}: remove {obsolete}; describe expected outcomes in characteristic_form")
         if not strings(row.get("source_ids"), True) or not set(row.get("source_ids", []) if strings(row.get("source_ids")) else []) <= source_ids:
             errors.append(f"{label}: unresolved source IDs")
         ground = row.get("grounding")
@@ -172,20 +172,9 @@ def validate_scenarios(scenarios, source_ids, profile, tools=None):
             other = [a.get("asset_id") for a in assets if isinstance(a, dict) and string(a.get("asset_id")) and a["asset_id"] != ground["asset_id"] and a["asset_id"].casefold() in text.casefold()]
             if other and ground["asset_id"].casefold() not in text.casefold():
                 errors.append(f"{label}: text references {other} instead of grounded asset")
-        if row.get("positive") is True and row.get("type") == "multiagent":
+        if row.get("type") == "multiagent":
             names = tool_refs(rubric, tools) if isinstance(rubric, str) else set()
             servers = {name.split(".")[0] for name in names}
             if len(servers & (set(DOMAINS) - {"multiagent"})) < 2:
-                errors.append(f"{label}: positive multiagent rubric must span at least two domain servers")
-        if row.get("positive") is False:
-            missing = row.get("missing_evidence")
-            if not isinstance(missing, list) or not missing:
-                errors.append(f"{label}: missing_evidence must declare missing dependencies and reasons")
-            else:
-                for item in missing:
-                    if not isinstance(item, dict) or not string(item.get("dependency")) or not string(item.get("reason")):
-                        errors.append(f"{label}: missing evidence requires dependency and reason")
-                        continue
-                    if "gap_ids" in item and (not strings(item["gap_ids"]) or not set(item["gap_ids"]) <= gaps):
-                        errors.append(f"{label}: unresolved missing-evidence gap IDs")
+                errors.append(f"{label}: multiagent rubric must span at least two domain servers")
     return errors, warnings

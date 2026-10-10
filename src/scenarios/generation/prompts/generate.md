@@ -3,8 +3,6 @@
 Begin after the profile checker passes. Read `request.json`, the final profile and
 the relevant domains in `references/examples.json`. These are adapted requests
 from the existing benchmark corpus, with source paths and row IDs for traceability.
-Read its `negative_examples` too: human requests with insufficient data or missing
-history. Their adaptation notes identify limitations in the original rubrics.
 They illustrate operator phrasing, task intent and concrete reference answers.
 Rebuild their identifiers, windows, tools and reference results from this environment;
 original answers and assets are not evidence for a new scenario. Replace example
@@ -15,10 +13,10 @@ mode below to every example; file-oriented examples are not proof of a file tool
 
 The budget is one of:
 
-- `scenario_counts`: positive/negative totals. Allocate them across relevant
+- `scenario_count`: total number of scenarios. Allocate them across relevant
   domains using the profile and available capabilities; domains may receive zero.
-- `scenario_plan`: positive/negative counts for each domain. Preserve these quotas;
-  omitted domains and counts mean zero.
+- `scenario_plan`: integer counts for each domain. Preserve these counts;
+  omitted domains mean zero.
 
 Domain keys are `iot`, `fmsr`, `tsfm`, `wo`, `vibration`, and `multiagent`. Save the
 chosen per-domain budget in `output/allocation.json`, shaped like `scenario_plan`.
@@ -26,12 +24,16 @@ For an explicit plan, this records the supplied plan unchanged. `multiagent`
 scenarios combine a coherent workflow across at least two tool domains.
 
 Use the profile's grounded asset records and final tools, reusing suitable data
-and capabilities within the selected environment policy. Positive
-tasks must be fully answerable through the final environment using MCP tools and
-general code execution, including intermediate data transfers. Negative
-tasks test a real domain evidence gap, with the missing dependency recorded. Keep the positive/negative quotas separate. If a requested quota cannot
-be supported, preserve completed work and explain the shortfall in the README;
-never relabel a requested positive as negative to fill the count.
+and capabilities within the selected environment policy. Scenarios are evaluated
+with MCP tools and general code execution, including intermediate data transfers.
+If the requested count cannot be supported, preserve completed work and explain
+the shortfall in the README.
+
+Consider realistic requests whose resolution is inconclusive, has no affirmative
+finding, requires rejecting a faulty premise, or cannot be completed because of
+missing evidence. Include such cases when appropriate to the asset and environment,
+without targeting a quota or labeling scenarios by answerability. Use live
+interaction to establish the supported response and record it in characteristic_form.
 
 ## Write operator requests and expected behavior
 
@@ -67,16 +69,15 @@ Save `output/scenarios.json` as a list of objects containing:
   answer, followed by required reasoning, evidence, constraints and exact available
   `server.tool` references. Discover tool names from the final capabilities.
   Keep structured rubric objects out of this field.
-- `positive`: boolean, false for an intentionally unsupported case.
 - `source_ids`: evidence IDs from `sources.json`.
 - `grounding`: `scope` (`asset` or `class`) and applicable `asset_class`, `site`,
   `asset_id`, `sensors`, `start`, `end`, `workorder_ids`, `output_workorder_ids`.
-  Asset scope identifies a real instance and resolves each referenced channel and
-  interval. Class scope identifies the requested asset class for catalog questions;
+  Asset scope identifies the instance being investigated and the channels and
+  interval to inspect. The live reads may establish that requested evidence is absent. Class scope identifies the requested asset class for catalog questions;
   outside FMSR, include `justification` explaining why no instance is required.
   Asset scope also requires `data_source_ids` covering all operational input
   records/files used by the case. These must satisfy the data-grounding rules in
-  `profile.md`, including for synthetic extensions and supported parts of negatives.
+  `profile.md`, including for synthetic extensions and all available evidence examined.
   For an absent asset or stream, cite the registry or dataset establishing the gap.
   `workorder_ids` contains existing prerequisite orders only; record newly created
   orders separately in `output_workorder_ids`.
@@ -91,25 +92,12 @@ Save `output/scenarios.json` as a list of objects containing:
   Inputs must be task data, not verification exports, solutions, scripts, grading
   material or tool receipts. Required input paths must appear in the operator
   request or be discoverable from the actual tools.
-- `missing_evidence`: required for a negative case, a list of objects with
-  `kind`, `dependency`, `reason` and optional `gap_ids` from the profile.
-  `kind` is one of `missing_data`, `unknown_asset`, `unknown_site`, `missing_sensor`,
-  `missing_history`, `unsupported_diagnosis`, `unsupported_model`,
-  `insufficient_coverage`, or `conflicting_evidence`.
-  Ground each limitation in the cited environment data and profile.
-
-A negative request pursues the same substantive outcomes but lacks required evidence.
-It should be plausible for an operator. Its rubric explicitly
-requires an insufficiency answer explaining the missing evidence or capability.
-Establish the limitation from the environment; a demanding horizon or unfamiliar
-identifier alone is not proof. Preserve all supported parts of the answer and
-avoid implying that unsupported certainty is available. Vary substantive gaps:
-a valid asset at the wrong site, a missing channel or interval, an unsupported
-cross-source comparison, or diagnostic certainty without the required evidence.
-Missing shell access, a file writer, credentials, runtime crashes or a broken tool
-are not negative task concepts. A healthy asset or a query returning no matching
-work orders can be a successfully answered positive task; negative means the
-requested conclusion or action cannot be supported.
+Put any limitation and its supporting observations in `characteristic_form`,
+not in a separate JSON field. Explain precisely what can and cannot be concluded.
+A missing shell capability, credentials, runtime crash or broken tool is a setup
+problem to repair, not evidence of a domain limitation. Healthy conditions and no
+matching work orders can be valid findings. Never invent an affirmative answer or
+repair the environment just to make a requested conclusion true.
 
 ## Ground the reference answer
 
@@ -125,8 +113,8 @@ postconditions while allowing newly assigned IDs to vary. For variable forecasts
 or recommendations, state supported outcomes and acceptance criteria, with exact
 values only where the requested method and inputs determine them. Qualitative
 tasks need a concrete supported conclusion, not invented numerical precision.
-Negative cases include verified supported results and the precise conclusion
-that cannot be established.
+Where evidence is insufficient, include the verified supported results and the
+precise conclusion that cannot be established.
 
 Use retained data and exercised outputs as evidence; cross-check key calculations
 against their source observations. Keep reference answers and exercised solutions
@@ -155,6 +143,7 @@ report.
 Run `python -m scenarios.generation.review --workspace /workspace --stage all`.
 Read the JSON findings, repair the affected artifacts and rerun until applicable
 checks pass. Also review realism, scientific support, meaningful difficulty,
-duplicate or near-duplicate wording, and whether negative cases are truly unsupported.
+duplicate or near-duplicate wording, and whether each reference conclusion or
+limitation is supported by the observed evidence.
 Preserve completed work and disclose remaining failures when a gap cannot be fixed.
 Finish with verified requested/produced counts and unresolved gaps.

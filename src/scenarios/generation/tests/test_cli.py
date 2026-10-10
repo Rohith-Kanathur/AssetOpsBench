@@ -10,9 +10,9 @@ def prepare_stub(repository, destination, ref):
 
 
 @pytest.mark.parametrize("flag,value,key,expected", [
-    ("--counts", '{"positive":2,"negative":1}', "scenario_counts", {"positive":2,"negative":1}),
-    ("--plan", '{"iot":{"positive":1},"multiagent":{"negative":1}}', "scenario_plan",
-     {"iot":{"positive":1,"negative":0},"multiagent":{"positive":0,"negative":1}}),
+    ("--count", "3", "scenario_count", 3),
+    ("--plan", '{"iot":1,"multiagent":1}', "scenario_plan",
+     {"iot":1,"multiagent":1}),
 ])
 def test_one_command_accepts_an_asset_and_preserves_generation_settings(tmp_path, monkeypatch, flag, value, key, expected):
     target = tmp_path / "new"
@@ -31,7 +31,7 @@ def test_one_command_accepts_an_asset_and_preserves_generation_settings(tmp_path
                            "env_file": tmp_path / "source/.env"}
 
 
-@pytest.mark.parametrize("flag,value", [("--temperature", "0"), ("--mode", "mcp-only")])
+@pytest.mark.parametrize("flag,value", [("--temperature", "0"), ("--mode", "mcp-only"), ("--counts", '{"positive":1}')])
 def test_removed_options_fail_before_preparing_run(tmp_path, monkeypatch, capsys, flag, value):
     monkeypatch.setattr(cli, "prepare", lambda *a, **k: pytest.fail("Must not prepare a run"))
     target = tmp_path / "new"
@@ -53,13 +53,13 @@ def test_existing_directory_is_not_overwritten(tmp_path):
 def test_bad_scope_does_not_prepare_a_workspace(tmp_path):
     target = tmp_path / "new"
     with pytest.raises(SystemExit):
-        cli.main(["run", str(target), "--asset", "Chiller", "--counts", '{"positive":-1}'])
+        cli.main(["run", str(target), "--asset", "Chiller", "--count", "-1"])
     assert not target.exists()
 
 
 def test_followup_retains_saved_scope(tmp_path, monkeypatch):
     (tmp_path / "workspace").mkdir()
-    request = {"asset_class": "AHU", "generation_mode": "general-execution", "scenario_counts": {"positive": 2, "negative": 1}}
+    request = {"asset_class": "AHU", "generation_mode": "general-execution", "scenario_count": 3}
     (tmp_path / "workspace/request.json").write_text(json.dumps(request))
     monkeypatch.setattr(cli.runtime, "configure", lambda *args: None)
     monkeypatch.setattr(cli.runtime, "run", lambda *args, **kwargs: None)
@@ -71,14 +71,14 @@ def test_followup_retains_saved_scope(tmp_path, monkeypatch):
 
 def test_budget_cannot_change_during_followup(tmp_path):
     (tmp_path / "workspace").mkdir()
-    request = {"asset_class": "AHU", "generation_mode": "general-execution", "scenario_counts": {"positive": 1, "negative": 0}}
+    request = {"asset_class": "AHU", "generation_mode": "general-execution", "scenario_count": 1}
     (tmp_path / "workspace/request.json").write_text(json.dumps(request))
     with pytest.raises(SystemExit):
-        cli.main(["run", str(tmp_path), "--followup", "Continue", "--counts", '{"positive":2}'])
+        cli.main(["run", str(tmp_path), "--followup", "Continue", "--count", "2"])
     assert json.loads((tmp_path / "workspace/request.json").read_text()) == request
 
 
-def test_new_run_without_counts_uses_twenty_positive_five_negative(tmp_path, monkeypatch):
+def test_new_run_without_count_uses_twenty_five(tmp_path, monkeypatch):
     target = tmp_path / "new"
     monkeypatch.setattr(cli, "prepare", prepare_stub)
     monkeypatch.setattr(cli, "audit_baseline", lambda _: [])
@@ -86,4 +86,4 @@ def test_new_run_without_counts_uses_twenty_positive_five_negative(tmp_path, mon
     monkeypatch.setattr(cli.runtime, "run", lambda *args, **kwargs: None)
     cli.main(["run", str(target), "--asset", "Transformer"])
     request = json.loads((target / "workspace/request.json").read_text())
-    assert request["scenario_counts"] == {"positive": 20, "negative": 5}
+    assert request["scenario_count"] == 25

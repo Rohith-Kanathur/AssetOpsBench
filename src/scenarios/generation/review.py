@@ -19,7 +19,7 @@ from . import environment
 SCOPE = ("Validates artifact structure, budgets, declared data lineage, source checksums, "
          "discovered tool names and read-only live entity/coverage checks. Execution is recorded "
          "by the harness; agent-written receipts are not used. These checks do not verify scenario "
-         "execution, output creation or negative-case feasibility. Those require evaluation; "
+         "execution, output creation or the correctness of a claimed limitation. Those require evaluation; "
          "data relevance, transformation fidelity and operator realism also require review.")
 
 
@@ -132,15 +132,29 @@ def check_contract(workspace: Path, stage="all", tools=None) -> dict:
     scenario_errors, warnings = validate_scenarios(scenarios, source_ids, profile, tools)
     errors.extend(scenario_errors)
     report["warnings"].extend(warnings)
-    report.update(scenarios=scenarios,
-                  positive=sum(s.get("positive") is True for s in scenarios),
-                  negative=sum(s.get("positive") is False for s in scenarios))
+    report.update(scenarios=scenarios, scenario_count=len(scenarios),
+                  counts={domain: sum(s.get("type") == domain for s in scenarios)
+                          for domain in sorted({s.get("type") for s in scenarios if isinstance(s.get("type"), str)})})
     return report
 
 
 def check_grounding(scenarios: list[dict], invoke: Callable, tools=None) -> tuple[list[str], list[dict]]:
-    """Capture fresh read-only grounding results; never create scenario outputs."""
+    """Capture live evidence; the exercised reference determines its meaning.
+
+    An empty result or an explicit not-found response is not automatically an
+    invalid scenario. Infrastructure failures still block the check.
+    """
     errors, evidence = [], []
+    # Known absence responses from the read-only tools, not arbitrary failures.
+    absence_prefixes = {
+        "iot.asset_detail": ("unknown site ", "unknown asset_id "),
+        "iot.measured_sensors": ("unknown site ", "unknown asset_id "),
+        "iot.stream_extent": ("unknown site ", "no records for asset_id "),
+        "vibration.list_vibration_sensors": ("no sensors found for asset ",),
+        "vibration.get_vibration_data": ("no vibration data found for asset ",),
+        "fmsr.get_failure_modes": ("no failure_mode record for asset_class ",),
+        "wo.get_workorder": ("work order '",),
+    }
 
     def call(sid, tool, arguments):
         if tools is not None and tool not in tools:
@@ -151,62 +165,54 @@ def check_grounding(scenarios: list[dict], invoke: Callable, tools=None) -> tupl
             if isinstance(result, dict) and set(result) == {"result"}:
                 result = result["result"]
             evidence.append({"scenario_id": sid, "tool": tool, "arguments": arguments, "result": result})
-            if not isinstance(result, dict) or result.get("error"):
+            if not isinstance(result, dict):
                 errors.append(f"Scenario {sid}: {tool} failed")
                 return {}
+            if result.get("error"):
+                message = str(result["error"]).lower()
+                absent = message.startswith(absence_prefixes.get(tool, ()))
+                if tool == "wo.get_workorder":
+                    absent = absent and "not found in site" in message
+                if not absent:
+                    errors.append(f"Scenario {sid}: {tool} failed")
             return result
         except Exception as exc:
             errors.append(f"Scenario {sid}: {tool} raised {type(exc).__name__}")
             return {}
 
     for scenario in scenarios:
-        if scenario.get("positive") is not True:
-            continue  # Negative feasibility requires scenario evaluation, not presence checks.
         sid, ground = scenario.get("id"), scenario.get("grounding", {})
         if not isinstance(ground, dict):
             errors.append(f"Scenario {sid}: missing grounding")
             continue
         if ground.get("scope") == "class":
             if scenario.get("type") == "fmsr":
-                result = call(sid, "fmsr.get_failure_modes", {"asset_class": ground.get("asset_class")})
-                if not result.get("failure_modes"):
-                    errors.append(f"Scenario {sid}: no stored failure modes for class")
+                call(sid, "fmsr.get_failure_modes", {"asset_class": ground.get("asset_class")})
             continue
         site, asset = ground.get("site"), ground.get("asset_id")
         if not string(site) or not string(asset):
             errors.append(f"Scenario {sid}: missing asset/site grounding")
             continue
         args = {"site_name": site, "asset_id": asset}
-        detail = call(sid, "iot.asset_detail", args)
-        if detail.get("asset_id") != asset or detail.get("site_name") != site:
-            errors.append(f"Scenario {sid}: unresolved asset/site")
+        call(sid, "iot.asset_detail", args)
         sensors = ground.get("sensors", [])
         if not strings(sensors):
             continue
         if str(scenario.get("type", "")).lower() == "vibration":
-            result = call(sid, "vibration.list_vibration_sensors", args)
-            if not result.get("sensors"):
-                errors.append(f"Scenario {sid}: no vibration sensors")
+            call(sid, "vibration.list_vibration_sensors", args)
             for sensor in sensors:
-                if sensor not in result.get("sensors", []):
-                    errors.append(f"Scenario {sid}: unknown vibration sensor {sensor}")
                 if ground.get("start"):
-                    data = call(sid, "vibration.get_vibration_data", {**args, "sensor_name": sensor,
-                                "start": ground["start"], "final": ground.get("end")})
-                    if not data.get("data_id"):
-                        errors.append(f"Scenario {sid}: no vibration readings for {sensor} in requested interval")
-        else:
-            measured = call(sid, "iot.measured_sensors", args) if sensors else {}
+                    call(sid, "vibration.get_vibration_data", {**args, "sensor_name": sensor,
+                         "start": ground["start"], "final": ground.get("end")})
+        elif sensors:
+            call(sid, "iot.measured_sensors", args)
             for sensor in sensors:
-                if sensor not in measured.get("sensors", []):
-                    errors.append(f"Scenario {sid}: unknown sensor {sensor}")
                 window = {k: ground[k] for k in ("start", "end") if ground.get(k)}
-                extent = call(sid, "iot.stream_extent", {**args, "sensor": sensor, **window})
-                if not isinstance(extent.get("total_records"), (int, float)) or extent["total_records"] < 1:
-                    errors.append(f"Scenario {sid}: no readings for {sensor} in requested interval")
+                call(sid, "iot.stream_extent", {**args, "sensor": sensor, **window})
         for wonum in ground.get("workorder_ids", []):
             result = call(sid, "wo.get_workorder", {"site_id": site, "wonum": wonum})
-            if result.get("work_order", {}).get("assetnum") != ground.get("workorder_asset_id", asset):
+            order_asset = result.get("work_order", {}).get("assetnum")
+            if order_asset and order_asset != ground.get("workorder_asset_id", asset):
                 errors.append(f"Scenario {sid}: work order {wonum} belongs to another asset")
     return errors, evidence
 

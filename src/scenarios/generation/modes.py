@@ -9,9 +9,6 @@ from .contracts import TOOL, string, strings
 
 MODES = ("general-execution",)
 DEFAULT_MODE = "general-execution"
-GAP_KINDS = {"missing_data", "unknown_asset", "unknown_site", "missing_sensor",
-             "missing_history", "unsupported_diagnosis", "unsupported_model",
-             "insufficient_coverage", "conflicting_evidence"}
 
 
 def write_guidance(workspace: Path) -> None:
@@ -73,9 +70,4 @@ def validate_execution(request, scenarios, local_file, tools=None):
                 errors.append(f"{label}: unavailable MCP output producer {producer}")
             elif "mcp" not in requires:
                 errors.append(f"{label}: output {path} requires mcp capability")
-        if row.get("positive") is False:
-            missing = row.get("missing_evidence", [])
-            for item in missing if isinstance(missing, list) else []:
-                if isinstance(item, dict) and (not string(item.get("kind")) or item["kind"] not in GAP_KINDS):
-                    errors.append(f"{label}: negative evidence requires a domain gap kind; missing file execution is not a valid negative")
     return errors, warnings

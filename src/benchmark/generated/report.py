@@ -76,7 +76,7 @@ def write_report(root: Path, cases: list[dict] | None = None, *,
         judged = (case.get("status") == "completed" and grade.get("status") == "completed"
                   and all(type(details.get(key)) is bool for key in CRITERIA))
         row = {key: case.get(key, "") for key in
-               ("scenario_id", "positive", "domain", "runner", "model", "status", "duration_seconds", "elapsed_seconds",
+               ("scenario_id", "domain", "runner", "model", "status", "duration_seconds", "elapsed_seconds",
                 "api_calls", "api_prompt_tokens", "api_output_tokens", "cache_read_tokens", "cost_usd", "cost_source")}
         row["execution_outcome"] = _execution_outcome(case)
         row["generation_mode"] = case.get("generation_mode", mode)
@@ -91,7 +91,7 @@ def write_report(root: Path, cases: list[dict] | None = None, *,
         row.update({key: details.get(key, "") if judged else "" for key in CRITERIA})
         rows.append(row)
         groups[(str(row["runner"]), str(row["model"]))].append(row)
-    fields = ["scenario_id", "generation_mode", "positive", "domain", "runner", "model", "status", "execution_outcome", "elapsed_seconds", "duration_seconds",
+    fields = ["scenario_id", "generation_mode", "domain", "runner", "model", "status", "execution_outcome", "elapsed_seconds", "duration_seconds",
               "api_calls", "api_prompt_tokens", "api_output_tokens", "cache_read_tokens", "cost_usd", "cost_source",
               "judge_status", "strict_pass", *CRITERIA, "error", "rationale"]
     with (root / "cases.csv").open("w", newline="") as handle:
@@ -100,31 +100,27 @@ def write_report(root: Path, cases: list[dict] | None = None, *,
         writer.writerows(rows)
     scenario_count = len({(row["generation_mode"], row["scenario_id"]) for row in rows})
     lines = [f"# {title}", "", f"{scenario_count} scenarios · {len(cases)} executions planned · Fable 5.1 judge · 1 repetition.", "",
-             "| Runner / model | Executed | Judged | Strict pass / planned | Positive | Negative |",
-             "|---|---:|---:|---:|---:|---:|"]
+             "| Runner / model | Executed | Judged | Strict pass / planned |",
+             "|---|---:|---:|---:|"]
     summaries = []
     for (runner, model), group in groups.items():
         total = len(group)
         judged = [row for row in group if row["judge_status"] == "completed"]
         passed = sum(row["strict_pass"] is True for row in group)
-        positive = [row for row in group if row["positive"] is True]
-        negative = [row for row in group if row["positive"] is False]
-        split = lambda subset: _fraction(sum(row["strict_pass"] is True for row in subset), len(subset))
         lines.append(f"| {_cell(runner)} / {_cell(model)} | "
                      f"{sum(row['status'] == 'completed' for row in group)}/{total} | {len(judged)}/{total} | "
-                     f"{_fraction(passed, total)} | {split(positive)} | {split(negative)} |")
+                     f"{_fraction(passed, total)} |")
         summaries.append({"label": f"{runner}\n{model}", "judged": len(judged), "total": total,
-                          "strict_rates": [sum(row["strict_pass"] is True for row in subset) / len(subset)
-                                           if subset else None for subset in (group, positive, negative)],
+                          "strict_rates": [passed / total if total else None],
                           "rates": [sum(row[key] is True for row in judged) / len(judged)
                                     if judged else None for key in CRITERIA]})
-    lines += ["", "Strict pass requires all five positive criteria and no hallucinations. "
-              "For negative scenarios, success means establishing the requested limitation and responding appropriately.",
+    lines += ["", "Strict pass requires the first five rubric criteria and no hallucinations. "
+              "Success is assessed against each scenario’s characteristic form, including any supported limitation.",
               "", "Pass rates use every planned execution; failed executions and missing grades contribute no passes. "
               "Criterion rates below use judged executions only."]
     if chart and any(item["judged"] for item in summaries):
         if _chart(root, summaries, strict=True):
-            lines += ["", "![Strict pass rates: overall, positive and negative](strict_pass.png)"]
+            lines += ["", "![Strict pass rates](strict_pass.png)"]
         if _chart(root, summaries):
             lines += ["", "![All six evaluation dimensions](criteria.png)"]
     lines += ["", "| Dimension | " + " | ".join(_cell(item["label"]) for item in summaries) + " |",
@@ -166,7 +162,7 @@ def _chart(root: Path, summaries: list[dict], *, strict: bool = False) -> bool:
     except ImportError:
         return False
     colors = ["#4785ad", "#cab5d6", "#a28bcc", "#348fb0", "#929292"]
-    labels = ("Overall\nstrict pass ↑", "Positive\nstrict pass ↑", "Negative\nstrict pass ↑") if strict else DIMENSION_LABELS
+    labels = ("Strict pass ↑",) if strict else DIMENSION_LABELS
     figure, axes = plt.subplots(figsize=(8 if strict else 11, 3.8))
     width = min(.18, .75 / len(summaries))
     for index, item in enumerate(summaries):

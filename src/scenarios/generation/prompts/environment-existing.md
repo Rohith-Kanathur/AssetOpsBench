@@ -39,7 +39,7 @@ the protected baseline when generation finishes.
 
 Map realistic operator and manager needs to the available surface before
 allocating counts. Honor an explicit domain plan. When a quota cannot be supported,
-retain completed cases and explain the shortfall; keep its polarity and domain.
+retain completed cases and explain the shortfall; preserve the requested domain counts.
 Record research, input limitations, reused capabilities, exercise commands and
 tests in `output/environment.md`. No new tool or operational dataset is needed
 to complete preparation under this policy.

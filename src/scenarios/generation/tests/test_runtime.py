@@ -163,13 +163,13 @@ def test_generation_cannot_change_the_frozen_mode_or_budget(tmp_path, monkeypatc
 
     (tmp_path / "workspace/output").mkdir(parents=True)
     request = {"asset_class": "AHU", "generation_mode": "general-execution",
-               "scenario_counts": {"positive": 8, "negative": 2}}
+               "scenario_count": 10}
     path = tmp_path / "workspace/request.json"
     path.write_text(json.dumps(request))
     monkeypatch.setattr(runtime, "start", lambda _: None)
 
     def change_request(*args, **kwargs):
-        path.write_text(json.dumps({**request, "scenario_counts": {"positive": 99, "negative": 2}}))
+        path.write_text(json.dumps({**request, "scenario_count": 101}))
 
     monkeypatch.setattr(runtime, "compose", change_request)
     checked = []

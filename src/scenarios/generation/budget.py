@@ -1,9 +1,9 @@
-"""Positive and negative quotas for automatic allocation or an explicit domain plan."""
+"""Scenario totals and optional allocation across tool domains."""
 
 import json
 
 DOMAINS = ("iot", "fmsr", "tsfm", "wo", "vibration", "multiagent")
-DEFAULT_COUNTS = {"positive": 20, "negative": 5}
+DEFAULT_COUNT = 25
 
 
 def _unique_object(pairs):
@@ -15,79 +15,68 @@ def _unique_object(pairs):
     return result
 
 
-def _counts(value):
-    if not isinstance(value, dict) or set(value) - {"positive", "negative"}:
-        raise ValueError("Counts must be an object with positive and/or negative keys")
-    counts = {kind: value.get(kind, 0) for kind in DEFAULT_COUNTS}
-    if any(type(n) is not int or n < 0 for n in counts.values()):
+def _count(value):
+    if type(value) is not int or value < 0:
         raise ValueError("Scenario counts must be nonnegative integers")
-    return counts
+    return value
 
 
 def _plan(value):
     if not isinstance(value, dict):
         raise ValueError("Scenario plan must be a JSON object keyed by domain")
     plan = {}
-    for name, counts in value.items():
+    for name, count in value.items():
         domain = name.lower().replace("multi-agent", "multiagent")
         if domain not in DOMAINS:
             raise ValueError(f"Unknown domain {name!r}; choose from {', '.join(DOMAINS)}")
         if domain in plan:
             raise ValueError(f"Duplicate domain: {domain}")
-        plan[domain] = _counts(counts)
+        plan[domain] = _count(count)
     return plan
 
 
-def _totals(plan):
-    return {kind: sum(counts[kind] for counts in plan.values()) for kind in DEFAULT_COUNTS}
-
-
-def parse_budget(scenario_counts=None, scenario_plan=None):
-    """Parse CLI JSON; missing domains or polarity counts request zero."""
-    if scenario_counts is not None and scenario_plan is not None:
-        raise ValueError("Use either --counts or --plan")
+def parse_budget(scenario_count=None, scenario_plan=None):
+    """Use one total or an explicit per-domain plan; omitted domains request zero."""
+    if scenario_count is not None and scenario_plan is not None:
+        raise ValueError("Use either --count or --plan")
     if scenario_plan is not None:
         plan = _plan(json.loads(scenario_plan, object_pairs_hook=_unique_object))
-        totals = _totals(plan)
+        total = sum(plan.values())
         request = {"scenario_plan": plan}
     else:
-        totals = _counts(json.loads(scenario_counts, object_pairs_hook=_unique_object)) if scenario_counts is not None else dict(DEFAULT_COUNTS)
-        request = {"scenario_counts": totals}
-    if not sum(totals.values()):
-        raise ValueError("Request at least one positive or negative scenario")
+        total = _count(scenario_count if scenario_count is not None else DEFAULT_COUNT)
+        request = {"scenario_count": total}
+    if not total:
+        raise ValueError("Request at least one scenario")
     return request
 
 
 def validate_budget(request, scenarios, allocation):
-    """Check allocation and actual outputs independently against the requested quotas."""
+    """Check the allocation and output against the requested total or domain counts."""
     errors = []
     try:
-        counts, plan = request.get("scenario_counts"), request.get("scenario_plan")
-        if (counts is None) == (plan is None):
+        count, plan = request.get("scenario_count"), request.get("scenario_plan")
+        if (count is None) == (plan is None):
             raise ValueError("Request must contain exactly one scenario budget")
-        budget = parse_budget(json.dumps(counts) if counts is not None else None,
-                              json.dumps(plan) if plan is not None else None)
+        budget = parse_budget(count, json.dumps(plan) if plan is not None else None)
         planned = _plan(allocation)
         expected = budget.get("scenario_plan")
         if expected is not None:
-            zero = {kind: 0 for kind in DEFAULT_COUNTS}
-            if any(planned.get(d, zero) != expected.get(d, zero) for d in DOMAINS):
+            if any(planned.get(d, 0) != expected.get(d, 0) for d in DOMAINS):
                 errors.append("Allocation does not match scenario_plan")
-        elif _totals(planned) != budget["scenario_counts"]:
-            errors.append("Allocation totals do not match scenario_counts")
+        elif sum(planned.values()) != budget["scenario_count"]:
+            errors.append("Allocation total does not match scenario_count")
     except (ValueError, TypeError, AttributeError) as exc:
         return [f"Invalid scenario budget: {exc}"]
-    observed = {domain: {kind: 0 for kind in DEFAULT_COUNTS} for domain in DOMAINS}
+    observed = {domain: 0 for domain in DOMAINS}
     for scenario in scenarios:
-        domain, positive = scenario.get("type"), scenario.get("positive")
-        if domain not in DOMAINS or type(positive) is not bool:
-            errors.append(f"Scenario {scenario.get('id')}: invalid domain or positive flag")
+        domain = scenario.get("type")
+        if domain not in DOMAINS:
+            errors.append(f"Scenario {scenario.get('id')}: invalid domain")
             continue
-        observed[domain]["positive" if positive else "negative"] += 1
+        observed[domain] += 1
     for domain in DOMAINS:
-        for kind in DEFAULT_COUNTS:
-            wanted = planned.get(domain, {}).get(kind, 0)
-            actual = observed[domain][kind]
-            if actual != wanted:
-                errors.append(f"{domain} {kind}: requested {wanted}, generated {actual}")
+        wanted, actual = planned.get(domain, 0), observed[domain]
+        if actual != wanted:
+            errors.append(f"{domain}: requested {wanted}, generated {actual}")
     return errors

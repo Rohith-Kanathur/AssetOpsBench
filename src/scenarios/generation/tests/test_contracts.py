@@ -73,9 +73,9 @@ def test_unknown_rubric_tools_rejected_after_discovery(tmp_path):
 
 
 def test_near_duplicate_requests_are_rejected(tmp_path):
-    allocation = {"iot": {"positive": 2, "negative": 0}}
-    save_contract(tmp_path, {"scenario_plan": allocation}, [{"id": 1, "type": "iot", "positive": True},
-                                                         {"id": 2, "type": "iot", "positive": True}], allocation)
+    allocation = {"iot": 2}
+    save_contract(tmp_path, {"scenario_plan": allocation}, [{"id": 1, "type": "iot"},
+                                                         {"id": 2, "type": "iot"}], allocation)
     rows = json.loads((tmp_path / "output/scenarios.json").read_text())
     rows[0]["text"] = "Review T1 at S1 and summarize every available oil temperature observation over the last seven days."
     rows[1]["text"] = rows[0]["text"].replace("Review", "Inspect")
@@ -83,29 +83,27 @@ def test_near_duplicate_requests_are_rejected(tmp_path):
     assert any("near-duplicate" in e for e in check_contract(tmp_path)["errors"])
 
 
-def test_negative_requires_a_grounded_reason_without_manual_response_files(tmp_path):
-    one_contract(tmp_path, positive=False)
+@pytest.mark.parametrize("field,value", [("positive", True), ("negative", False),
+                                           ("missing_evidence", [{"reason": "Absent"}])])
+def test_removed_answerability_fields_are_rejected(tmp_path, field, value):
+    one_contract(tmp_path)
     rows = json.loads((tmp_path / "output/scenarios.json").read_text())
-    rows[0]["grounding"]["asset_id"] = "INTENTIONALLY_UNAVAILABLE"
-    rows[0]["text"] = "Inspect INTENTIONALLY_UNAVAILABLE at S1"
+    rows[0][field] = value
     replace_artifact(tmp_path, "scenarios", rows)
-    report = check_contract(tmp_path)
-    assert report["errors"] == []
-    assert report["scenario_execution"] == "not_verified"
-    rows[0]["missing_evidence"][0]["reason"] = ""
+    assert any(f"remove {field}" in error for error in check_contract(tmp_path)["errors"])
+
+
+def test_evidence_limited_reference_needs_no_separate_fields(tmp_path):
+    one_contract(tmp_path)
+    rows = json.loads((tmp_path / "output/scenarios.json").read_text())
+    rows[0]["text"] = "Can T1 at S1 support a diagnosis with the available readings?"
+    rows[0]["characteristic_form"] = "Use iot.asset_detail; the available evidence is insufficient for a diagnosis."
     replace_artifact(tmp_path, "scenarios", rows)
-    assert any("dependency and reason" in e for e in check_contract(tmp_path)["errors"])
-    rows[0]["missing_evidence"][0]["reason"] = "Unavailable"
-    rows[0]["missing_evidence"][0]["gap_ids"] = ["invented-gap"]
-    replace_artifact(tmp_path, "scenarios", rows)
-    assert any("unresolved missing-evidence gap" in e for e in check_contract(tmp_path)["errors"])
-    calls = []
-    errors, evidence = check_grounding(rows, lambda tool, args: calls.append(tool))
-    assert errors == evidence == calls == []
+    assert check_contract(tmp_path)["errors"] == []
 
 
 def test_class_catalog_contract_requires_no_fabricated_registry_identity():
-    scenario = {"id": 1, "type": "fmsr", "positive": True, "text": "List stored transformer failure modes",
+    scenario = {"id": 1, "type": "fmsr", "text": "List stored transformer failure modes",
                 "category": "catalog", "characteristic_form": "Retrieve fmsr.get_failure_modes",
                 "source_ids": ["fixture"], "grounding": {"scope": "class", "asset_class": "Transformer"}}
     errors, _ = validate_scenarios([scenario], {"fixture"}, profile_fixture(), ["fmsr.get_failure_modes"])
@@ -116,7 +114,7 @@ def test_class_catalog_contract_requires_no_fabricated_registry_identity():
 
 
 def test_class_scope_cannot_omit_required_asset_references():
-    scenario = {"id": 1, "type": "iot", "positive": True, "text": "Review oil readings",
+    scenario = {"id": 1, "type": "iot", "text": "Review oil readings",
                 "category": "statistics", "characteristic_form": "Retrieve iot.sensor_stats",
                 "source_ids": ["fixture"], "grounding": {"scope": "class", "asset_class": "Transformer",
                                                          "sensors": ["oil_temperature"]}}

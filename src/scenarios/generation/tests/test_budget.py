@@ -3,25 +3,22 @@ import pytest
 from scenarios.generation.budget import parse_budget, validate_budget
 
 
-def test_counts_and_case_normalized_explicit_plan():
-    assert parse_budget('{"positive":3}') == {"scenario_counts": {"positive": 3, "negative": 0}}
-    assert parse_budget(scenario_plan='{"IoT":{"positive":1},"multi-agent":{"negative":2}}') == {
-        "scenario_plan": {"iot": {"positive": 1, "negative": 0},
-                          "multiagent": {"positive": 0, "negative": 2}}}
-    assert parse_budget() == {"scenario_counts": {"positive": 20, "negative": 5}}
-    assert parse_budget('{"positive":8,"negative":2}') == {"scenario_counts": {"positive": 8, "negative": 2}}
+def test_total_and_case_normalized_plan():
+    assert parse_budget(3) == {"scenario_count": 3}
+    assert parse_budget(scenario_plan='{"IoT":1,"multi-agent":2}') == {
+        "scenario_plan": {"iot": 1, "multiagent": 2}}
+    assert parse_budget() == {"scenario_count": 25}
 
 
-@pytest.mark.parametrize("value", ['null', '[]', '{}', '{"positive":-1}',
-    '{"positive":true}', '{"positive":1.0}', '{"positive":"1"}',
-    '{"positive":1,"extra":1}', '{"positive":1,"positive":2}', 'invalid'])
+@pytest.mark.parametrize("value", [0, -1, True, 1.0, "1", {}, {"positive": 1}])
 def test_invalid_totals_are_rejected(value):
     with pytest.raises(ValueError):
         parse_budget(value)
 
 
-@pytest.mark.parametrize("value", ['{}', '{"unknown":{"positive":1}}',
-    '{"iot":{"positive":0}}', '{"iot":{"positive":1},"IoT":{"positive":2}}'])
+@pytest.mark.parametrize("value", ['{}', '{"unknown":1}', '{"iot":0}',
+    '{"iot":1,"IoT":2}', '{"iot":1,"iot":2}', '{"iot":{"positive":1}}',
+    '{"iot":true}', '{"iot":-1}', 'null', '[]', 'invalid'])
 def test_invalid_plans_are_rejected(value):
     with pytest.raises(ValueError):
         parse_budget(scenario_plan=value)
@@ -29,31 +26,26 @@ def test_invalid_plans_are_rejected(value):
 
 def test_budget_options_are_exclusive():
     with pytest.raises(ValueError):
-        parse_budget('{"positive":1}', '{"iot":{"positive":1}}')
+        parse_budget(1, '{"iot":1}')
 
 
 def test_total_budget_allows_unused_domains():
-    request = parse_budget('{"positive":1,"negative":1}')
-    allocation = {"iot": {"positive": 1}, "multiagent": {"negative": 1}}
-    scenarios = [{"id": 1, "type": "iot", "positive": True},
-                 {"id": 2, "type": "multiagent", "positive": False}]
+    request = parse_budget(2)
+    allocation = {"iot": 1, "multiagent": 1}
+    scenarios = [{"id": 1, "type": "iot"}, {"id": 2, "type": "multiagent"}]
     assert validate_budget(request, scenarios, allocation) == []
-    assert validate_budget(request, scenarios, {"iot": {"positive": 2}})
+    assert validate_budget(request, scenarios, {"iot": 2})
 
 
-def test_equal_total_cannot_hide_wrong_polarity_or_domain():
-    request = parse_budget(scenario_plan='{"iot":{"positive":1},"fmsr":{"negative":1}}')
-    scenarios = [{"id": 1, "type": "iot", "positive": False},
-                 {"id": 2, "type": "fmsr", "positive": True}]
+def test_equal_total_cannot_hide_wrong_domain():
+    request = parse_budget(scenario_plan='{"iot":1,"fmsr":1}')
+    scenarios = [{"id": 1, "type": "iot"}, {"id": 2, "type": "iot"}]
     errors = validate_budget(request, scenarios, request['scenario_plan'])
-    assert 'iot positive: requested 1, generated 0' in errors
-    assert 'fmsr positive: requested 0, generated 1' in errors
-    assert validate_budget(request, [], {"iot": {"positive": 2}})[0] == 'Allocation does not match scenario_plan'
+    assert 'iot: requested 1, generated 2' in errors
+    assert 'fmsr: requested 1, generated 0' in errors
+    assert validate_budget(request, [], {"iot": 2})[0] == 'Allocation does not match scenario_plan'
 
 
 def test_bad_output_cannot_count_toward_a_quota():
-    request = parse_budget('{"negative":1}')
-    for domain, flag in [('invented', False), ('iot', 0)]:
-        errors = validate_budget(request, [{"id": 1, "type": domain, "positive": flag}],
-                                 {"iot": {"negative": 1}})
-        assert any('invalid domain or positive flag' in error for error in errors)
+    errors = validate_budget(parse_budget(1), [{"id": 1, "type": "invented"}], {"iot": 1})
+    assert any('invalid domain' in error for error in errors)

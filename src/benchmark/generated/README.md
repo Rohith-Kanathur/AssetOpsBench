@@ -77,7 +77,7 @@ unless `--temperature` is supplied; reasoning effort is likewise explicit.
 
 Fable 5.1 (`claude-fable-5-1`) uses Claude Code subscription authentication in a
 separate, read-only session with the full trace and output files. It uses the
-existing six-criterion rubric. A strict pass requires all five positive criteria
+existing six-criterion rubric. A strict pass requires the first five rubric criteria
 and no hallucinations. Startup errors, timeouts, missing grades and rubric failures
 remain distinct.
 

@@ -1,7 +1,7 @@
 {
   "description": "Curated adaptations of existing benchmark utterances: operator phrasing and reference-answer patterns, with source-specific results identified for recalculation in each new environment.",
   "source_hash": "SHA-256 of the complete source row serialized as sorted compact JSON with UTF-8 and ensure_ascii=false.",
-  "source_snapshot": "source-rows.json contains the selected original rows preserved at commit 66bca546001a05f8132f6372fcf616afec540b06 on codex/reference-scenario-generator-20261002. Original rubrics are provenance, not validated answers for a new environment. The two negative_examples retain human corpus rows 507 and 510 from the pinned Hugging Face revision in their source URLs; their rubrics describe insufficiency although the source has no explicit positive/negative field.",
+  "source_snapshot": "source-rows.json contains the selected original rows preserved at commit 66bca546001a05f8132f6372fcf616afec540b06 on codex/reference-scenario-generator-20261002. Original rubrics are provenance, not validated answers for a new environment. Two additional examples retain human corpus rows 507 and 510 from the pinned Hugging Face revision in their source URLs; their rubrics describe insufficiency and are retained as ordinary examples of evidence-limited responses.",
   "usage": "Follow the task scope in generate.md: lookup examples illustrate intermediate retrieval steps, not eligible standalone scenarios. Replace all placeholders with verified current references and exercised results. Adaptation notes retain concrete source answers to illustrate the expected specificity; recompute them for the new environment. Source rows are provenance for the examples, not evidence for a new scenario.",
   "examples": [
     {
@@ -204,9 +204,7 @@
       "category": "Condition Assessment",
       "text": "Could <failure-mode> explain the changes in <asset> at <site> between <start> and <end>? Identify the strongest sensor evidence and suggest the next maintenance step.",
       "characteristic_form": "Use iot.history, tsfm.data_quality, fmsr.get_failure_modes and wo.list_workorders; assess cited mechanisms against the available records, distinguish independent samples from a time series, and state what would confirm the suspected cause."
-    }
-  ],
-  "negative_examples": [
+    },
     {
       "type": "multiagent",
       "source": {
@@ -231,7 +229,7 @@
       "category": "Insufficient predictive evidence",
       "text": "What is the predicted <measurement> for <asset> at <site> next week, based on the readings between <start> and <end>?",
       "characteristic_form": "Expected observed coverage <verified_interval_and_count> and values <verified_range_or_constant_value>; the unsupported conclusion is <specific_prediction_claim_and_reason>. Use iot.history and tsfm.profile_series to establish those findings and check the selected method prerequisites. Report any defensible baseline and its verified values separately.",
-      "adaptation_note": "Human row 507 expects an insufficiency response from idle-period power readings. Zero-valued data alone is not proof that forecasting is impossible; verify the particular requested claim and model prerequisites before labeling a new case negative."
+      "adaptation_note": "Human row 507 expects an insufficiency response from idle-period power readings. Zero-valued data alone is not proof that forecasting is impossible; verify the particular requested claim and model prerequisites before concluding that the requested result cannot be supported."
     }
   ]
 }

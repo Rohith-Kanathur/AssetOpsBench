@@ -138,18 +138,17 @@ shared **Stirrup harness with MCP tools and Docker code execution**. The generat
 researches, prepares and exercises the environment; evaluated agents receive only
 the operator request, permitted input data and the final tools.
 
-Negatives test limitations such as wrong sites, absent sensor channels or
-unsupported diagnoses. Checks validate structure and grounding; executing the
+Authoring guidance includes requests with missing evidence, inconclusive results,
+or unsupported premises when appropriate; their expected resolution is recorded in the characteristic form. Checks validate structure and grounding; executing the
 scenarios separately verifies complete workflows.
 
-After [setup](./src/scenarios/generation/README.md#run), generate **20 positive and
-5 negative** scenarios by default, with the agent choosing the domain mix:
+After [setup](./src/scenarios/generation/README.md#run), generate **25 scenarios** by default, with the agent choosing the domain mix:
 
 ```bash
 scenario-generate --asset Transformer
 ```
 
-Use `--counts` for different totals or `--plan` for counts per domain.
+Use `--count` for a different total or `--plan` for counts per domain.
 [Generation commands and outputs](./src/scenarios/generation/README.md) ·
 [Evaluation and reports](./src/benchmark/generated/README.md)
 

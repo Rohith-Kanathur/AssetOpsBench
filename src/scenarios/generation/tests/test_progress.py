@@ -44,11 +44,11 @@ def test_metadata_fallback_distinguishes_validation_states(tmp_path, validation,
 def test_authoritative_status_counts_and_numeric_latest_attempt(tmp_path):
     save(tmp_path / "logs/run-2.json", {"requested_model": "older"})
     save(tmp_path / "logs/run-10.json", {"requested_model": "newer", "process_status": "running"})
-    save(tmp_path / "status.json", {"status": "checking", "attempt": 10, "counts": {"positive": 6, "negative": 6}})
+    save(tmp_path / "status.json", {"status": "checking", "attempt": 10, "counts": {"iot": 6, "multiagent": 6}})
     text = progress.inspect_run(tmp_path)
     assert "checking · attempt 10" in text
     assert "Native: codex / newer" in text and "Native: codex / older" not in text
-    assert '"positive": 6' in text
+    assert '"iot": 6' in text
 
 
 def test_partial_metadata_and_native_lines_are_tolerated(tmp_path):

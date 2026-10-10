@@ -10,15 +10,13 @@ from scenarios.generation.review import check_contract
 from scenarios.generation.tests.test_review import one_contract, replace_artifact
 
 
-def fixture(workspace, mode="general-execution", positive=True):
-    one_contract(workspace, positive)
+def fixture(workspace, mode="general-execution"):
+    one_contract(workspace)
     request = json.loads((workspace / "request.json").read_text())
     request["generation_mode"] = mode
     (workspace / "request.json").write_text(json.dumps(request))
     rows = json.loads((workspace / "output/scenarios.json").read_text())
     rows[0]["execution"] = {"requires": ["mcp"], "input_files": [], "output_files": []}
-    if not positive:
-        rows[0]["missing_evidence"][0]["kind"] = "missing_sensor"
     replace_artifact(workspace, "scenarios", rows)
     return rows
 
@@ -80,15 +78,6 @@ def test_expected_output_paths_cannot_escape_workspace(tmp_path, path):
     rows[0]["execution"]["output_files"][0]["path"] = path
     replace_artifact(tmp_path, "scenarios", rows)
     assert any("workspace-relative files" in e for e in check_contract(tmp_path)["errors"])
-
-
-@pytest.mark.parametrize("kind", ["missing_file_writer", "missing_shell", "runtime_failure", [], None])
-def test_negative_case_requires_a_domain_evidence_gap(tmp_path, kind):
-    rows = fixture(tmp_path, positive=False)
-    assert check_contract(tmp_path)["errors"] == []
-    rows[0]["missing_evidence"][0]["kind"] = kind
-    replace_artifact(tmp_path, "scenarios", rows)
-    assert any("domain gap kind" in error for error in check_contract(tmp_path)["errors"])
 
 
 def test_declared_inputs_must_exist_and_cannot_contain_completed_outputs(tmp_path):

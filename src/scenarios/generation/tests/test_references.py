@@ -15,8 +15,8 @@ SOURCE_ROWS = json.loads((PACKAGE / "references/source-rows.json").read_text())
 
 
 def test_examples_cover_domains_and_retain_exact_source_row_provenance():
-    assert Counter(example["type"] for example in EXAMPLES) == {domain: 3 for domain in DOMAINS}
-    for example in EXAMPLES + json.loads((PACKAGE / "references/examples.json").read_text())["negative_examples"]:
+    assert Counter(example["type"] for example in EXAMPLES) == {domain: 5 if domain == "multiagent" else 3 for domain in DOMAINS}
+    for example in EXAMPLES:
         source = example["source"]
         row = next(item["row"] for item in SOURCE_ROWS
                    if item["path"] == source["path"] and item["row"]["id"] == source["row_id"])

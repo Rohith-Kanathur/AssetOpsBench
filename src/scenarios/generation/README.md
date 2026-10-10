@@ -23,14 +23,13 @@ PYTHONPATH=src python -m scenarios.generation --asset Transformer
 ```
 
 After installing the project, the equivalent command is
-`scenario-generate --asset Transformer`. Defaults: 20 positive and 5 negative
-scenarios, allocated by the agent; MCP tools and code execution;
+`scenario-generate --asset Transformer`. Defaults: 25 scenarios, allocated by the agent; MCP tools and code execution;
 Codex / GPT-6 Astra / `xhigh` / `fast` for generation.
 
 ```bash
-scenario-generate --asset Transformer --counts '{"positive":5,"negative":1}'
+scenario-generate --asset Transformer --count 6
 scenario-generate --asset Chiller --environment existing --seed /path/to/prepared/snapshot
-scenario-generate --asset Transformer --plan '{"iot":{"positive":2,"negative":1},"multiagent":{"positive":1}}'
+scenario-generate --asset Transformer --plan '{"iot":3,"multiagent":1}'
 scenario-generate run /path/to/run --followup "Check the unresolved source claims."
 scenario-generate check /path/to/run
 scenario-generate inspect /path/to/run
@@ -45,8 +44,8 @@ scenario-generate stop /path/to/run
 | `[action]` | `run` (default), `check`, `inspect`, `watch`, `stop`, or `build`. |
 | `[directory]` | New output directory or saved run. New runs default to the local cache. |
 | `--asset NAME` | Required for a new generation. |
-| `--counts JSON` | Positive/negative totals; the agent chooses the domain mix. Defaults to 20 positive, 5 negative. |
-| `--plan JSON` | Exact positive/negative counts per domain. Mutually exclusive with totals. |
+| `--count N` | Total scenarios; the agent chooses the domain mix. Defaults to 25. |
+| `--plan JSON` | Integer scenario counts per domain. Mutually exclusive with `--count`. |
 | `--environment POLICY` | `extend` (default) permits grounded preparation; `existing` preserves the starting data and tools. |
 | `--seed PATH` | Prepared snapshot supplying database records and public input files. Without it, use the selected checkout's default data. |
 | `--harness NAME` | `codex`, currently the only implementation. |
@@ -59,16 +58,15 @@ scenario-generate stop /path/to/run
 | `-h`, `--help` | Show usage. |
 
 Plan keys are `iot`, `fmsr`, `tsfm`, `wo`, `vibration`, and `multiagent`.
-Each value contains `positive` and/or `negative` nonnegative integers; omitted
-entries mean zero. At least one scenario is required. Capitalized domain names
-and `multi-agent` are normalized. `multiagent` combines at least two tool domains.
+Each value is a nonnegative integer; omitted domains mean zero. At least one
+scenario is required. Capitalized domain names and `multi-agent` are normalized.
+`multiagent` combines at least two tool domains.
 
-A positive scenario must be answerable with the environment; a negative scenario
-intentionally tests an unsupported request or missing evidence. This budget counts
-scenarios, not tokens or money. The agent saves its allocation and reports any
-shortfall without substituting one polarity for another. `check` enforces both
-the supplied budget and the per-domain allocation. There are no separate count or
-domain flags.
+The agent saves its allocation and reports any shortfall. `check` enforces both
+the requested total and the per-domain allocation. There is no answerability field,
+quota or separate generation mode. General guidance includes realistic requests
+with missing evidence, inconclusive results or faulty premises; the exercised
+characteristic form records the expected resolution.
 
 The generator uses Codex CLI through its native login. Evaluation uses Stirrup
 with MCP tools, shell/Python analysis and file creation. All new runs use general
@@ -79,10 +77,9 @@ Prepared outputs, rubrics and generator scripts are not evaluation inputs. Durin
 evaluation, agent-created task files and MCP-produced files share one workspace;
 the generated server implementation remains private to the tool container.
 
-Negatives test missing data, wrong asset/site, absent channels, insufficient
-coverage or unsupported domain conclusions. Missing file-writing capability and
-runtime failures do not qualify. Old MCP-only runs cannot be resumed or evaluated
-with this pipeline; their saved artifacts remain available for inspection.
+Runtime failures and missing file-writing capabilities are setup problems to
+repair. Old MCP-only runs cannot be resumed or evaluated with this pipeline;
+their saved artifacts remain available for inspection.
 
 Requested model settings and prompt hashes are saved per invocation. Unsupported
 model settings surface as CLI errors. `harnesses.py` is the boundary for future
@@ -201,7 +198,7 @@ leave the run incomplete. `check` verifies profile structure, source references,
 hashes, budgets, duplicates, tools and applicable live grounding, saving its own
 MCP calls and results. It ignores legacy `tool_checks.json` and manual execution
 receipts. The report marks scenario execution as `not_verified`: run the scenarios
-to verify output creation, complete workflows and negative-case behavior. Scientific
+to verify output creation, complete workflows and the correctness of reference conclusions. Scientific
 validity and operator realism still require review.
 
 `inspect` shows status, recent events and linked artifacts. `watch` follows live
