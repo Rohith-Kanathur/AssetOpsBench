@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 
 from llm import LLMBackend
 
@@ -155,16 +154,20 @@ class LLMJudgeScorer:
 def _parse_review(raw: str) -> dict | None:
     if not raw:
         return None
-    # Strip the reference prompt's "(END OF RESPONSE)" sentinel + any
-    # leading prose / markdown fence before extracting the first {...}.
     text = raw.split("(END OF RESPONSE)")[0]
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    if not match:
-        return None
-    try:
-        return json.loads(match.group(0))
-    except json.JSONDecodeError:
-        return None
+    decoder = json.JSONDecoder()
+    reviews, offset = [], 0
+    while (start := text.find("{", offset)) != -1:
+        try:
+            value, end = decoder.raw_decode(text, start)
+        except json.JSONDecodeError:
+            offset = start + 1
+            continue
+        offset = end
+        if isinstance(value, dict) and all(key in value for key in _RUBRIC_KEYS):
+            reviews.append(value)
+    # Ignore tool-argument objects in prose, but never choose between grades.
+    return reviews[0] if len(reviews) == 1 else None
 
 
 def install(llm: LLMBackend, name: str = "llm_judge") -> None:

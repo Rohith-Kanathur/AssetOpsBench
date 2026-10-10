@@ -100,6 +100,29 @@ class TestLLMJudgeScorer:
         r = scorer(make_scenario(), "a", "t")
         assert r.passed
 
+    def test_ignores_tool_arguments_around_review(self, make_scenario):
+        wrapped = (
+            'Verified eval: {initial_window: 60, step: 10}.\n'
+            + self._all_pass_response()
+            + '\nObserved metrics: {"mae": 1.56}'
+        )
+        r = LLMJudgeScorer(_StubLLM(wrapped))(make_scenario(), "a", "t")
+        assert r.passed
+        assert r.rationale == "Looks good."
+
+    def test_preserves_braces_inside_rationale(self, make_scenario):
+        response = self._all_pass_response().replace("Looks good.", "Verified {last, mean}.")
+        r = LLMJudgeScorer(_StubLLM(response))(make_scenario(), "a", "t")
+        assert r.passed
+        assert r.rationale == "Verified {last, mean}."
+
+    def test_rejects_multiple_reviews(self, make_scenario):
+        first = self._all_pass_response()
+        second = first.replace('"task_completion": true', '"task_completion": false')
+        r = LLMJudgeScorer(_StubLLM(first + "\n" + second))(make_scenario(), "a", "t")
+        assert not r.passed
+        assert "unparseable" in r.rationale
+
     def test_missing_characteristic_short_circuits(self, make_scenario):
         scorer = LLMJudgeScorer(_StubLLM(self._all_pass_response()))
         s = make_scenario(characteristic_form=None, expected_answer=None)
