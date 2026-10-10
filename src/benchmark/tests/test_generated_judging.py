@@ -2,6 +2,7 @@
 
 import csv
 import json
+from pathlib import Path
 
 import pytest
 
@@ -67,7 +68,7 @@ def test_execution_failure_does_not_invoke_judge(case):
 def test_judge_retry_preserves_failed_grade_and_native_events(case):
     failed = judge_case(case, backend=Backend('not JSON'))
     audit = case / 'judging'
-    audit.mkdir()
+    audit.mkdir(exist_ok=True)
     (audit / 'events.jsonl').write_text('original native event\n')
     completed = judge_case(case, backend=Backend(passing()))
     assert completed['status'] == 'completed'
@@ -95,11 +96,16 @@ def test_judge_mounts_only_full_evidence_readonly_with_isolated_auth(case, monke
         assert command[command.index("--permission-mode") + 1] == "dontAsk"
         assert json.loads(command[command.index("--mcp-config") + 1]) == {"mcpServers": {}}
         mounts = [command[index + 1] for index, item in enumerate(command) if item == "--mount"]
-        evidence = [mount for mount in mounts if "dst=/evidence/" in mount]
-        assert len(evidence) == 3
+        evidence = [mount for mount in mounts if "dst=/evidence," in mount]
+        assert len(evidence) == 1
         assert all(mount.endswith(",readonly") for mount in evidence)
-        assert len(mounts) == 4
+        assert len(mounts) == 2
         assert not any("compose" in mount or "judging" in mount for mount in mounts)
+        source = Path(evidence[0].split("src=", 1)[1].split(",", 1)[0])
+        assert not source.is_relative_to(case)
+        assert {p.name for p in source.iterdir()} == {"scenario.json", "result.json", "workspace"}
+        assert not (source / "blinding.json").exists()
+        assert (source / "workspace/report.json").read_text() == '{"full": true}'
         assert "ANTHROPIC_API_KEY" not in " ".join(command)
         assert kwargs["start_new_session"] is True
 
@@ -279,6 +285,10 @@ def test_judge_points_to_full_evidence_without_compaction(case):
     assert "saved observation" not in backend.prompt
     assert "trajectory_character_limit" not in grade
     assert (case / "result.json").read_text() == original
+    visible = json.loads((case / "judging/evidence/result.json").read_text())
+    calls = visible["trajectory"]["turns"][0]["tool_calls"]
+    assert len(calls[0]["output"]["rows"]) == 10000
+    assert calls[1]["name"] == "wo.list_workorders"
 
 
 def test_standalone_judge_discovers_only_cases_and_refreshes_report(tmp_path, monkeypatch):

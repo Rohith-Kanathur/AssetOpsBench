@@ -189,7 +189,8 @@ def manifest(root):
                     'evaluation/cases/*/scenario.json',
                     'evaluation/cases/*/result.json', 'evaluation/cases/*/judge.json',
                     'evaluation/cases/*/native/*.json*', 'evaluation/cases/*/judging/*.json*',
-                    'evaluation/cases/*/judging/prompt.txt', 'evaluation/cases/*/judging-attempts/**/*', 'evaluation/cases/*/workspace/**/*',
+                    'evaluation/cases/*/judging/prompt.txt', 'evaluation/cases/*/judging/evidence/**/*',
+                    'evaluation/cases/*/judging-attempts/**/*', 'evaluation/cases/*/workspace/**/*',
                     'evaluation/environment/**/*', 'evaluation/database/*', 'evaluation/inputs/**/*'):
         evidence.extend(p for p in root.glob(pattern) if p.is_file() and not p.is_symlink())
     files = {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()

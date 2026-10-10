@@ -104,6 +104,8 @@ RUN/
       native/, workspace/, result.json
       judging/events.jsonl         # native Claude Code / Fable trace
       judging/prompt.txt, result.json
+      judging/evidence/            # complete judge copy, model/source identifiers masked
+      judging/blinding.json        # private audit mapping, never shown to the judge
       judge.json
   trajectory.json                  # ATIF workflow with references to each stage
   evidence-manifest.json           # hashes of selected evidence, excluding auth/config
@@ -119,6 +121,8 @@ The saved controller includes the exact judge rubric. The characteristic form
 defines success, including any required explanation of insufficient evidence;
 generic refusal does not replace the required evidence checks. The same rubric
 applies to human-authored and synthetic scenarios.
+The judge sees the same blinded evidence format for both cohorts. Original
+execution logs and workspace files remain intact alongside the judge-only copy.
 
 `stage_completed` is an operational completion reward, **not benchmark accuracy**.
 A judging trial additionally records `benchmark_pass`, taken from the existing

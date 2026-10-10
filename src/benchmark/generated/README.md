@@ -81,6 +81,15 @@ existing six-criterion rubric. A strict pass requires the first five rubric crit
 and no hallucinations. Startup errors, timeouts, missing grades and rubric failures
 remain distinct.
 
+The judge receives a separate copy with the evaluated model, runner and
+human/synthetic origin withheld. It retains every recorded turn, tool call and
+result, plus the workspace files; identifying strings in paths and text are
+masked. Original scenarios, execution logs and artifacts stay untouched. The
+copy is saved in `judging/evidence/`, with a private audit mapping in
+`judging/blinding.json` that is not exposed to the judge. A binary artifact that
+cannot be safely blinded blocks grading for review. Saved grades are invalidated
+when the blinding policy or any evidence file changes.
+
 ```bash
 uv run scenario-judge results/chiller-human --jobs 2
 ```

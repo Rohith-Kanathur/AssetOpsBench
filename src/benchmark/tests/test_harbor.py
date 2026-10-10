@@ -48,6 +48,19 @@ def test_manifest_omits_runtime_credentials_and_tracks_mutation(tmp_path):
     assert manifest(tmp_path) != values
 
 
+def test_manifest_retains_blinded_evidence_and_private_audit_mapping(tmp_path):
+    case = tmp_path / 'evaluation/cases/one'
+    write(case / 'judging/evidence/result.json', {'scenario_id': 'case'})
+    write(case / 'judging/evidence/workspace/report.json', {'value': 42})
+    write(case / 'judging/blinding.json', {'model': 'original-model'})
+    files = manifest(tmp_path)
+    assert set(files) == {
+        'evaluation/cases/one/judging/evidence/result.json',
+        'evaluation/cases/one/judging/evidence/workspace/report.json',
+        'evaluation/cases/one/judging/blinding.json',
+    }
+
+
 def test_task_verifier_distinguishes_completion_from_benchmark_pass(tmp_path):
     task = create_task(tmp_path, 'judging-one', {'stage': 'judging', 'timeout': 10})
     verifier = (task / 'tests/test.sh').read_text()

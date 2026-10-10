@@ -30,7 +30,11 @@ def load_case(case_dir: Path) -> dict:
     grade = json.loads(path.read_text()) if path.exists() else {"status": "pending"}
     if grade.get("fingerprint"):
         scenario = json.loads((case_dir / "scenario.json").read_text())
-        if grade["fingerprint"] != evidence_fingerprint(scenario, row, grade["model"]):
+        try:
+            matches = grade["fingerprint"] == evidence_fingerprint(scenario, row, grade["model"], case_dir)
+        except (OSError, ValueError):
+            matches = False
+        if not matches:
             grade = {"status": "pending", "error": "Saved grade belongs to different execution evidence"}
     row["grading"] = grade
     return row
