@@ -34,6 +34,7 @@ import os
 import shutil
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 from observability import agent_run_span, persist_trajectory
 
@@ -168,6 +169,9 @@ class StirrupAgentRunner(AgentRunner):
         max_turns: int = 30,
         temperature: float | None = None,
         reasoning_effort: str | None = None,
+        shared_workspace: bool = False,
+        max_output_tokens: int | None = None,
+        container_record: Path | None = None,
     ) -> None:
         super().__init__(llm, server_paths)
         if code_backend not in {"docker", "local"}:
@@ -190,6 +194,13 @@ class StirrupAgentRunner(AgentRunner):
         self._max_turns = max_turns
         self._temperature = temperature
         self._reasoning_effort = reasoning_effort
+        if shared_workspace and (self._workspace_dir is None or code_backend != "docker" or not code_enabled):
+            raise ValueError("shared_workspace requires a workspace_dir and Docker code execution")
+        if max_output_tokens is not None and not 0 < max_output_tokens <= _WORKING_CONTEXT_BUDGET:
+            raise ValueError("max_output_tokens must fit the working context budget")
+        self._shared_workspace = shared_workspace
+        self._max_output_tokens = max_output_tokens
+        self._container_record = container_record
 
     # -- client / tools ----------------------------------------------------
 
@@ -200,10 +211,20 @@ class StirrupAgentRunner(AgentRunner):
             if self._temperature is not None
             else None
         )
+        limits = {"max_tokens": self._max_output_tokens} if self._max_output_tokens is not None else {}
 
         creds = resolve_router_creds(self._model_id)
         if creds is not None:
             from stirrup.clients.chat_completions_client import ChatCompletionsClient
+
+            if urlparse(creds.base_url).hostname == "ai-gateway.vercel.sh":
+                # The gateway leaves explicit-cache providers (e.g. Anthropic)
+                # uncached unless automatic markers are requested. Implicit
+                # cache providers retain their normal behavior with this flag.
+                client_kwargs = {
+                    **(client_kwargs or {}),
+                    "extra_body": {"providerOptions": {"gateway": {"caching": "auto"}}},
+                }
 
             common_kwargs = {
                 "model": resolve_model(self._model_id),
@@ -213,7 +234,7 @@ class StirrupAgentRunner(AgentRunner):
                 "reasoning_effort": self._reasoning_effort,
                 "kwargs": client_kwargs,
             }
-            client = ChatCompletionsClient(**common_kwargs)
+            client = ChatCompletionsClient(**common_kwargs, **limits)
         else:
             from stirrup.clients.litellm_client import LiteLLMClient
 
@@ -222,6 +243,7 @@ class StirrupAgentRunner(AgentRunner):
                 context_window_tokens=_WORKING_CONTEXT_BUDGET,
                 reasoning_effort=self._reasoning_effort,
                 kwargs=client_kwargs,
+                **limits,
             )
         return client
 
@@ -235,6 +257,11 @@ class StirrupAgentRunner(AgentRunner):
 
         servers: dict[str, dict] = {}
         for name, spec in self._server_paths.items():
+            if isinstance(spec, dict):
+                if spec.get("type") != "http" or not spec.get("url"):
+                    raise ValueError("Remote MCP servers require type=http and url")
+                servers[name] = dict(spec)
+                continue
             cmd_arg = str(spec)
             servers[name] = {
                 "command": "uv",
@@ -260,6 +287,11 @@ class StirrupAgentRunner(AgentRunner):
 
     def _build_code_provider(self):
         """Build the sandboxed code-execution provider for the code track."""
+        if self._shared_workspace:
+            from .shared_workspace import SharedWorkspaceDockerProvider
+            return SharedWorkspaceDockerProvider(
+                _DEFAULT_CODE_IMAGE, self._workspace_dir, container_record=self._container_record,
+            )
         if self._code_backend == "local":
             from stirrup.tools.code_backends.local import LocalCodeExecToolProvider
 

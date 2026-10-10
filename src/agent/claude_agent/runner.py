@@ -27,7 +27,7 @@ from claude_agent_sdk import (
     ResultMessage,
     query,
 )
-from claude_agent_sdk import TextBlock, ToolUseBlock
+from claude_agent_sdk import TextBlock, ToolResultBlock, ToolUseBlock, UserMessage
 
 from observability import agent_run_span, persist_trajectory
 
@@ -70,7 +70,11 @@ def _build_mcp_servers(
     """
     mcp: dict[str, dict] = {}
     for name, spec in server_paths.items():
-        if isinstance(spec, Path):
+        if isinstance(spec, dict):
+            if spec.get("type") != "http" or not spec.get("url"):
+                raise ValueError("Remote MCP servers require type=http and url")
+            mcp[name] = dict(spec)
+        elif isinstance(spec, Path):
             mcp[name] = {"command": "uv", "args": ["run", str(spec)]}
         else:
             # uv entry-point name, e.g. "iot-mcp-server"
@@ -101,6 +105,8 @@ class ClaudeAgentRunner(AgentRunner):
         model: str = _DEFAULT_MODEL,
         max_turns: int = 30,
         permission_mode: str = "bypassPermissions",
+        mcp_only: bool = False,
+        cli_path: str | Path | None = None,
     ) -> None:
         super().__init__(llm, server_paths)
         self._model = resolve_model(model)
@@ -108,6 +114,8 @@ class ClaudeAgentRunner(AgentRunner):
         self._max_turns = max_turns
         self._permission_mode = permission_mode
         self._mcp_servers = _build_mcp_servers(self._server_paths)
+        self._mcp_only = mcp_only
+        self._cli_path = cli_path
 
     async def run(self, question: str) -> AgentResult:
         """Run the claude-agent-sdk loop for *question*.
@@ -127,8 +135,14 @@ class ClaudeAgentRunner(AgentRunner):
                 mcp_servers=self._mcp_servers,
                 max_turns=self._max_turns,
                 permission_mode=self._permission_mode,
-                env=self._sdk_env,
+                env=self._sdk_env or {},
+                cli_path=self._cli_path,
             )
+            if self._mcp_only:
+                options.tools = []
+                options.setting_sources = []
+                options.extra_args = {"strict-mcp-config": None, "disable-slash-commands": None,
+                                      "setting-sources": ""}
 
             _log.info("ClaudeAgentRunner: starting query (model=%s)", self._model)
             answer = ""
@@ -137,6 +151,15 @@ class ClaudeAgentRunner(AgentRunner):
             turn_index = 0
             last_turn_start = run_started
             tool_outputs: dict[str, object] = {}
+            tool_calls_by_id: dict[str, ToolCall] = {}
+
+            def _record_tool_output(tool_id: str, output: object, *, fallback: bool = False) -> None:
+                call = tool_calls_by_id.get(tool_id)
+                if call is not None:
+                    if not fallback or call.output is None:
+                        call.output = output
+                elif not fallback or tool_id not in tool_outputs:
+                    tool_outputs[tool_id] = output
 
             async def _capture_tool_output(
                 input_data, tool_use_id: str, context
@@ -146,10 +169,9 @@ class ClaudeAgentRunner(AgentRunner):
                     if isinstance(input_data, dict)
                     else input_data
                 )
-                if isinstance(resp, dict):
-                    tool_outputs[tool_use_id] = resp.get("content", resp)
-                else:
-                    tool_outputs[tool_use_id] = resp
+                if isinstance(resp, dict) and not resp.get("isError"):
+                    resp = resp.get("content", resp)
+                _record_tool_output(tool_use_id, resp)
                 return {}
 
             # Only PostToolUse is registered.  Adding PreToolUse made older
@@ -162,17 +184,8 @@ class ClaudeAgentRunner(AgentRunner):
                 ],
             }
 
-            def _flush_tool_outputs() -> None:
-                """Patch any pending hook outputs onto the last turn's tool calls."""
-                if not trajectory.turns:
-                    return
-                for tc in trajectory.turns[-1].tool_calls:
-                    if tc.id in tool_outputs:
-                        tc.output = tool_outputs.pop(tc.id)
-
             async for message in query(prompt=question, options=options):
                 if isinstance(message, AssistantMessage):
-                    _flush_tool_outputs()
                     now = time.perf_counter()
                     turn_duration_ms = (now - last_turn_start) * 1000
                     last_turn_start = now
@@ -182,11 +195,11 @@ class ClaudeAgentRunner(AgentRunner):
                         if isinstance(block, TextBlock):
                             text += block.text
                         elif isinstance(block, ToolUseBlock):
-                            tool_calls.append(
-                                ToolCall(
-                                    name=block.name, input=block.input, id=block.id
-                                )
-                            )
+                            call = ToolCall(name=block.name, input=block.input, id=block.id)
+                            tool_calls_by_id[block.id] = call
+                            if block.id in tool_outputs:
+                                call.output = tool_outputs.pop(block.id)
+                            tool_calls.append(call)
                     usage = message.usage or {}
                     trajectory.turns.append(
                         TurnRecord(
@@ -199,8 +212,13 @@ class ClaudeAgentRunner(AgentRunner):
                         )
                     )
                     turn_index += 1
+                elif isinstance(message, UserMessage) and isinstance(message.content, list):
+                    for block in message.content:
+                        if isinstance(block, ToolResultBlock):
+                            output = ({"content": block.content, "is_error": True}
+                                      if block.is_error else block.content)
+                            _record_tool_output(block.tool_use_id, output, fallback=True)
                 elif isinstance(message, ResultMessage):
-                    _flush_tool_outputs()
                     answer = message.result or ""
                     _log.info(
                         "ClaudeAgentRunner: done (stop_reason=%s, turns=%d, "

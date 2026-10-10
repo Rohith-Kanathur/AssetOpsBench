@@ -44,6 +44,32 @@ def test_build_mcp_servers_empty():
     assert _build_mcp_servers({}) == []
 
 
+def test_build_mcp_servers_http_uses_remote_endpoint():
+    spec = {"type": "http", "url": "http://tools:8100/mcp"}
+    with patch("agent.openai_agent.runner.MCPServerStreamableHttp") as remote:
+        result = _build_mcp_servers({"iot": spec})
+    remote.assert_called_once_with(name="iot", params={"url": "http://tools:8100/mcp"},
+                                   cache_tools_list=True, client_session_timeout_seconds=120)
+    assert result == [remote.return_value]
+
+
+@pytest.mark.parametrize("spec", [{"type": "stdio", "url": "http://tools/mcp"}, {"type": "http"}])
+def test_build_mcp_servers_rejects_incomplete_http(spec):
+    with pytest.raises(ValueError, match="type=http and url"):
+        _build_mcp_servers({"iot": spec})
+
+
+def test_zai_sdk_uses_fixed_endpoint_and_resolved_model(monkeypatch):
+    monkeypatch.setenv("ZAI_API_KEY", "test-key")
+    monkeypatch.setenv("ZAI_BASE_URL", "https://unexpected.invalid/")
+    with patch("agent.openai_agent.runner.AsyncOpenAI") as client:
+        with patch("agent.openai_agent.runner.OpenAIChatCompletionsModel") as model:
+            config = _build_run_config("zai/glm-5.3")
+            config.model_provider.get_model(None)
+    client.assert_called_once_with(base_url="https://api.z.ai/api/paas/v4/", api_key="test-key")
+    model.assert_called_once_with(model="glm-5.3", openai_client=client.return_value)
+
+
 # ---------------------------------------------------------------------------
 # _build_run_config
 # ---------------------------------------------------------------------------
@@ -218,6 +244,25 @@ def test_build_trajectory_multiple_tool_calls():
     assert traj.all_tool_calls[1].output == ["Chiller 6"]
     assert traj.total_input_tokens == 50 + 80
     assert traj.total_output_tokens == 10 + 15
+
+
+@pytest.mark.parametrize("as_dict", [True, False])
+def test_parallel_tool_outputs_match_call_ids_across_turns(as_dict):
+    def output(call_id, value):
+        raw = {"call_id": call_id} if as_dict else SimpleNamespace(call_id=call_id)
+        return SimpleNamespace(type="tool_call_output_item", raw_item=raw, output=value)
+
+    result = _make_run_result([
+        _make_tool_call_item("sites", "{}", "site-call"),
+        _make_tool_call_item("sensors", "{}", "sensor-call"),
+        _make_message_item("Checking both results."),
+        output("sensor-call", ["oil_temperature"]),
+        output("site-call", ["MAIN"]),
+        output("unknown-call", "must not overwrite known results"),
+    ])
+    calls = {call.id: call for call in _build_trajectory(result).all_tool_calls}
+    assert calls["site-call"].output == ["MAIN"]
+    assert calls["sensor-call"].output == ["oil_temperature"]
 
 
 # ---------------------------------------------------------------------------

@@ -75,3 +75,21 @@ def test_resolve_router_creds_lenient_returns_none(monkeypatch):
     monkeypatch.delenv("LITELLM_BASE_URL", raising=False)
     monkeypatch.delenv("LITELLM_API_KEY", raising=False)
     assert resolve_router_creds("litellm_proxy/aws/x", strict=False) is None
+
+
+def test_zai_requires_only_key_and_uses_fixed_endpoint(monkeypatch):
+    monkeypatch.setenv("ZAI_API_KEY", "zai-test-key")
+    monkeypatch.setenv("ZAI_BASE_URL", "https://ignored.invalid")
+    assert router_prefix("zai/glm-5.3") == "zai/"
+    assert resolve_model("zai/glm-5.3") == "glm-5.3"
+    assert is_openai_compat("zai/glm-5.3")
+    credentials = resolve_router_creds("zai/glm-5.3")
+    assert credentials.base_url == "https://api.z.ai/api/paas/v4/"
+    assert credentials.api_key == "zai-test-key"
+
+
+def test_zai_missing_key(monkeypatch):
+    monkeypatch.delenv("ZAI_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="ZAI_API_KEY"):
+        resolve_router_creds("zai/glm-5.3")
+    assert resolve_router_creds("zai/glm-5.3", strict=False) is None

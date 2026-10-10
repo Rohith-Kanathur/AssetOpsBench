@@ -64,6 +64,70 @@ def test_build_mcp_servers_empty():
     assert _build_mcp_servers({}) == {}
 
 
+def test_build_mcp_servers_http_keeps_endpoint_without_mutating_input():
+    spec = {"type": "http", "url": "http://tools:8100/mcp"}
+    result = _build_mcp_servers({"iot": spec})
+    assert result == {"iot": spec}
+    assert result["iot"] is not spec
+
+
+@pytest.mark.parametrize("spec", [{"type": "stdio", "url": "http://tools/mcp"}, {"type": "http"}])
+def test_build_mcp_servers_rejects_incomplete_http(spec):
+    with pytest.raises(ValueError, match="type=http and url"):
+        _build_mcp_servers({"iot": spec})
+
+
+@pytest.mark.anyio
+async def test_mcp_only_disables_builtins_and_inherited_configuration():
+    from claude_agent_sdk import ResultMessage
+
+    result = MagicMock(spec=ResultMessage, result="Supported answer", stop_reason="end_turn")
+    remote = {"iot": {"type": "http", "url": "http://tools:8100/mcp"}}
+
+    async def fake_query(prompt, options):
+        from claude_agent_sdk._internal.transport.subprocess_cli import SubprocessCLITransport
+
+        assert options.tools == []
+        assert options.setting_sources == []
+        assert "strict-mcp-config" in options.extra_args
+        assert "disable-slash-commands" in options.extra_args
+        assert "safe-mode" not in options.extra_args
+        assert options.mcp_servers == remote
+        options.cli_path = "/unused/claude"
+        command = SubprocessCLITransport(prompt=prompt, options=options)._build_command()
+        assert command[command.index("--tools") + 1] == ""
+        assert command[command.index("--setting-sources") + 1] == ""
+        assert "--safe-mode" not in command and "--strict-mcp-config" in command
+        yield result
+
+    with patch("agent.claude_agent.runner.query", side_effect=fake_query):
+        runner = ClaudeAgentRunner(model="claude-opus-5-5", server_paths=remote, mcp_only=True)
+        assert (await runner.run("What sensors exist?")).answer == "Supported answer"
+
+
+@pytest.mark.anyio
+async def test_subscription_model_can_start_sdk_transport():
+    from claude_agent_sdk import ResultMessage
+    from claude_agent_sdk._internal.transport.subprocess_cli import SubprocessCLITransport
+
+    result = MagicMock(spec=ResultMessage, result="Ready", stop_reason="end_turn")
+    process = MagicMock(stdin=None, stdout=None, stderr=None)
+    open_process = AsyncMock(return_value=process)
+
+    async def fake_query(prompt, options):
+        options.cli_path = "/unused/claude"
+        transport = SubprocessCLITransport(prompt=prompt, options=options)
+        with patch.object(transport, "_check_claude_version", new=AsyncMock()), \
+                patch("claude_agent_sdk._internal.transport.subprocess_cli.anyio.open_process", open_process):
+            await transport.connect()
+        yield result
+
+    with patch("agent.claude_agent.runner.query", side_effect=fake_query):
+        runner = ClaudeAgentRunner(model="claude-opus-5-5", server_paths={}, mcp_only=True)
+        assert (await runner.run("Reply Ready")).answer == "Ready"
+    assert open_process.call_args.kwargs["env"]["CLAUDE_CODE_ENTRYPOINT"] == "sdk-py"
+
+
 # ---------------------------------------------------------------------------
 # ClaudeAgentRunner.__init__
 # ---------------------------------------------------------------------------
@@ -253,6 +317,75 @@ async def test_run_tool_output_string_response():
 
     tc = result.trajectory.turns[0].tool_calls[0]
     assert tc.output == '{"sites": ["MAIN"]}'
+
+
+@pytest.mark.anyio
+async def test_parallel_tool_outputs_attach_across_turns_in_completion_order():
+    from claude_agent_sdk import AssistantMessage, ResultMessage, TextBlock, ToolUseBlock
+
+    async def fake_query(prompt, options):
+        hook = options.hooks["PostToolUse"][0].hooks[0]
+        yield AssistantMessage(content=[ToolUseBlock("a", "failure_modes", {})], model="test")
+        yield AssistantMessage(content=[ToolUseBlock("b", "sensor_catalog", {})], model="test")
+        yield AssistantMessage(content=[TextBlock("Waiting for both lookups")], model="test")
+        await hook({"tool_response": "sensor result"}, "b", {})
+        await hook({"tool_response": "failure mode result"}, "a", {})
+        yield MagicMock(spec=ResultMessage, result="Done", stop_reason="end_turn")
+
+    with patch("agent.claude_agent.runner.query", side_effect=fake_query):
+        result = await ClaudeAgentRunner(server_paths={}).run("Look up both")
+    calls = result.trajectory.all_tool_calls
+    assert [(call.id, call.output) for call in calls] == [
+        ("a", "failure mode result"), ("b", "sensor result")]
+
+
+@pytest.mark.anyio
+async def test_hook_result_before_assistant_message_is_not_lost():
+    from claude_agent_sdk import AssistantMessage, ResultMessage, ToolUseBlock
+
+    async def fake_query(prompt, options):
+        await options.hooks["PostToolUse"][0].hooks[0]({"tool_response": "found"}, "a", {})
+        yield AssistantMessage(content=[ToolUseBlock("a", "catalog", {})], model="test")
+        yield MagicMock(spec=ResultMessage, result="Done", stop_reason="end_turn")
+
+    with patch("agent.claude_agent.runner.query", side_effect=fake_query):
+        result = await ClaudeAgentRunner(server_paths={}).run("Look up catalog")
+    assert result.trajectory.all_tool_calls[0].output == "found"
+
+
+@pytest.mark.anyio
+async def test_user_tool_results_cover_missing_hooks_and_preserve_errors():
+    from claude_agent_sdk import AssistantMessage, ResultMessage, ToolResultBlock, ToolUseBlock, UserMessage
+
+    async def fake_query(prompt, options):
+        yield AssistantMessage(content=[ToolUseBlock("a", "history", {}),
+                                        ToolUseBlock("b", "forecast", {})], model="test")
+        yield UserMessage(content=[ToolResultBlock("b", "Missing series", is_error=True),
+                                   ToolResultBlock("a", "history response")])
+        yield MagicMock(spec=ResultMessage, result="Insufficient data", stop_reason="end_turn")
+
+    with patch("agent.claude_agent.runner.query", side_effect=fake_query):
+        result = await ClaudeAgentRunner(server_paths={}).run("Forecast")
+    calls = result.trajectory.all_tool_calls
+    assert calls[0].output == "history response"
+    assert calls[1].output == {"content": "Missing series", "is_error": True}
+
+
+@pytest.mark.anyio
+async def test_user_fallback_does_not_overwrite_full_hook_error_response():
+    from claude_agent_sdk import AssistantMessage, ResultMessage, ToolResultBlock, ToolUseBlock, UserMessage
+
+    original = {"content": [{"type": "text", "text": "Unavailable"}], "isError": True}
+
+    async def fake_query(prompt, options):
+        yield AssistantMessage(content=[ToolUseBlock("a", "history", {})], model="test")
+        await options.hooks["PostToolUse"][0].hooks[0]({"tool_response": original}, "a", {})
+        yield UserMessage(content=[ToolResultBlock("a", "Unavailable", is_error=True)])
+        yield MagicMock(spec=ResultMessage, result="Unavailable", stop_reason="end_turn")
+
+    with patch("agent.claude_agent.runner.query", side_effect=fake_query):
+        result = await ClaudeAgentRunner(server_paths={}).run("Read history")
+    assert result.trajectory.all_tool_calls[0].output == original
 
 
 @pytest.mark.anyio

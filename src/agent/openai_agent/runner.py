@@ -32,7 +32,7 @@ from agents import (
     Runner,
     set_tracing_disabled,
 )
-from agents.mcp import MCPServerStdio
+from agents.mcp import MCPServerStdio, MCPServerStreamableHttp
 
 from observability import agent_run_span, persist_trajectory
 
@@ -85,6 +85,14 @@ def _build_mcp_servers(
     """
     servers: list[MCPServerStdio] = []
     for name, spec in server_paths.items():
+        if isinstance(spec, dict):
+            if spec.get("type") != "http" or not spec.get("url"):
+                raise ValueError("Remote MCP servers require type=http and url")
+            servers.append(MCPServerStreamableHttp(
+                name=name, params={"url": spec["url"]},
+                cache_tools_list=True, client_session_timeout_seconds=120,
+            ))
+            continue
         cmd_arg = str(spec) if isinstance(spec, Path) else spec
         servers.append(
             MCPServerStdio(
@@ -109,6 +117,7 @@ def _build_trajectory(result) -> Trajectory:
     turn_index = 0
     text_parts: list[str] = []
     tool_calls: list[ToolCall] = []
+    calls_by_id: dict[str, ToolCall] = {}
 
     def _flush() -> None:
         nonlocal text_parts, tool_calls, turn_index
@@ -148,12 +157,18 @@ def _build_trajectory(result) -> Trajectory:
                     )
                 except (json.JSONDecodeError, TypeError):
                     tc_input = {"raw": tc_args}
-                tool_calls.append(ToolCall(name=tc_name, input=tc_input, id=tc_id))
+                call = ToolCall(name=tc_name, input=tc_input, id=tc_id)
+                tool_calls.append(call)
+                if tc_id:
+                    calls_by_id[tc_id] = call
         elif item_type == "tool_call_output_item":
             output = getattr(item, "output", None)
-            # Attach output to the last matching tool call
-            if tool_calls:
-                tool_calls[-1].output = output
+            raw = getattr(item, "raw_item", None)
+            call_id = raw.get("call_id") if isinstance(raw, dict) else getattr(raw, "call_id", None)
+            # Parallel calls can finish in a different order from their requests.
+            call = calls_by_id.get(call_id) if call_id else (tool_calls[-1] if tool_calls else None)
+            if call is not None:
+                call.output = output
 
     # Flush remaining
     _flush()

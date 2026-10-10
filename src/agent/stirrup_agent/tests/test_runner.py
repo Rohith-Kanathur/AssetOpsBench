@@ -110,6 +110,17 @@ def test_stirrup_runner_requires_workspace_when_preserving():
         StirrupAgentRunner(preserve_workspace=True)
 
 
+def test_stirrup_runner_accepts_http_mcp_and_output_limit(monkeypatch):
+    monkeypatch.setenv("TOKENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("TOKENROUTER_BASE_URL", "https://router.example/v1")
+    runner = StirrupAgentRunner(model="tokenrouter/model", max_output_tokens=8192,
+                                server_paths={"iot": {"type": "http", "url": "http://localhost:8100/mcp"}})
+    assert runner._build_client().max_tokens == 8192
+    assert runner._build_mcp_config().model_dump()["mcp_servers"]["iot"]["url"] == "http://localhost:8100/mcp"
+    with pytest.raises(ValueError, match="shared_workspace"):
+        StirrupAgentRunner(shared_workspace=True)
+
+
 def test_stirrup_runner_rejects_unsupported_code_backend():
     with pytest.raises(ValueError, match="code_backend"):
         StirrupAgentRunner(code_backend="e2b")
@@ -173,6 +184,21 @@ def test_stirrup_runner_uses_75k_summarization_trigger():
     assert _WORKING_CONTEXT_BUDGET == 100_000
     assert _CONTEXT_SUMMARIZATION_CUTOFF == 0.75
     assert _WORKING_CONTEXT_BUDGET * _CONTEXT_SUMMARIZATION_CUTOFF == 75_000
+
+
+@pytest.mark.parametrize("temperature", [None, 0.2])
+def test_stirrup_gateway_requests_automatic_prompt_caching(monkeypatch, temperature):
+    monkeypatch.setenv("LITELLM_API_KEY", "test-key")
+    monkeypatch.setenv("LITELLM_BASE_URL", "https://ai-gateway.vercel.sh/v1")
+    client = StirrupAgentRunner(
+        model="litellm_proxy/anthropic/claude-opus-5.5", temperature=temperature,
+    )._build_client()
+
+    assert client._kwargs["extra_body"] == {
+        "providerOptions": {"gateway": {"caching": "auto"}},
+    }
+    if temperature is not None:
+        assert client._kwargs["temperature"] == temperature
 
 
 def test_full_summary_logger_does_not_truncate(capsys: pytest.CaptureFixture[str]):
