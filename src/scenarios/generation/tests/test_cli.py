@@ -5,6 +5,12 @@ import pytest
 from scenarios.generation import cli
 
 
+@pytest.fixture(autouse=True)
+def isolate_pool(monkeypatch):
+    # CLI parsing tests must never contact subscription services.
+    monkeypatch.setattr(cli.runtime, 'run_with_pool', lambda *a, **k: cli.runtime.run(*a, **k))
+
+
 def prepare_stub(repository, destination, ref):
     (destination / "workspace").mkdir(parents=True)
 
@@ -87,3 +93,16 @@ def test_new_run_without_count_uses_twenty_five(tmp_path, monkeypatch):
     cli.main(["run", str(target), "--asset", "Transformer"])
     request = json.loads((target / "workspace/request.json").read_text())
     assert request["scenario_count"] == 25
+
+
+def test_generation_uses_isolated_codex_home(tmp_path, monkeypatch):
+    target = tmp_path / "new"
+    account = tmp_path / "alternate-account"
+    calls = []
+    monkeypatch.setenv("CODEX_HOME", str(account))
+    monkeypatch.setattr(cli, "prepare", prepare_stub)
+    monkeypatch.setattr(cli, "audit_baseline", lambda _: [])
+    monkeypatch.setattr(cli.runtime, "configure", lambda *args: calls.append(args))
+    monkeypatch.setattr(cli.runtime, "run", lambda *args, **kwargs: None)
+    cli.main(["run", str(target), "--asset", "Chiller"])
+    assert calls[0][1] == account

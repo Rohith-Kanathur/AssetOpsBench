@@ -8,10 +8,11 @@ tool implementations fixed. Evaluation runners remain separate.
 
 ## Run
 
-Configure Docker, Codex and Kaggle once:
+Configure Docker, the private Everett subscription pool, and Kaggle once.
+Check the pool without running inference:
 
 ```bash
-codex login
+python -m agent.codex_accounts check
 uv tool install kaggle
 kaggle auth login
 ```
@@ -67,6 +68,11 @@ the requested total and the per-domain allocation. There is no answerability fie
 quota or separate generation mode. General guidance includes realistic requests
 with missing evidence, inconclusive results or faulty premises; the exercised
 characteristic form records the expected resolution.
+
+The generator leases one private Everett subscription at a time. A host lock
+keeps authoring single-threaded; judges cannot simultaneously lease that account.
+Naomi, Mika/Micah, and Quentin Nolan are excluded. An explicitly supplied `CODEX_HOME` remains a manual
+isolated-login override. The default never selects the desktop app's active login.
 
 The generator uses Codex CLI through its native login. Evaluation uses Stirrup
 with MCP tools, shell/Python analysis and file creation. All new runs use general

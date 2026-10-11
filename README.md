@@ -133,7 +133,8 @@ retain real source evidence.
 
 [Editable diagram source](docs/figures/scenario-generation.html).
 
-Generation uses Codex CLI with its native login. The evaluated agents use one
+Generation uses Codex CLI with an isolated subscription from the private Everett
+pool. Authoring is single-threaded. The evaluated agents use one
 shared **Stirrup harness with MCP tools and Docker code execution**. The generator
 researches, prepares and exercises the environment; evaluated agents receive only
 the operator request, permitted input data and the final tools.
@@ -161,7 +162,9 @@ Use `--count` for a different total or `--plan` for counts per domain.
 Compare 25 validated human-authored Chiller scenarios with 25 generated Chiller
 scenarios, and evaluate generated Transformer scenarios separately. Use the same
 Stirrup harness, tools, prompt and limits across models. Score saved executions
-with Fable 5.1 in an independent, read-only Claude Code session.
+with GPT-6 Astra (`xhigh`, `fast`) in five independent, read-only Codex sessions
+on distinct subscriptions. Report arithmetic mean scores and strict pass rates;
+retain all five judgments and the unchanged execution evidence.
 
 Execution can use TokenRouter, Vercel AI Gateway or direct provider API keys.
 [Commands, frozen inputs and reporting](src/benchmark/generated/README.md).

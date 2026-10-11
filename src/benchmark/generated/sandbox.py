@@ -1,8 +1,9 @@
 """Fresh database and MCP environment per scenario; answers stay outside the agent."""
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import hashlib
 import json
+import os
 from pathlib import Path
 import secrets
 import shutil
@@ -177,7 +178,7 @@ def compose(case, *args, **kwargs):
                           check=True, **kwargs)
 
 
-def prepare_case(root, case, scenario):
+def prepare_case(root, case, scenario, *, database=None, image=IMAGE):
     case.mkdir(parents=True, exist_ok=True)
     workspace = case / "workspace"
     if workspace.exists():
@@ -213,33 +214,64 @@ def prepare_case(root, case, scenario):
     environment = {"COUCHDB_URL": "http://database:5984", "COUCHDB_USERNAME": "evaluation",
                    "COUCHDB_PASSWORD": secrets.token_hex(16), "PYTHONPATH": "/environment/src",
                    "TSFM_WORKDIR": "/workspace/artifacts", "PYTHONUNBUFFERED": "1"}
+    if database:
+        environment.update(COUCHDB_URL=database["url"], COUCHDB_USERNAME=database["username"],
+                           COUCHDB_PASSWORD=database["password"])
+    private_json(case / "runtime.json", {
+        "database": "shared-service-isolated-databases" if database else "dedicated-service",
+        "namespace": database["namespace"] if database else None,
+        "image": image, "mcp_process": "private", "workspace": "private"})
     name = "aob-eval-" + hashlib.sha256(str(case.resolve()).encode()).hexdigest()[:12]
     private_json(case / "compose.json", {
         "name": name, "services": {
             "database": {
                 "image": "couchdb:3.5", "environment": {
-                    "COUCHDB_USER": environment["COUCHDB_USERNAME"], "COUCHDB_PASSWORD": environment["COUCHDB_PASSWORD"]},
+                    "COUCHDB_USER": environment["COUCHDB_USERNAME"], "COUCHDB_PASSWORD": environment["COUCHDB_PASSWORD"],
+                    "ERL_FLAGS": "+S 2:2 +SDcpu 1 +SDio 2 +A 4"},
                 "entrypoint": ["tini", "--", "sh", "-c", "printf '[couchdb]\\nsingle_node=true\\n' > /opt/couchdb/etc/local.d/evaluation.ini; exec /docker-entrypoint.sh /opt/couchdb/bin/couchdb"],
                 "healthcheck": {"test": ["CMD", "curl", "-fsS", "http://localhost:5984/_up"],
                                 "interval": "1s", "timeout": "2s", "retries": 40}},
             "tools": {
-                "image": IMAGE, "working_dir": "/workspace", "environment": environment,
+                "image": image, "working_dir": "/workspace", "environment": environment,
                 "volumes": [f"{workspace}:/workspace", f"{tools_workspace}:/environment:ro",
                             f"{HERE}:/support:ro", f"{root / 'database'}:/snapshot:ro"],
                 "ports": [f"127.0.0.1::{8100 + i}" for i in range(len(SERVERS))],
-                "command": ["sh", "-c", "set -e; if [ -s /environment/requirements.txt ]; then uv pip install --system -r /environment/requirements.txt; fi; exec python /support/tools.py"],
+                "command": (["python", "/support/tools.py"] if image != IMAGE else
+                    ["sh", "-c", "set -e; if [ -s /environment/requirements.txt ]; then uv pip install --system -r /environment/requirements.txt; fi; exec python /support/tools.py"]),
                 "init": True, "cap_drop": ["ALL"], "security_opt": ["no-new-privileges:true"]},
         }})
+    if database:
+        config = json.loads((case / "compose.json").read_text())
+        del config["services"]["database"]
+        import platform
+        if platform.system() == "Linux":
+            config["services"]["tools"]["extra_hosts"] = ["host.docker.internal:host-gateway"]
+        private_json(case / "compose.json", config)
 
 
 @contextmanager
 def environment(root, case, scenario):
-    prepare_case(root, case, scenario)
+    from .runtime_image import prepared_image
+    from .shared_database import case_database
+    mode = os.environ.get("ASSETOPS_DATABASE_MODE", "shared")
+    if mode not in {"shared", "dedicated"}:
+        raise ValueError("ASSETOPS_DATABASE_MODE must be shared or dedicated")
+    image = prepared_image(root, IMAGE) if os.environ.get("ASSETOPS_CACHE_RUNTIME_IMAGE", "1") == "1" else IMAGE
+    context = case_database(root / "database") if mode == "shared" else nullcontext(None)
+    with context as database:
+        prepare_case(root, case, scenario, database=database, image=image)
+        with _running_environment(root, case, database) as endpoints:
+            yield endpoints
+
+
+@contextmanager
+def _running_environment(root, case, database):
     try:
         compose(case, "down", "--volumes", "--remove-orphans", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        compose(case, "up", "-d", "--wait", "database", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        compose(case, "run", "--rm", "-T", "tools", "python", "/support/database.py", "restore", "/snapshot",
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if database is None:
+            compose(case, "up", "-d", "--wait", "database", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            compose(case, "run", "--rm", "-T", "tools", "python", "/support/database.py", "restore", "/snapshot",
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         compose(case, "up", "-d", "tools", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         endpoints = {}
         for i, name in enumerate(SERVERS):

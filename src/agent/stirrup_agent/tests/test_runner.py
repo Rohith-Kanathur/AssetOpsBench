@@ -201,6 +201,17 @@ def test_stirrup_gateway_requests_automatic_prompt_caching(monkeypatch, temperat
         assert client._kwargs["temperature"] == temperature
 
 
+def test_gateway_cache_affinity_is_stable_per_runner_and_gemini_uses_google(monkeypatch):
+    monkeypatch.setenv("LITELLM_API_KEY", "test-key")
+    monkeypatch.setenv("LITELLM_BASE_URL", "https://ai-gateway.vercel.sh/v1")
+    runner = StirrupAgentRunner(model="litellm_proxy/google/gemini-3.8-flash")
+    first, second = runner._build_client(), runner._build_client()
+    assert first._kwargs["extra_headers"] == second._kwargs["extra_headers"]
+    other = StirrupAgentRunner(model="litellm_proxy/google/gemini-3.8-flash")._build_client()
+    assert first._kwargs["extra_headers"] != other._kwargs["extra_headers"]
+    assert first._kwargs["extra_body"]["providerOptions"]["gateway"]["only"] == ["google"]
+
+
 def test_full_summary_logger_does_not_truncate(capsys: pytest.CaptureFixture[str]):
     marker = "SUMMARY_END_MARKER_1234567890"
     summary = "x" * 900 + marker

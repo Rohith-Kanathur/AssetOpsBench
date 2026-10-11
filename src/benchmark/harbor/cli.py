@@ -30,6 +30,9 @@ def snapshot_controller(repo, destination):
     rubric = destination / 'src/evaluation/scorers/llm_judge.py'
     rubric.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(repo / 'src/evaluation/scorers/llm_judge.py', rubric)
+    pool_module = destination / 'src/agent/codex_accounts.py'
+    pool_module.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(repo / 'src/agent/codex_accounts.py', pool_module)
 
 
 def workflow_index(root, stages):
@@ -47,7 +50,7 @@ def workflow_index(root, stages):
     write(root / 'trajectory.json', Trajectory.model_validate(trajectory).to_json_dict())
     lines = ['# AssetOpsBench Harbor run', '',
              ('Input: a prepared cohort. ' if imported else 'Creation: the configured authoring model. ') +
-             'Execution: the configured model matrix. Judge: the configured Claude Code model.', '',
+             'Execution: the configured model matrix. Judge: independent Codex subscription sessions.', '',
              '| Stage | Model | Status | Trajectory |', '|---|---|---|---|']
     for stage in stages:
         status = stage['status'] + (' (superseded)' if stage.get('superseded_by') else '')
@@ -158,7 +161,8 @@ async def execute_cohort(root, args, stages):
             await trial(root, 'execution-' + key, spec, stages)
             if args.stop_after != 'execution':
                 spec = {'stage': 'judging', 'case': str(case.relative_to(root)),
-                        'model': args.judge_model, 'timeout': args.timeout}
+                        'model': args.judge_model, 'timeout': args.timeout,
+                        'repeats': args.judge_repeats, 'jobs': args.judge_jobs}
                 await trial(root, 'judging-' + key, spec, stages)
     write_report(root / 'evaluation', title='Harbor pipeline evaluation')
     workflow_index(root, stages)
@@ -188,7 +192,8 @@ async def rejudge(args):
             if previous['name'].startswith(prefix) and 'superseded_by' not in previous:
                 previous['superseded_by'] = name
         completed &= await trial(root, name, {'stage': 'judging',
-            'case': str(case.relative_to(root)), 'model': args.model, 'timeout': args.timeout}, stages)
+            'case': str(case.relative_to(root)), 'model': args.model, 'timeout': args.timeout,
+            'repeats': args.judge_repeats, 'jobs': args.judge_jobs}, stages)
     write_report(root / 'evaluation', title='Harbor pipeline evaluation')
     workflow_index(root, stages)
     if not completed:
@@ -228,6 +233,8 @@ def execution_options(command):
     command.add_argument('--repo', type=Path, default=Path.cwd())
     command.add_argument('--runners', required=True, help='JSON runner → model or list of models; same matrix as scenario-evaluate')
     command.add_argument('--judge-model', default=JUDGE_MODEL)
+    command.add_argument('--judge-repeats', type=int, default=5)
+    command.add_argument('--judge-jobs', type=int, default=5)
     command.add_argument('--execution-reasoning', default='high')
     command.add_argument('--max-cases', type=int)
     command.add_argument('--max-turns', type=int, default=20)
@@ -258,6 +265,8 @@ def main(argv=None):
     command.add_argument('directory', type=Path)
     command.add_argument('--case', help='Saved execution case name; default: all cases')
     command.add_argument('--model', default=JUDGE_MODEL)
+    command.add_argument('--judge-repeats', type=int, default=5)
+    command.add_argument('--judge-jobs', type=int, default=5)
     command.add_argument('--timeout', type=float, default=600)
     command = sub.add_parser('validate')
     command.add_argument('directory', type=Path)
@@ -265,11 +274,12 @@ def main(argv=None):
     if args.action == 'validate':
         validate(args.directory)
     elif args.action == 'judge':
-        if args.timeout <= 0:
+        if args.timeout <= 0 or args.judge_jobs < 1 or args.judge_repeats < 1:
             parser.error('Timeout must be positive')
         asyncio.run(rejudge(args))
     else:
         if (args.timeout <= 0 or getattr(args, 'generation_timeout', 1) <= 0 or
+                args.judge_jobs < 1 or args.judge_repeats < 1 or
                 getattr(args, 'count', 1) < 1 or args.max_turns < 1 or
                 (args.max_cases is not None and args.max_cases < 1)):
             parser.error('Timeouts and limits must be positive')

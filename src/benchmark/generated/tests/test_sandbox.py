@@ -56,6 +56,7 @@ def test_snapshot_and_case_use_final_source_data_and_only_declared_agent_inputs(
     assert not (case / "tools-workspace/output").exists()
     config = json.loads((case / "compose.json").read_text())
     assert "volumes" not in config["services"]["database"]
+    assert config["services"]["database"]["environment"]["ERL_FLAGS"] == "+S 2:2 +SDcpu 1 +SDio 2 +A 4"
     tools = config["services"]["tools"]
     assert tools["environment"]["TSFM_WORKDIR"] == "/workspace/artifacts"
     assert tools["environment"]["PYTHONPATH"] == "/environment/src"
@@ -114,6 +115,8 @@ def test_source_symlinks_rejected_before_copy_and_failed_export_leaves_no_partia
 
 
 def test_every_case_drops_prior_database_before_restore_and_cleans_up_on_failure(tmp_path, monkeypatch):
+    monkeypatch.setenv("ASSETOPS_DATABASE_MODE", "dedicated")
+    monkeypatch.setenv("ASSETOPS_CACHE_RUNTIME_IMAGE", "0")
     generation, scenario = generated(tmp_path, monkeypatch)
     root, case = tmp_path / "results", tmp_path / "case"
     sandbox.snapshot(generation, root)
@@ -155,6 +158,7 @@ def test_interrupted_case_is_archived_before_fresh_execution(tmp_path, monkeypat
 
 
 def test_subset_execution_retains_full_cohort_and_rejects_model_changes(tmp_path, monkeypatch):
+    monkeypatch.setattr('benchmark.generated.pipeline.shared_admission.allow', lambda _: True)
     root = tmp_path / "results"
     save(root / "snapshot.json", {"request": {"generation_mode": "general-execution", "asset_class": "Transformer"}})
     save(root / "scenarios.json", [{"id": i, "positive": True, "type": "iot", "text": f"Question {i}"} for i in (1, 2)])
@@ -168,7 +172,7 @@ def test_subset_execution_retains_full_cohort_and_rejects_model_changes(tmp_path
         return {**record, "grading": {"status": "pending"}}
     monkeypatch.setattr(cli, "execute_case", execute)
     monkeypatch.setattr(cli, "write_report", lambda root, cases, **kwargs: reports.append(cases))
-    args = [str(tmp_path / "generation"), str(root), "--runners", '{"codex":"model-a"}', "--ids", "1"]
+    args = [str(tmp_path / "generation"), str(root), "--runners", '{"codex":"model-a"}', "--ids", "1", "--no-judge"]
     cli.main(args)
     assert executed == [1]
     assert len(reports[-1]) == 2

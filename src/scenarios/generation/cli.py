@@ -3,6 +3,7 @@
 import argparse
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import uuid
 
@@ -106,10 +107,14 @@ def main(argv=None):
                 request["seed"] = {"sha256": seed["sha256"]}
             (destination / "workspace/request.json").write_text(json.dumps(request, indent=2) + "\n")
         print(f"Generation directory: {destination}", flush=True)
-        runtime.configure(destination, Path.home() / ".codex", Path.home() / ".kaggle")
-        runtime.run(destination, args.model, args.followup, harness=args.harness,
-                    reasoning_effort=args.reasoning, service_tier=args.tier,
-                    env_file=args.repo.expanduser().resolve() / ".env")
+        settings = dict(harness=args.harness, reasoning_effort=args.reasoning,
+                        service_tier=args.tier, env_file=args.repo.expanduser().resolve() / '.env')
+        if os.environ.get('CODEX_HOME'):
+            # Explicit isolated login remains available for small manual smoke tests.
+            runtime.configure(destination, Path(os.environ['CODEX_HOME']).expanduser(), Path.home() / '.kaggle')
+            runtime.run(destination, args.model, args.followup, **settings)
+        else:
+            runtime.run_with_pool(destination, args.model, args.followup, **settings)
     elif args.action == "check":
         from .progress import write_index
         report = runtime.check(destination)

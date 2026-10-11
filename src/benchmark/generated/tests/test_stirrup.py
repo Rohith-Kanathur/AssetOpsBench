@@ -8,7 +8,7 @@ import pytest
 
 from benchmark.generated import cli, sandbox
 from benchmark.generated.auth import private_json
-from benchmark.generated.stirrup_worker import UsageRecorder
+from benchmark.generated.stirrup_worker import UsageRecorder, record_attempt
 
 
 def test_snapshot_preserves_human_reference_and_shares_only_declared_inputs(tmp_path):
@@ -85,6 +85,61 @@ def test_router_credits_are_preferred_without_changing_explicit_routes(monkeypat
     assert credentials["LITELLM_BASE_URL"] == "https://ai-gateway.vercel.sh/v1"
     assert cli.default_runners(credentials) == {"stirrup": "litellm_proxy/openai/gpt-5.6-luna"}
     credentials.update(TOKENROUTER_API_KEY="router", TOKENROUTER_BASE_URL="https://router.example/v1")
+    assert cli.default_runners(credentials) == {"stirrup": "litellm_proxy/openai/gpt-5.6-luna"}
+    credentials.pop("AI_GATEWAY_API_KEY")
     assert cli.default_runners(credentials) == {"stirrup": "tokenrouter/openai/gpt-5.6-luna"}
     assert cli.runner_models({"stirrup": ["openai/model", "anthropic/model"]}, "general-execution") == [
         ("stirrup", "openai/model"), ("stirrup", "anthropic/model")]
+
+
+def test_turn_limit_is_a_gradable_attempt_with_full_trajectory():
+    from agent.models import Trajectory, TurnRecord
+    trajectory = Trajectory(turns=[TurnRecord(index=i, text="working") for i in range(20)])
+    record = {"status": "error"}
+    record_attempt(record, SimpleNamespace(answer="", trajectory=trajectory), 20)
+    assert record["status"] == "completed"
+    assert record["termination_reason"] == "max_turns"
+    assert record["task_completed"] is False
+    assert len(record["trajectory"]["turns"]) == 20
+    assert record["answer"] == ""
+
+
+def test_unexplained_empty_answer_keeps_trajectory_but_remains_error():
+    from agent.models import Trajectory, TurnRecord
+    record = {"status": "error"}
+    with pytest.raises(ValueError, match="no final answer"):
+        record_attempt(record, SimpleNamespace(answer="", trajectory=Trajectory(
+            turns=[TurnRecord(index=0, text="working")])), 20)
+    assert record["status"] == "error"
+    assert len(record["trajectory"]["turns"]) == 1
+
+
+def test_answer_at_turn_limit_is_left_for_judge_to_assess():
+    from agent.models import Trajectory, TurnRecord
+    trajectory = Trajectory(turns=[TurnRecord(index=i, text="working") for i in range(20)])
+    record = {"status": "error"}
+    record_attempt(record, SimpleNamespace(answer="The requested result is 42.", trajectory=trajectory), 20)
+    assert record["status"] == "completed" and record["termination_reason"] == "max_turns"
+    assert "task_completed" not in record
+
+
+def test_rejected_finish_at_turn_limit_is_a_recorded_attempt():
+    from agent.models import Trajectory, TurnRecord, ToolCall
+    turns = [TurnRecord(index=i, text="working") for i in range(20)]
+    turns[-1].tool_calls = [ToolCall(name="finish", input={"answer": "done"},
+                                    output="Cannot finish: output files do not exist")]
+    record = {"status": "error"}
+    record_attempt(record, SimpleNamespace(answer="", trajectory=Trajectory(turns=turns)), 20)
+    assert record["status"] == "completed"
+    assert record["termination_reason"] == "max_turns"
+    assert record["task_completed"] is False
+    assert record["trajectory"]["turns"][-1]["tool_calls"][0]["output"].startswith("Cannot finish")
+
+
+def test_explicit_gateway_file_key_overrides_ambient_router_keys(monkeypatch):
+    monkeypatch.setenv("AI_GATEWAY_API_KEY", "old-gateway")
+    monkeypatch.setenv("LITELLM_API_KEY", "old-router")
+    monkeypatch.setenv("LITELLM_BASE_URL", "https://shared.example/v1")
+    credentials = cli.evaluation_credentials({"AI_GATEWAY_API_KEY": "personal-key"})
+    assert credentials["AI_GATEWAY_API_KEY"] == credentials["LITELLM_API_KEY"] == "personal-key"
+    assert credentials["LITELLM_BASE_URL"] == "https://ai-gateway.vercel.sh/v1"

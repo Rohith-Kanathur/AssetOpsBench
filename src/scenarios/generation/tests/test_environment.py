@@ -114,6 +114,41 @@ def test_database_snapshot_ignores_revisions_indexes_and_native_outputs(monkeypa
     assert len(calls) == 2
 
 
+def test_database_snapshot_pages_without_changing_checksum(monkeypatch):
+    import requests
+    from types import SimpleNamespace
+
+    monkeypatch.setenv("COUCHDB_URL", "http://database:5984")
+    monkeypatch.setenv("COUCHDB_USERNAME", "test")
+    monkeypatch.setenv("COUCHDB_PASSWORD", "private-test")
+    monkeypatch.setattr(environment, "DATABASE_PAGE_SIZE", 2)
+    rows = [{"id": "_design/index", "doc": {"_id": "_design/index"}},
+            {"id": "a", "doc": {"_id": "a", "_rev": "1-a", "value": "é"}},
+            {"id": "b", "doc": {"_id": "b", "_rev": "2-b", "nested": {"b": 2, "a": 1}}},
+            {"id": "c", "doc": {"_id": "c", "value": 3}}]
+    pages = []
+
+    def get(url, **kwargs):
+        if url.endswith("_all_dbs"):
+            data = ["iot"]
+        else:
+            params = kwargs["params"]
+            assert params["limit"] == 2
+            start = json.loads(params["startkey"]) if "startkey" in params else None
+            offset = next((i + 1 for i, row in enumerate(rows) if row["id"] == start), 0)
+            if start is not None:
+                assert params["skip"] == 1
+            data = {"rows": rows[offset:offset + 2]}
+            pages.append(data)
+        return SimpleNamespace(raise_for_status=lambda: None, json=lambda: data)
+
+    monkeypatch.setattr(requests, "get", get)
+    docs = [{k: v for k, v in row["doc"].items() if k != "_rev"} for row in rows[1:]]
+    expected = hashlib.sha256(json.dumps(docs, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    assert environment.database_state() == {"iot": {"sha256": expected, "records": 3}}
+    assert len(pages) == 3
+
+
 def test_existing_input_baseline_is_captured_once_after_normal_initialization(tmp_path, monkeypatch):
     from types import SimpleNamespace
 

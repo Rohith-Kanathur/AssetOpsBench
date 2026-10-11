@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import suppress
 import hashlib
 import json
@@ -25,7 +24,7 @@ from evaluation.models import Scenario
 from evaluation.scorers import llm_judge
 from llm.base import LLMBackend
 
-JUDGE_MODEL = "claude-fable-5-1"
+JUDGE_MODEL = "gpt-6-astra"
 CRITERIA = llm_judge._RUBRIC_KEYS
 EVIDENCE_VERSION = VERSION
 IMAGE = "assetops-scenario-evaluation:local"
@@ -123,9 +122,11 @@ class ClaudeJudge(LLMBackend):
         return parsed["answer"]
 
 
-def judge_case(case_dir: Path, *, model: str = JUDGE_MODEL, timeout: float = 600,
-               backend: LLMBackend | None = None) -> dict:
+def judge_once(case_dir: Path, *, model: str = JUDGE_MODEL, timeout: float = 600,
+               backend: LLMBackend | None = None, output_dir: Path | None = None) -> dict:
     """Read scenario.json + result.json; save judge.json without mutating execution."""
+    if backend is None:
+        raise ValueError('Use judge_case to lease a Codex subscription, or supply an explicit test backend')
     case_dir = Path(case_dir)
     scenario_raw = json.loads((case_dir / "scenario.json").read_text())
     execution = json.loads((case_dir / "result.json").read_text())
@@ -134,18 +135,20 @@ def judge_case(case_dir: Path, *, model: str = JUDGE_MODEL, timeout: float = 600
         fingerprint = evidence_fingerprint(scenario_raw, execution, model, case_dir)
     except (OSError, ValueError) as exc:
         fingerprint, fingerprint_error = None, exc
-    target = case_dir / "judge.json"
+    output_dir = output_dir or case_dir
+    output_dir.mkdir(parents=True, exist_ok=True)
+    target = output_dir / "judge.json"
     if target.exists():
         previous = json.loads(target.read_text())
         if fingerprint and previous.get("fingerprint") == fingerprint and previous.get("status") == "completed":
             return previous
-    if target.exists() or (case_dir / "judging").exists():
-        archive = case_dir / "judging-attempts" / str(time.time_ns())
+    if target.exists() or (output_dir / "judging").exists():
+        archive = output_dir / "judging-attempts" / str(time.time_ns())
         archive.mkdir(parents=True)
         if target.exists():
             shutil.move(str(target), archive / "judge.json")
-        if (case_dir / "judging").exists():
-            shutil.move(str(case_dir / "judging"), archive / "judging")
+        if (output_dir / "judging").exists():
+            shutil.move(str(output_dir / "judging"), archive / "judging")
     record = {"model": model, "fingerprint": fingerprint, "status": "pending",
               "evidence_version": EVIDENCE_VERSION, "evidence_access": "read-only blinded full files",
               "evaluator_trace": "judging/events.jsonl", "separate_session": True}
@@ -156,10 +159,10 @@ def judge_case(case_dir: Path, *, model: str = JUDGE_MODEL, timeout: float = 600
         else:
             if fingerprint_error:
                 raise fingerprint_error
-            evidence_dir = case_dir / "judging/evidence"
+            evidence_dir = output_dir / "judging/evidence"
             visible_scenario, visible_execution = prepare_view(case_dir, evidence_dir, scenario_raw, execution)
             scenario = Scenario.from_raw(visible_scenario)
-            score = llm_judge.LLMJudgeScorer(backend or ClaudeJudge(case_dir, model, timeout, evidence_dir))(
+            score = llm_judge.LLMJudgeScorer(backend)(
                 scenario, visible_execution.get("answer", ""), EVIDENCE)
             record["score"] = score.model_dump()
             if all(type(score.details.get(key)) is bool for key in CRITERIA):
@@ -169,32 +172,54 @@ def judge_case(case_dir: Path, *, model: str = JUDGE_MODEL, timeout: float = 600
     except Exception as exc:
         record.update(status="failed", error=f"{type(exc).__name__}: {str(exc)[:500]}")
     record["duration_seconds"] = round(time.monotonic() - started, 3)
-    with tempfile.NamedTemporaryFile(mode="w", dir=case_dir, delete=False) as temporary:
+    with tempfile.NamedTemporaryFile(mode="w", dir=output_dir, delete=False) as temporary:
         json.dump(record, temporary, indent=2)
         temporary.write("\n")
     os.replace(temporary.name, target)
     return record
 
 
+def judge_case(case_dir: Path, *, model: str = JUDGE_MODEL, timeout: float = 600,
+               backend: LLMBackend | None = None, repeats: int = 5, jobs: int = 5) -> dict:
+    # Injected backends support deterministic unit tests without credentials.
+    if backend is not None:
+        return judge_once(case_dir, model=model, timeout=timeout, backend=backend)
+    from .repeated_judge import judge_cases
+    return judge_cases([Path(case_dir)], model=model, timeout=timeout,
+                       repeats=repeats, jobs=jobs)[0]
+
+
 def main(argv: list[str] | None = None) -> int:
     """Grade saved executions independently of running scenarios."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("results_directory", type=Path)
-    parser.add_argument("--jobs", type=int, default=2, help="Concurrent evaluator sessions (default: 2)")
+    parser.add_argument("--jobs", type=int, default=14, help="Maximum concurrent subscription sessions")
+    parser.add_argument("--sessions-per-account", type=int, default=2, help="Isolated concurrent sessions per account")
+    parser.add_argument("--repeats", type=int, default=5, help="Distinct accounts per execution")
+    parser.add_argument("--model", default=JUDGE_MODEL)
+    parser.add_argument("--pool", type=Path, help="Private subscription pool directory")
+    parser.add_argument("--output", type=Path, help="Copy saved evidence to a fresh grading directory")
+    parser.add_argument("--export", type=Path, help="Export successful ATIFs and native logs to a fresh directory")
     parser.add_argument("--timeout", type=float, default=600, help="Seconds per evaluator (default: 600)")
     args = parser.parse_args(argv)
-    if args.jobs < 1 or args.timeout <= 0:
+    if args.jobs < 1 or args.repeats < 1 or args.timeout <= 0 or args.sessions_per_account < 1:
         parser.error("jobs and timeout must be positive")
     cases = sorted((args.results_directory / "cases").glob("*/result.json"))
     if not cases:
         parser.error("No cases/*/result.json executions found")
-    failed = 0
-    with ThreadPoolExecutor(max_workers=args.jobs) as pool:
-        pending = {pool.submit(judge_case, path.parent, timeout=args.timeout): path.parent.name for path in cases}
-        for future in as_completed(pending):
-            grade = future.result()
-            failed += grade["status"] == "failed"
-            print(f"{pending[future]}: {grade['status']}", flush=True)
+    from .repeated_judge import copy_executions, judge_cases
+    from agent.codex_accounts import Pool, ROOT
+    if args.output:
+        copy_executions(args.results_directory, args.output)
+        args.results_directory = args.output
+        cases = sorted((args.output / 'cases').glob('*/result.json'))
+    grades = judge_cases([path.parent for path in cases], model=args.model, timeout=args.timeout,
+                         repeats=args.repeats, jobs=args.jobs,
+                         pool=Pool(args.pool or ROOT, model=args.model, sessions_per_account=args.sessions_per_account))
+    failed = sum(grade['status'] != 'completed' for grade in grades)
+    if args.export and not failed:
+        from .repeated_judge import export_clean_judgments
+        export_clean_judgments([path.parent for path in cases], args.export)
     from .report import write_report
     snapshot = args.results_directory / "snapshot.json"
     request = json.loads(snapshot.read_text()).get("request", {}) if snapshot.exists() else {}

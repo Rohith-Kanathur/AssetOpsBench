@@ -13,7 +13,7 @@ from .auth import private_json
 VERSION = "blinded-full-evidence-v2"
 SCENARIO_FIELDS = ("text", "characteristic_form", "expected_answer")
 RESULT_FIELDS = ("status", "answer", "trajectory", "artifacts", "native_tool_artifacts",
-                 "error", "timed_out", "tool_names_called")
+                 "error", "timed_out", "tool_names_called", "termination_reason", "task_completed")
 IDENTITY_FIELDS = {"model", "model_id", "model_name", "requested_model", "response_model",
                    "provider", "runner", "harness"}
 METADATA_FIELDS = IDENTITY_FIELDS | {

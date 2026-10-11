@@ -1,7 +1,7 @@
 # Harbor pipeline records
 
-This adapter runs **Codex Astra → the configured execution model matrix → Claude
-Code / Fable 5.1** as separate, real Harbor trials. It uses Harbor 0.24.0 and
+This adapter runs **Codex Astra → the configured execution model matrix → five
+Codex Astra judgments** as separate, real Harbor trials. It uses Harbor 0.24.0 and
 validates trajectories with Harbor's ATIF v1.8 model. The existing generation,
 execution isolation and six-criterion judging rubric remain in use.
 
@@ -13,15 +13,12 @@ they are not generic terminal tasks runnable with an arbitrary Harbor agent.
 
 ## Run locally
 
-Docker must be running. Codex subscription authentication is required for
-creation, and Claude Code subscription authentication for judging. Configure the
-execution providers through the same environment variables as `scenario-evaluate`.
-Do not put keys in task files or command-line arguments.
-
-Claude credentials are refreshed on the host when needed. Isolated sessions
-receive a temporary access-token copy without the refresh token, so they cannot
-rotate and discard the host's refresh credential. If the host session has expired,
-run `claude auth login` before retrying.
+Docker must be running. Authoring and judging lease isolated Codex subscription
+logins from the private Everett pool, excluding Naomi, Mika/Micah, and Quentin Nolan. Authoring is
+single-threaded; judging uses up to five subscriptions concurrently by default.
+Run `python -m agent.codex_accounts check` first. This only reads account metadata.
+Configure execution providers through the same environment variables as
+`scenario-evaluate`. Do not put keys in task files or command-line arguments.
 
 A bounded smoke test (one newly generated IoT scenario, one execution):
 
@@ -35,8 +32,9 @@ doppler run --project cofounder --config dev -- \
   --max-cases 1 --generation-timeout 1800 --timeout 600
 ```
 
-Creation defaults to `gpt-6-astra` / `xhigh`; judging defaults to
-`claude-fable-5-1`. The execution matrix is required explicitly, so a smoke-test
+Creation and judging default to `gpt-6-astra` / `xhigh` / `fast`.
+Judging defaults to `--judge-repeats 5 --judge-jobs 5`, with distinct accounts per
+execution and arithmetic mean scores. The execution matrix is required explicitly, so a smoke-test
 model cannot silently become the paper's full model set. Use the same runner →
 model or list-of-models JSON as `scenario-evaluate`. For example:
 
@@ -63,7 +61,7 @@ characteristic forms are retained. Human and synthetic cohorts use the same
 execution and judging stages, fresh environments, and evidence format.
 
 Every selected scenario/model pair receives its own execution task, fresh
-execution environment and independent Fable judging task. Execution and judge
+execution environment and independent Codex judging task with five fresh sessions. Execution and judge
 failures are retained and do not prevent the remaining model pairs from being
 attempted. An invalid generation stops the pipeline before execution.
 `--max-cases` only bounds scenarios, not the model matrix. Omit it for the full
@@ -102,10 +100,14 @@ RUN/
     environment/, database/, inputs/, scenarios.json
     cases/<runner-model-scenario>/
       native/, workspace/, result.json
-      judging/events.jsonl         # native Claude Code / Fable trace
-      judging/prompt.txt, result.json
-      judging/evidence/            # complete judge copy, model/source identifiers masked
-      judging/blinding.json        # private audit mapping, never shown to the judge
+      judging/repeats/01..05/      # each contains a successful independent session
+        trajectory.json           # clean ATIF, one account, no failed attempts
+        judge.json
+        judging/events.jsonl      # native Codex events
+        judging/prompt.txt, result.json
+        judging/evidence/         # complete blinded evidence
+        judging/blinding.json     # audit mapping, never shown to the judge
+      judging-failures/           # separate diagnostic records, never clean ATIF
       judge.json
   trajectory.json                  # ATIF workflow with references to each stage
   evidence-manifest.json           # hashes of selected evidence, excluding auth/config
@@ -126,7 +128,7 @@ execution logs and workspace files remain intact alongside the judge-only copy.
 
 `stage_completed` is an operational completion reward, **not benchmark accuracy**.
 A judging trial additionally records `benchmark_pass`, taken from the existing
-rubric. Keep those separate when analyzing Harbor results. A correctly recorded
+rubric, averaged across the five judgments. Keep those separate when analyzing Harbor results. A correctly recorded
 failed scenario may still have a completed judging stage.
 
 Validate schema, links and evidence hashes:

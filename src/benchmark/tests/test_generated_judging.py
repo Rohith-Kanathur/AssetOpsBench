@@ -194,6 +194,15 @@ def test_report_ignores_native_and_archived_attempts(tmp_path):
     assert "1 scenarios · 1 executions planned" in report
 
 
+def test_report_names_the_actual_judge_model(tmp_path):
+    row = {"scenario_id": "1", "runner": "stirrup", "model": "luna",
+           "status": "completed", "grading": {"model": "claude-opus-5-5", "status": "completed",
+           "score": {"details": json.loads(passing())}}}
+    report = write_report(tmp_path, [row], chart=False).read_text()
+    assert "Judge: `claude-opus-5-5`" in report
+    assert "Fable" not in report and "claude-fable" not in report
+
+
 def test_report_separates_execution_timeouts_from_tool_errors_and_setup_time(tmp_path):
     base = {"runner": "zcode", "model": "test", "domain": "iot", "positive": True}
     rows = [
@@ -291,6 +300,18 @@ def test_judge_points_to_full_evidence_without_compaction(case):
     assert calls[1]["name"] == "wo.list_workorders"
 
 
+def test_bounded_attempt_exposes_termination_to_blinded_judge(case):
+    execution = json.loads((case / "result.json").read_text())
+    execution.update(answer="", termination_reason="max_turns", task_completed=False)
+    (case / "result.json").write_text(json.dumps(execution))
+    grade = judge_case(case, backend=Backend(passing()))
+    assert grade["status"] == "completed"
+    visible = json.loads((case / "judging/evidence/result.json").read_text())
+    assert visible["termination_reason"] == "max_turns"
+    assert visible["task_completed"] is False
+    assert visible["answer"] == ""
+
+
 def test_standalone_judge_discovers_only_cases_and_refreshes_report(tmp_path, monkeypatch):
     execution = tmp_path / "cases/one/result.json"
     execution.parent.mkdir(parents=True)
@@ -298,14 +319,16 @@ def test_standalone_judge_discovers_only_cases_and_refreshes_report(tmp_path, mo
     (tmp_path / "result.json").write_text("{}")
     judged, reports = [], []
 
-    def judge(path, **kwargs):
-        judged.append((path, kwargs))
-        return {"status": "completed"}
+    def judge(paths, **kwargs):
+        judged.append((paths, kwargs))
+        return [{"status": "completed"}]
 
-    monkeypatch.setattr("benchmark.generated.judge.judge_case", judge)
+    monkeypatch.setattr("benchmark.generated.repeated_judge.judge_cases", judge)
     (tmp_path / "snapshot.json").write_text(json.dumps({"request": {
         "asset_class": "Transformer", "generation_mode": "mcp-only"}}))
     monkeypatch.setattr("benchmark.generated.report.write_report", lambda root, **kw: reports.append((root, kw)))
     assert main([str(tmp_path), "--jobs", "2", "--timeout", "42"]) == 0
-    assert judged == [(execution.parent, {"timeout": 42})]
+    assert judged[0][0] == [execution.parent]
+    assert {k: v for k, v in judged[0][1].items() if k != 'pool'} == {
+        'timeout': 42, 'model': 'gpt-6-astra', 'repeats': 5, 'jobs': 2}
     assert reports == [(tmp_path, {"title": "Transformer · mcp-only"})]

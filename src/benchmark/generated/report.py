@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import re
 
-from .judge import CRITERIA, JUDGE_MODEL, evidence_fingerprint
+from .judge import CRITERIA, evidence_fingerprint
 
 DIMENSION_LABELS = (
     "Task\ncompletion ↑",
@@ -45,7 +45,7 @@ def _cell(value: object) -> str:
 
 
 def _fraction(numerator: int, denominator: int) -> str:
-    return f"{numerator}/{denominator} ({100 * numerator / denominator:.0f}%)" if denominator else "—"
+    return f"{numerator:g}/{denominator} ({100 * numerator / denominator:.0f}%)" if denominator else "—"
 
 
 def _execution_outcome(case: dict) -> str:
@@ -77,8 +77,10 @@ def write_report(root: Path, cases: list[dict] | None = None, *,
         grade = case.get("grading") or {"status": "pending"}
         score = grade.get("score") or {}
         details = score.get("details") or {}
-        judged = (case.get("status") == "completed" and grade.get("status") == "completed"
-                  and all(type(details.get(key)) is bool for key in CRITERIA))
+        averaged = grade.get('protocol') == 'independent-codex-judges-v1'
+        valid_details = all((type(details.get(key)) in (int, float) and 0 <= details[key] <= 1)
+                            if averaged else type(details.get(key)) is bool for key in CRITERIA)
+        judged = case.get("status") == "completed" and grade.get("status") == "completed" and valid_details
         row = {key: case.get(key, "") for key in
                ("scenario_id", "domain", "runner", "model", "status", "duration_seconds", "elapsed_seconds",
                 "api_calls", "api_prompt_tokens", "api_output_tokens", "cache_read_tokens", "cost_usd", "cost_source")}
@@ -89,7 +91,8 @@ def write_report(root: Path, cases: list[dict] | None = None, *,
             raise ValueError(f"Duplicate execution in report: {identity}")
         identities.add(identity)
         row.update(judge_status=grade.get("status", "pending") if judged or grade.get("status") != "completed" else "invalid",
-                   strict_pass=(all(details[key] for key in CRITERIA[:5]) and not details["hallucinations"]) if judged else "",
+                   strict_pass=(score['strict_pass_rate'] if averaged else
+                                (all(details[key] for key in CRITERIA[:5]) and not details["hallucinations"])) if judged else "",
                    error=case.get("error") or grade.get("error") or "",
                    rationale=score.get("rationale", ""))
         row.update({key: details.get(key, "") if judged else "" for key in CRITERIA})
@@ -103,25 +106,33 @@ def write_report(root: Path, cases: list[dict] | None = None, *,
         writer.writeheader()
         writer.writerows(rows)
     scenario_count = len({(row["generation_mode"], row["scenario_id"]) for row in rows})
-    lines = [f"# {title}", "", f"{scenario_count} scenarios · {len(cases)} executions planned · Fable 5.1 judge · 1 repetition.", "",
+    judge_models = sorted({str(case["grading"]["model"]) for case in cases
+                           if (case.get("grading") or {}).get("model")})
+    judge_label = ", ".join(f"`{model}`" for model in judge_models) or "not yet recorded"
+    repeats = sorted({case.get('grading', {}).get('repeats', 1) for case in cases}) or [1]
+    lines = [f"# {title}", "", f"{scenario_count} scenarios · {len(cases)} executions planned · Judge: {judge_label} · "
+             f"{', '.join(map(str, repeats))} judgment(s) per execution.", "",
              "| Runner / model | Executed | Judged | Strict pass / planned |",
              "|---|---:|---:|---:|"]
     summaries = []
     for (runner, model), group in groups.items():
         total = len(group)
         judged = [row for row in group if row["judge_status"] == "completed"]
-        passed = sum(row["strict_pass"] is True for row in group)
+        passed = sum(float(row['strict_pass']) for row in group if row['strict_pass'] != '')
         lines.append(f"| {_cell(runner)} / {_cell(model)} | "
                      f"{sum(row['status'] == 'completed' for row in group)}/{total} | {len(judged)}/{total} | "
                      f"{_fraction(passed, total)} |")
         summaries.append({"label": f"{runner}\n{model}", "judged": len(judged), "total": total,
                           "strict_rates": [passed / total if total else None],
-                          "rates": [sum(row[key] is True for row in judged) / len(judged)
+                          "rates": [sum(float(row[key]) for row in judged) / len(judged)
                                     if judged else None for key in CRITERIA]})
     lines += ["", "Strict pass requires the first five rubric criteria and no hallucinations. "
               "Success is assessed against each scenario’s characteristic form, including any supported limitation.",
               "", "Pass rates use every planned execution; failed executions and missing grades contribute no passes. "
               "Criterion rates below use judged executions only."]
+    if any(n > 1 for n in repeats):
+        lines += ['', 'Scores, criterion rates, and strict pass rates are averaged over independent judgments. '
+                  'Each repetition uses a distinct Codex subscription and a fresh session; no majority vote is applied.']
     if chart and any(item["judged"] for item in summaries):
         if _chart(root, summaries, strict=True):
             lines += ["", "![Strict pass rates](strict_pass.png)"]
@@ -144,7 +155,7 @@ def write_report(root: Path, cases: list[dict] | None = None, *,
     if chart and any(item["completed"] or item["timeouts"] for item in timed_groups) and _time_chart(root, timed_groups):
         lines += ["", "Agent execution time excludes environment setup and judging; crosses mark timeouts.",
                   "", "![Execution time distribution; crosses mark timeouts](execution_time.png)"]
-    lines += ["", f"Judge: `{JUDGE_MODEL}` in a separate read-only Claude Code session per execution. "
+    lines += ["", f"Judge: {judge_label} in separate read-only sessions. "
               "Uses the existing AssetOpsBench six-criterion rubric with access to full saved traces and artifacts.",
               "", "[Per-scenario results](cases.csv)", ""]
     if (root / "scenarios.json").exists():

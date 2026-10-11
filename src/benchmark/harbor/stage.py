@@ -25,7 +25,8 @@ def execute(spec_path):
                      spec['timeout'], evaluation_credentials({}), settings=spec['settings'], judge=False)
     elif stage == 'judging':
         from benchmark.generated.judge import judge_case
-        judge_case(case, model=spec['model'], timeout=spec['timeout'])
+        judge_case(case, model=spec['model'], timeout=spec['timeout'],
+                   repeats=spec.get('repeats', 5), jobs=spec.get('jobs', 5))
     else:
         raise ValueError(f'Unknown stage: {stage}')
 
@@ -47,7 +48,8 @@ def collect(spec_path, logs):
         outcome = {'stage': spec['stage'], 'completed': record.get('status') == 'completed',
                    'status': record.get('status', 'missing')}
         if spec['stage'] == 'judging':
-            outcome['benchmark_pass'] = record.get('score', {}).get('passed')
+            score = record.get('score', {})
+            outcome['benchmark_pass'] = score.get('strict_pass_rate', score.get('passed'))
             outcome['rubric'] = record.get('score', {}).get('details')
     write(Path(logs) / 'trajectory.json', trajectory)
     write(Path(logs) / 'outcome.json', outcome)
@@ -78,9 +80,10 @@ def cleanup(spec_path):
         elif spec['stage'] == 'judging':
             import re
             import subprocess
-            name = read(root / spec['case'] / 'judging/container.json', {}).get('name', '')
-            if re.fullmatch(r'assetops-judge-[0-9a-f]{12}', name):
-                subprocess.run(['docker', 'rm', '--force', name], capture_output=True, timeout=30)
+            for marker in (root / spec['case'] / 'judging').rglob('container.json'):
+                name = read(marker, {}).get('name', '')
+                if re.fullmatch(r'assetops-judge-[0-9a-f]{12}', name):
+                    subprocess.run(['docker', 'rm', '--force', name], capture_output=True, timeout=30)
     finally:
         if spec.get('case'):
             import shutil

@@ -101,7 +101,8 @@ def test_full_matrix_uses_astra_then_each_model_then_fable_and_continues_after_f
     executions = [s for s in calls if s['stage'] == 'execution']
     assert [s['model'] for s in executions] == ['model-a', 'model-b', 'model-c']
     judges = [s for s in calls if s['stage'] == 'judging']
-    assert len(judges) == 3 and all(s['model'] == 'claude-fable-5-1' for s in judges)
+    assert len(judges) == 3 and all(s['model'] == 'gpt-6-astra' for s in judges)
+    assert all(s['repeats'] == 5 and s['jobs'] == 5 for s in judges)
 
 
 def test_prepared_human_cohort_uses_same_execution_and_judge_without_generation(tmp_path, monkeypatch):
@@ -131,7 +132,7 @@ def test_prepared_human_cohort_uses_same_execution_and_judge_without_generation(
               '--runners', '{"stirrup":"litellm_proxy/openai/gpt-5.6-luna"}'])
     assert [call['stage'] for call in calls] == ['execution', 'judging']
     assert calls[0]['model'] == 'litellm_proxy/openai/gpt-5.6-luna'
-    assert calls[1]['model'] == 'claude-fable-5-1'
+    assert calls[1]['model'] == 'gpt-6-astra'
     assert (root / 'controller/src/evaluation/scorers/llm_judge.py').is_file()
     assert not (root / 'generation').exists()
 
@@ -207,7 +208,7 @@ def test_judge_retry_adds_trial_and_retains_original_failure(tmp_path, monkeypat
     stages = json.loads((tmp_path / 'saved-stages.json').read_text())
     assert stages[0]['status'] == 'failed'
     assert stages[0]['superseded_by'] == 'judging-case-one-retry1'
-    assert captured[0][1]['model'] == 'claude-fable-5-1'
+    assert captured[0][1]['model'] == 'gpt-6-astra'
     assert captured[0][1]['stage'] == 'judging'
 
 

@@ -29,12 +29,14 @@ adding web search would contaminate the benchmark.
 from __future__ import annotations
 
 import datetime as _dt
+from contextlib import nullcontext
 import logging
 import os
 import shutil
 import time
 from pathlib import Path
 from urllib.parse import urlparse
+from uuid import uuid4
 
 from observability import agent_run_span, persist_trajectory
 
@@ -84,15 +86,38 @@ workspace and use relative paths.
 """
 
 
-def _build_full_summary_logger():
+def _build_full_summary_logger(capture=None):
     """Return a Stirrup logger that displays generated summaries without truncation."""
     from rich.text import Text
     from stirrup.utils.logging import AgentLogger, console
 
     class _FullSummaryLogger(AgentLogger):
+        def assistant_message(self, turn, max_turns, assistant_message):
+            if capture is not None:
+                capture.message(assistant_message)
+            return super().assistant_message(turn, max_turns, assistant_message)
+
+        def tool_result(self, tool_message):
+            if capture is not None:
+                capture.message(tool_message)
+            return super().tool_result(tool_message)
+
+        def user_message(self, user_message):
+            if capture is not None:
+                capture.message(user_message)
+            return super().user_message(user_message)
+
+        def context_summarization_start(self, *args):
+            if capture is not None:
+                capture.in_summary = True
+            return super().context_summarization_start(*args)
+
         def context_summarization_complete(
             self, summary: str, bridge: str
         ) -> None:
+            if capture is not None:
+                capture.append('summaries.jsonl', {'summary': summary, 'bridge': bridge})
+                capture.in_summary = False
             console.print(Text("✓ Summary Generated", style="bold green"))
             console.print(summary, markup=False, soft_wrap=True)
 
@@ -172,6 +197,7 @@ class StirrupAgentRunner(AgentRunner):
         shared_workspace: bool = False,
         max_output_tokens: int | None = None,
         container_record: Path | None = None,
+        capture=None,
     ) -> None:
         super().__init__(llm, server_paths)
         if code_backend not in {"docker", "local"}:
@@ -201,6 +227,8 @@ class StirrupAgentRunner(AgentRunner):
         self._shared_workspace = shared_workspace
         self._max_output_tokens = max_output_tokens
         self._container_record = container_record
+        self._capture = capture
+        self._gateway_cache_session = uuid4().hex
 
     # -- client / tools ----------------------------------------------------
 
@@ -224,7 +252,12 @@ class StirrupAgentRunner(AgentRunner):
                 client_kwargs = {
                     **(client_kwargs or {}),
                     "extra_body": {"providerOptions": {"gateway": {"caching": "auto"}}},
+                    "extra_headers": {"x-session-affinity": self._gateway_cache_session},
                 }
+                if resolve_model(self._model_id) == "google/gemini-3.8-flash":
+                    # The personal-Gateway smoke observed misses on Vertex and
+                    # cache hits through Google. Keep this evaluation route fixed.
+                    client_kwargs["extra_body"]["providerOptions"]["gateway"]["only"] = ["google"]
 
             common_kwargs = {
                 "model": resolve_model(self._model_id),
@@ -359,7 +392,7 @@ class StirrupAgentRunner(AgentRunner):
                 finish_tool=ASSETOPS_FINISH_TOOL,
                 max_turns=self._max_turns,
                 context_summarization_cutoff=_CONTEXT_SUMMARIZATION_CUTOFF,
-                logger=_build_full_summary_logger(),
+                logger=_build_full_summary_logger(self._capture),
             )
 
             _log.info(
@@ -371,8 +404,10 @@ class StirrupAgentRunner(AgentRunner):
                 self._preserve_workspace,
             )
 
-            async with agent.session() as session:
-                finish_params, history, _metadata = await session.run(question)
+            scope = self._capture.cache_scope() if self._capture is not None else nullcontext()
+            with scope:
+                async with agent.session() as session:
+                    finish_params, history, _metadata = await session.run(question)
 
             trajectory = build_trajectory(history)
             trajectory.started_at = started_at

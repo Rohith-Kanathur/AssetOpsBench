@@ -1,7 +1,6 @@
 """Run and judge generated scenarios using their declared evaluation capabilities."""
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import os
 from pathlib import Path
@@ -10,6 +9,7 @@ import signal
 import shutil
 import subprocess
 import sys
+import threading
 import time
 
 from dotenv import dotenv_values
@@ -54,15 +54,20 @@ def runner_models(runners, mode):
 def evaluation_credentials(values):
     credentials = {name: os.environ.get(name) or values.get(name) for name in KEYS
                    if os.environ.get(name) or values.get(name)}
-    if credentials.get("AI_GATEWAY_API_KEY") and not credentials.get("LITELLM_API_KEY"):
-        credentials.update(LITELLM_API_KEY=credentials["AI_GATEWAY_API_KEY"],
+    gateway_key = values.get("AI_GATEWAY_API_KEY") or os.environ.get("AI_GATEWAY_API_KEY")
+    if gateway_key:
+        # An explicitly selected Gateway key must not lose to a stale shared
+        # router key inherited from the shell or a different configuration.
+        credentials.update(AI_GATEWAY_API_KEY=gateway_key, LITELLM_API_KEY=gateway_key,
                            LITELLM_BASE_URL="https://ai-gateway.vercel.sh/v1")
     return credentials
 
 
 def default_runners(credentials):
     """Prefer available router credits; keep the selected route fixed per run."""
-    if credentials.get("TOKENROUTER_API_KEY") and credentials.get("TOKENROUTER_BASE_URL"):
+    if credentials.get("AI_GATEWAY_API_KEY"):
+        model = DEFAULTS["general-execution"]["stirrup"]
+    elif credentials.get("TOKENROUTER_API_KEY") and credentials.get("TOKENROUTER_BASE_URL"):
         model = "tokenrouter/openai/gpt-5.6-luna"
     elif credentials.get("LITELLM_API_KEY") and credentials.get("LITELLM_BASE_URL"):
         model = DEFAULTS["general-execution"]["stirrup"]
@@ -203,7 +208,8 @@ def main(argv=None):
     parser.add_argument("generation", type=Path)
     parser.add_argument("directory", type=Path)
     parser.add_argument("--runners", help="JSON mapping runner names to model(s); default: Stirrup/Luna through available router credits")
-    parser.add_argument("--jobs", type=int, default=2)
+    parser.add_argument("--jobs", type=int, default=12, help="Execution ceiling; memory admission can run fewer")
+    parser.add_argument("--judge-jobs", type=int, default=14, help="Independent judge-session ceiling")
     parser.add_argument("--timeout", type=float, default=600)
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
     parser.add_argument("--retry-failed", action="store_true")
@@ -215,7 +221,7 @@ def main(argv=None):
     parser.add_argument("--temperature", type=float)
     parser.add_argument("--no-judge", action="store_true", help="Save executions for a separate judging stage")
     args = parser.parse_args(argv)
-    if args.jobs < 1 or args.timeout <= 0:
+    if args.jobs < 1 or args.judge_jobs < 1 or args.timeout <= 0:
         parser.error("jobs and timeout must be positive")
     if args.max_turns < 1 or not 0 < args.max_output_tokens <= 100_000:
         parser.error("max-turns must be positive; max-output-tokens must be between 1 and 100000")
@@ -270,18 +276,20 @@ def main(argv=None):
             planned.append((case, scenario, runner, model))
     asset = json.loads((root / "snapshot.json").read_text())["request"]["asset_class"]
     title = f"{asset} · Stirrup" if set(runners) == {"stirrup"} else f"{asset} · {mode}"
+    report_lock = threading.Lock()
     def report():
-        write_report(root, [load_case(case) for case, *_ in planned], title=title)
+        with report_lock:
+            write_report(root, [load_case(case) for case, *_ in planned], title=title)
     report()
-    with ThreadPoolExecutor(max_workers=args.jobs) as pool:
-        futures = {pool.submit(execute_case, root, case, scenario, runner, model,
-                               args.timeout, credentials, args.retry_failed, settings, judge=not args.no_judge): (case, runner, model, scenario["id"])
-                   for case, scenario, runner, model in planned if str(scenario["id"]) in selected}
-        for future in as_completed(futures):
-            _, runner, model, sid = futures[future]
-            result = future.result()
-            print(f"{runner} / {model} / {sid}: execution {result['status']}; judge {result['grading']['status']}", flush=True)
-            report()
+    from .pipeline import run
+    def execute(item):
+        case, scenario, runner, model = item
+        result = execute_case(root, case, scenario, runner, model, args.timeout,
+                              credentials, args.retry_failed, settings, judge=False)
+        print(f"{runner} / {model} / {scenario['id']}: execution {result['status']}", flush=True)
+        return result
+    run([item for item in planned if str(item[1]['id']) in selected], execute, report,
+        execution_jobs=args.jobs, judge_jobs=args.judge_jobs, judge=not args.no_judge)
     print(f"Results: {root / 'README.md'}", flush=True)
 
 

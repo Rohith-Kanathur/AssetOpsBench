@@ -20,7 +20,7 @@ def test_container_does_not_mount_reference_checkout_or_docker_socket(tmp_path):
     mounts = data["services"]["agent"]["volumes"]
     assert len(mounts) == 3
     assert all("docker.sock" not in mount for mount in mounts)
-    assert mounts[1].endswith("auth.json:ro")
+    assert mounts[1].endswith(":/root/.codex")
     assert mounts[2].endswith("/run/kaggle-auth:ro")
     assert "ports" not in data["services"]["database"]
     original = path.read_text()

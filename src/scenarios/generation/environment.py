@@ -10,6 +10,7 @@ from pathlib import Path
 POLICIES = ("extend", "existing")
 DEFAULT_POLICY = "extend"
 BASELINE_ENV = "SCENARIO_ENVIRONMENT_BASELINE"
+DATABASE_PAGE_SIZE = 10000
 
 
 def policy(request):
@@ -72,11 +73,28 @@ def database_state():
     for name in sorted(get("/_all_dbs")):
         if name.startswith("_") or name in outputs:
             continue
-        rows = get(f"/{name}/_all_docs", include_docs="true")["rows"]
-        docs = [{k: v for k, v in row["doc"].items() if k != "_rev"}
-                for row in rows if "doc" in row and not row["id"].startswith("_design/")]
-        digest = hashlib.sha256(json.dumps(docs, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-        state[name] = {"sha256": digest, "records": len(docs)}
+        # Preserve the canonical JSON-list checksum without loading a telemetry
+        # collection (potentially millions of documents) into memory at once.
+        digest = hashlib.sha256(b"[")
+        count, start = 0, None
+        while True:
+            params = {"include_docs": "true", "limit": DATABASE_PAGE_SIZE}
+            if start is not None:
+                params.update(startkey=json.dumps(start), skip=1)
+            rows = get(f"/{name}/_all_docs", **params)["rows"]
+            for row in rows:
+                if "doc" not in row or row["id"].startswith("_design/"):
+                    continue
+                doc = {k: v for k, v in row["doc"].items() if k != "_rev"}
+                if count:
+                    digest.update(b",")
+                digest.update(json.dumps(doc, sort_keys=True, separators=(",", ":")).encode())
+                count += 1
+            if len(rows) < DATABASE_PAGE_SIZE:
+                break
+            start = rows[-1]["id"]
+        digest.update(b"]")
+        state[name] = {"sha256": digest.hexdigest(), "records": count}
     return state
 
 

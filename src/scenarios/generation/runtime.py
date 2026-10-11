@@ -34,6 +34,13 @@ def configure(destination: Path, auth_home: Path, kaggle_home: Path) -> Path:
         raise ValueError("Codex file-based login is required; run codex login first")
     compose_path = destination / "compose.json"
     if compose_path.exists():
+        data = json.loads(compose_path.read_text())
+        mounts = data['services']['agent']['volumes']
+        current = f"{auth_home.resolve()}:/root/.codex"
+        updated = [current if ':/root/.codex' in m else m for m in mounts]
+        if mounts != updated:
+            data['services']['agent']['volumes'] = updated
+            compose_path.write_text(json.dumps(data, indent=2) + '\n')
         return compose_path
     environment = {
         "COUCHDB_URL": "http://database:5984",
@@ -47,7 +54,7 @@ def configure(destination: Path, auth_home: Path, kaggle_home: Path) -> Path:
         environment[BASELINE_ENV] = "/opt/generation/environment-baseline.json"
     if (destination / "seed.json").is_file():
         mounts.append(f"{(workspace / 'data/seed-database').resolve()}:/workspace/data/seed-database:ro")
-    mounts.append(f"{(auth_home / 'auth.json').resolve()}:/root/.codex/auth.json:ro")
+    mounts.append(f"{auth_home.resolve()}:/root/.codex")
     if kaggle_home.is_dir():
         mounts.append(f"{kaggle_home.resolve()}:/run/kaggle-auth:ro")
     name = "aob-generation-" + hashlib.sha256(str(destination.resolve()).encode()).hexdigest()[:10]
@@ -233,6 +240,7 @@ def run(destination: Path, model: str = DEFAULT_MODEL, followup: str | None = No
         raise IncompleteGeneration("Generation remains incomplete after two repair attempts; see review.json")
     except IncompleteGeneration:
         raise
+
     except BaseException as exc:
         if meta_path and metadata:
             if metadata["process_status"] == "running":
@@ -244,6 +252,59 @@ def run(destination: Path, model: str = DEFAULT_MODEL, followup: str | None = No
         save_status(destination, "failed", error_type=type(exc).__name__)
         write_index(destination)
         raise
+
+
+def run_with_pool(destination, model=DEFAULT_MODEL, followup=None, *,
+                  harness='codex', reasoning_effort=DEFAULT_REASONING,
+                  service_tier=DEFAULT_TIER, env_file=None, pool=None):
+    """One author at a time; fresh native sessions when a subscription fails."""
+    import fcntl
+    import re
+    from uuid import uuid4
+    from agent.codex_accounts import Pool, identity, save
+    pool = pool or Pool(model=model, reasoning=reasoning_effort, tier=service_tier)
+    pool.root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with (pool.root / 'author.lock').open('a+') as author_lock:
+        try:
+            fcntl.flock(author_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise RuntimeError('Another subscription-backed author is already running') from None
+        pool.preflight()
+        attempted = set()
+        for _ in range(len(pool.accounts)):
+            with pool.lease(exclude=attempted) as account:
+                attempted.add(account['id'])
+                auth = pool.root / 'sessions' / uuid4().hex
+                auth.mkdir(parents=True, mode=0o700)
+                source = Path(account['home']) / 'auth.json'
+                save(auth / 'auth.json', json.loads(source.read_text()))
+                configure(destination, auth, Path.home() / '.kaggle')
+                try:
+                    return run(destination, model, followup, harness=harness,
+                               reasoning_effort=reasoning_effort, service_tier=service_tier,
+                               env_file=env_file)
+                except subprocess.CalledProcessError:
+                    logs = sorted((destination / 'logs').glob('codex-*.*'), key=lambda p: p.stat().st_mtime)
+                    text = '\n'.join(p.read_text()[-4000:] for p in logs[-2:])
+                    if not re.search(r'rate.limit|usage.limit|quota|token.*expir|refresh.*token|unauthorized|401', text, re.I):
+                        raise
+                    # Persist any refresh before app-server reads this account.
+                    if identity(auth / 'auth.json')[0] != account['email']:
+                        raise RuntimeError('Author login identity changed unexpectedly')
+                    save(source, json.loads((auth / 'auth.json').read_text()))
+                    try:
+                        recovered = pool.reset_if_exhausted(account)
+                    except Exception:
+                        recovered = False
+                    if not recovered:
+                        pool.quarantine(account)
+                    save(auth / 'auth.json', json.loads(source.read_text()))
+                    # run() writes each native attempt separately; it never resumes a session.
+                finally:
+                    if identity(auth / 'auth.json')[0] != account['email']:
+                        raise RuntimeError('Author login identity changed unexpectedly')
+                    save(source, json.loads((auth / 'auth.json').read_text()))
+        raise RuntimeError('No further authoring subscription available')
 
 
 def now() -> str:

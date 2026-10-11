@@ -136,6 +136,20 @@ def generation_trajectory(directory):
 
 def case_trajectory(case, stage):
     case = Path(case)
+    aggregate = read(case / 'judge.json', {}) if stage == 'judging' else {}
+    if aggregate.get('protocol') == 'independent-codex-judges-v1':
+        children = [read(p) for p in sorted((case / 'judging/repeats').glob('*/trajectory.json'))]
+        root = from_turns([], name='assetops-judge-coordinator', model=aggregate['model'],
+                          prompt='Independently judge this saved execution and average the scores.',
+                          identity=f'{run_id(case.parents[2])}-judging-{case.name}',
+                          extra={'stage': 'judging', 'grade': aggregate})
+        root['subagent_trajectories'] = children
+        for child in children:
+            root['steps'].append({'step_id': len(root['steps']) + 1, 'source': 'agent',
+                'llm_call_count': 0, 'message': 'Independent judgment',
+                'observation': {'results': [{'content': 'completed', 'subagent_trajectory_ref':
+                    [{'trajectory_id': child['trajectory_id']}]}]}})
+        return Trajectory.model_validate(root).to_json_dict()
     if stage == 'execution':
         record = read(case / 'result.json', {})
         prompt = read(case / 'scenario.json', {}).get('text', '')
@@ -160,6 +174,9 @@ def case_trajectory(case, stage):
     extra = {'stage': stage, 'status': record.get('status', record.get('completed', 'unknown')),
              'scenario_id': read(case / 'scenario.json', {}).get('id')}
     extra['settings'] = record.get('settings', {})
+    for key in ('termination_reason', 'task_completed', 'capture'):
+        if key in record:
+            extra[key] = record[key]
     if stage == 'judging':
         extra['grade'] = grade
     return from_turns(turns, name=record.get('runner', 'unknown'), model=record.get('model', 'unknown'),
@@ -190,6 +207,9 @@ def manifest(root):
                     'evaluation/cases/*/result.json', 'evaluation/cases/*/judge.json',
                     'evaluation/cases/*/native/*.json*', 'evaluation/cases/*/judging/*.json*',
                     'evaluation/cases/*/judging/prompt.txt', 'evaluation/cases/*/judging/evidence/**/*',
+                    'evaluation/cases/*/judging/repeats/**/*',
+                    'evaluation/cases/*/judging-failures/**/*',
+                    'evaluation/cases/*/judging-history/**/*',
                     'evaluation/cases/*/judging-attempts/**/*', 'evaluation/cases/*/workspace/**/*',
                     'evaluation/environment/**/*', 'evaluation/database/*', 'evaluation/inputs/**/*'):
         evidence.extend(p for p in root.glob(pattern) if p.is_file() and not p.is_symlink())

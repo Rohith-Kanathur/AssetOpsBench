@@ -10,15 +10,17 @@ from pathlib import Path
 import time
 
 from agent.stirrup_agent.runner import StirrupAgentRunner
+from agent.stirrup_agent.capture import ExecutionCapture
 from .auth import private_json
 
 
 class UsageRecorder:
     """Record real calls, including compaction; never send cache-probe requests."""
 
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, capture=None):
         self.path = path
         self.calls = []
+        self.capture = capture
 
     def wrap(self, create):
         async def measured(**kwargs):
@@ -29,7 +31,11 @@ class UsageRecorder:
                    default=str).encode()).hexdigest(), "requested_model": kwargs.get("model")}
             started = time.monotonic()
             try:
+                if self.capture is not None:
+                    self.capture.request(kwargs)
                 response = await create(**kwargs)
+                if self.capture is not None:
+                    self.capture.response(response)
                 usage = getattr(response, "usage", None)
                 row.update(status="completed", response_model=getattr(response, "model", None),
                            response_id=getattr(response, "id", None),
@@ -73,8 +79,26 @@ class UsageRecorder:
         }
 
 
+def record_attempt(record, result, max_turns):
+    """A bounded agent attempt can finish without successfully solving its task."""
+    trajectory = asdict(result.trajectory)
+    record.update(answer=result.answer, trajectory=trajectory)
+    turns = trajectory.get("turns", [])
+    finished = any(call.get("name") == "finish" for turn in turns
+                   for call in turn.get("tool_calls", []))
+    if len(turns) >= max_turns and (not finished or not result.answer.strip()):
+        record.update(status="completed", termination_reason="max_turns")
+        if not result.answer.strip():
+            record["task_completed"] = False
+    elif result.answer.strip():
+        record.update(status="completed")
+    else:
+        raise ValueError("Agent returned no final answer")
+
+
 async def run(args):
-    recorder = UsageRecorder(args.output.parent / "api-usage.json")
+    capture = ExecutionCapture(args.output.parent)
+    recorder = UsageRecorder(args.output.parent / "api-usage.json", capture=capture)
 
     class MeasuredRunner(StirrupAgentRunner):
         def _build_client(self):
@@ -94,15 +118,26 @@ async def run(args):
                                 shared_workspace=True, max_turns=args.max_turns,
                                 max_output_tokens=args.max_output_tokens,
                                 reasoning_effort=args.reasoning_effort, temperature=args.temperature,
-                                container_record=args.output.parent / "code-container.json")
+                                container_record=args.output.parent / "code-container.json", capture=capture)
         private_json(args.output.parent / "system-prompt.json", {"prompt": runner._build_system_prompt()})
         result = await asyncio.wait_for(runner.run(args.question_file.read_text()), args.timeout)
-        if not result.answer.strip():
-            raise ValueError("Agent returned no final answer")
-        record.update(status="completed", answer=result.answer, trajectory=asdict(result.trajectory))
+        record_attempt(record, result, args.max_turns)
     except Exception as exc:
         # Provider exception text can contain headers or credentials.
         record.update(error=type(exc).__name__, timed_out=isinstance(exc, TimeoutError))
+        record['trajectory'] = capture.partial_trajectory()
+        record['capture'] = {'protocol': 'durable-stirrup-v1',
+                             'messages': 'message-events.jsonl',
+                             'requests': 'api-requests.jsonl', 'responses': 'api-responses.jsonl',
+                             'complete_record': True, 'interrupted': True}
+        termination = capture.model_failure()
+        if termination is not None:
+            record.update(status='completed', termination_reason=termination, task_completed=False)
+    else:
+        record['capture'] = {'protocol': 'durable-stirrup-v1',
+                             'messages': 'message-events.jsonl',
+                             'requests': 'api-requests.jsonl', 'responses': 'api-responses.jsonl',
+                             'complete_record': True, 'interrupted': False}
     record.update(recorder.summary(), elapsed_seconds=round(time.monotonic() - started, 3))
     private_json(args.output, record)
     return int(record["status"] != "completed")

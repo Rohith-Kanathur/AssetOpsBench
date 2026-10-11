@@ -1,6 +1,7 @@
 """Generate genuine Harbor task packages with independent completion verifiers."""
 
 from pathlib import Path
+import math
 
 from harbor.models.task.config import TaskConfig
 import tomllib
@@ -19,7 +20,7 @@ try:
 except (OSError, ValueError):
     outcome, completed = {}, False
 reward = {'stage_completed': float(completed)}
-if outcome.get('stage') == 'judging' and type(outcome.get('benchmark_pass')) is bool:
+if outcome.get('stage') == 'judging' and type(outcome.get('benchmark_pass')) in (bool, int, float):
     reward['benchmark_pass'] = float(outcome['benchmark_pass'])
 Path('/logs/verifier/reward.json').write_text(json.dumps(reward))
 PYVERIFY
@@ -33,6 +34,10 @@ def create_task(root, name, spec):
     (task / 'environment').mkdir(parents=True)
     (task / 'tests').mkdir()
     timeout = spec['timeout']
+    if spec['stage'] == 'judging':
+        # Each repetition permits up to three fresh-account attempts; metadata
+        # checks and cleanup also need time beyond the per-session limit.
+        timeout = math.ceil(spec.get('repeats', 5) / spec.get('jobs', 5)) * (3 * timeout + 90) + 60
     (task / 'task.toml').write_text(f'''schema_version = "1.4"
 [task]
 name = "assetops/{name}"
