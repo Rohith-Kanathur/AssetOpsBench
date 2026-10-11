@@ -51,6 +51,9 @@ Put explicit user constraints in the request;
 put routine pagination, verification and default fallback mechanics in the rubric.
 Keep tool and API names in `characteristic_form`, while operator text names the
 real assets, sites, measurements and time windows needed to perform the task.
+Scope required checks to the assets, time windows and decision in each scenario.
+Review shared rubric text per case; additional asset lookups must contribute
+relevant evidence to that case.
 
 Keep each primary domain substantive. Catalog discovery is different from applying
 a diagnostic or predicting failure. Statistical anomalies do not establish physical
@@ -68,6 +71,8 @@ Save `output/scenarios.json` as a list of objects containing:
 - `characteristic_form`: one free-form string containing the verified reference
   answer, followed by required reasoning, evidence, constraints and exact available
   `server.tool` references. Discover tool names from the final capabilities.
+  Separate required results and evidence checks from the exercised workflow.
+  State task-specific method constraints and necessary ordering dependencies.
   Keep structured rubric objects out of this field.
 - `source_ids`: evidence IDs from `sources.json`.
 - `grounding`: `scope` (`asset` or `class`) and applicable `asset_class`, `site`,
@@ -86,9 +91,9 @@ Save `output/scenarios.json` as a list of objects containing:
   `output_files` (a list of `{path, created_by}` objects). Empty file lists are
   valid. Output paths are workspace-relative; `created_by` is the exact MCP tool
   or `general-execution`. An MCP producer must create and return the output path.
-  These describe the task contract, not a record of execution. Include all file
-  deliverables and intermediate files necessary to finish the task, including
-  those required only by the rubric.
+  These describe the task contract, not a record of execution. Include requested
+  deliverables and intermediate files required by the task or available tools.
+  Separate these requirements from helper files used only by the author's solution.
   Inputs must be task data, not verification exports, solutions, scripts, grading
   material or tool receipts. Required input paths must appear in the operator
   request or be discoverable from the actual tools.
@@ -107,8 +112,10 @@ identifiers, dates, rankings and the resulting decision. State units (or unknown
 source units), precision/tolerances, interval boundaries and tie rules as applicable.
 Input thresholds and instructions to calculate a result are not reference results.
 
-For files, specify the expected columns, row count, time coverage and key values;
-retain the full exercised output for review. For writes, describe the verified
+For files, specify the required contents, row coverage, time coverage and key
+values. Include exact column names or layout requirements when the task or an
+actual consumer in the environment depends on them. Retain the exercised output
+for review and preserve required source values and timestamps. For writes, describe the verified
 postconditions while allowing newly assigned IDs to vary. For variable forecasts
 or recommendations, state supported outcomes and acceptance criteria, with exact
 values only where the requested method and inputs determine them. Qualitative
@@ -117,8 +124,24 @@ Where evidence is insufficient, include the verified supported results and the
 precise conclusion that cannot be established.
 
 Use retained data and exercised outputs as evidence; cross-check key calculations
-against their source observations. Keep reference answers and exercised solutions
-in grading material, separate from the operator request and evaluation inputs.
+against their source observations. Research informs the profile and environment
+preparation. Scenario questions and reference answers must concern the assets,
+tools and data available in the prepared evaluation environment. Keep study-specific
+claims, literature discussion and requests to name or summarize papers out of the
+question and characteristic form. Retain research citations in the profile and
+source records; express applicable domain principles through the environment's
+capabilities, evidence and limitations.
+Keep reference answers and exercised solutions in grading material, separate from
+the operator request and evaluation inputs.
+
+## Short examples
+
+- A single-asset maintenance review checks the relevant asset and orders. A shared
+  rubric must not add an unrelated asset lookup.
+- A forecast comparison specifies the methods, evaluation window and expected
+  values. Its output requirements identify the needed contents and any actual file contract.
+- Research may motivate a fouling assessment. The scenario uses available failure
+  modes and measurements; its reference does not require explaining the motivating study.
 
 ## Exercise, review and repair
 
@@ -144,6 +167,11 @@ Run `python -m scenarios.generation.review --workspace /workspace --stage all`.
 Read the JSON findings, repair the affected artifacts and rerun until applicable
 checks pass. Also review realism, scientific support, meaningful difficulty,
 duplicate or near-duplicate wording, and whether each reference conclusion or
-limitation is supported by the observed evidence.
+limitation is supported by the observed evidence. Review the question and
+characteristic form together for unrelated lookups, unsupported tool-order or
+file-layout restrictions, and claims carried over from authoring research.
+Verify that required evidence is accessible in the evaluation environment and
+that every required result, check and dependency has a task-specific basis.
+Repair mismatches and re-exercise affected steps before finalizing.
 Preserve completed work and disclose remaining failures when a gap cannot be fixed.
 Finish with verified requested/produced counts and unresolved gaps.
