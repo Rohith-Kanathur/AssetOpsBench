@@ -18,6 +18,14 @@ near-duplicates, unrelated additions and a repeated checklist of audits, exports
 or caveats. Keep retrieval, recipe construction, diagnosis and
 prediction distinct where they serve different purposes.
 
+Consider alternative operator needs before choosing the set. Vary the decisions,
+evidence and reasoning, not just asset names, dates or requested statistics.
+Where supported, include interpretation and decisions as well as retrieval.
+Select records and time windows for their operational relevance, not because
+their answers are easy. In either environment mode, preserve relevant variability
+and transitions when selecting or preparing inputs; do not simplify them just to
+make the task easier.
+
 - For `scenario_count`, allocate the total across relevant domains; some may receive zero.
 - For `scenario_plan`, preserve the supplied per-domain counts; omitted domains mean zero.
 
@@ -48,7 +56,9 @@ reference solution.
 The author's implementation does not add completion requirements: keep tool-call
 sequences, helper steps, runtime labels and generic grading instructions out of
 this field. Preserve implementation evidence in the authoring trace and profile.
-Use the detail each task needs rather than a common answer template.
+Write a natural reference answer with only the detail needed for the requested
+result. Include checks, validation scores or limitations only when they materially
+affect that result; keep other authoring diagnostics in the evidence.
 
 - For deterministic results, give the relevant verified values, identifiers,
   dates or rankings, with units where needed. Instructions to calculate a result
@@ -119,7 +129,9 @@ from the author's solution. Review the pair for unsupported claims,
 unrelated requirements and restrictions inherited from the author's solution.
 Where useful, try another valid approach to expose accidental method or format
 requirements. Resolve disagreements against source evidence. Do not select scenarios
-or weaken references based on evaluation-model performance.
+or weaken references based on evaluation-model performance. Review the set as a
+whole for repeated reasoning patterns, convenient data selection and formulaic
+reference answers.
 
 Write `output/README.md` with brief summaries, source links, requested/produced
 counts, reused/added capabilities, tests and unresolved gaps. Link the profile,
