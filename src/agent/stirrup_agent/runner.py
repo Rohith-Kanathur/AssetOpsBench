@@ -58,8 +58,10 @@ _WORKING_CONTEXT_BUDGET = 100_000
 _CONTEXT_SUMMARIZATION_CUTOFF = 0.75
 _CODE_EXEC_SYSTEM_PROMPT = """\
 Code execution:
-- MCP tools and their definitions are authoritative for domain data and semantics.
-  Never use code to query backing services or bypass an available MCP tool.
+- Discover relevant operating data through the available MCP tools and supplied
+  workspace files. You may inspect the workspace to find available inputs.
+  Use MCP tools to access backing services; do not query those services directly
+  from code. Supplied workspace files may be read and analyzed with code.
 - Do not overuse code_exec. Answer directly from MCP results, domain knowledge,
   and basic reasoning or arithmetic when sufficient. Use code_exec only for
   necessary computation, data processing, workspace inspection, or validation.

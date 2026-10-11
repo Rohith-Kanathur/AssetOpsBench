@@ -10,10 +10,12 @@ Follow the environment policy in `profile.md` and the evaluation capabilities be
 
 ## Choose tasks and allocate the budget
 
-Explore the available capabilities and choose varied operator or manager needs
-appropriate to the target asset. Let each need determine the task's complexity and
-length. Avoid near-duplicates, unrelated additions and a repeated checklist of
-audits, exports or caveats. Keep retrieval, recipe construction, diagnosis and
+Start from varied operator or manager needs appropriate to the target asset,
+then check how the environment supports them. Let each need determine complexity
+and length; do not choose tasks just because a tool makes the answer convenient.
+Do not match a held-out cohort's task mix or target a pass rate. Avoid
+near-duplicates, unrelated additions and a repeated checklist of audits, exports
+or caveats. Keep retrieval, recipe construction, diagnosis and
 prediction distinct where they serve different purposes.
 
 - For `scenario_count`, allocate the total across relevant domains; some may receive zero.
@@ -32,10 +34,17 @@ Write `text` as a concise operator request: the goal, relevant asset or class,
 time window where applicable, and requested result. Include observations an
 operator could reasonably supply. Do not name tool/API methods, prescribe a call
 sequence, or reveal conclusions and intermediate results the agent must derive.
+Leave data-source selection and analysis to the agent. Do not add file paths,
+internal fields, algorithms or derived thresholds to steer it toward the author's
+solution. Identify a supplied document only when it is part of the operator's
+request, not as a retrieval hint added after solving the task.
 
 Write `characteristic_form` as a free-form expected response grounded in exercised
 results. Include the facts, reasoning, necessary domain checks and constraints
 that support the requested result. Keep its scope aligned with the question.
+Accept equivalent valid methods and representations. Do not require an unasked
+plot, identifier list or extra assessment solely because it appears in the
+reference solution.
 The author's implementation does not add completion requirements: keep tool-call
 sequences, helper steps, runtime labels and generic grading instructions out of
 this field. Preserve implementation evidence in the authoring trace and profile.
@@ -86,9 +95,10 @@ Save `output/scenarios.json` as a list of objects with:
   and `created_by`). File lists may be empty. `created_by` is the exact MCP producer
   or `general-execution`; an MCP producer must actually create and return the file.
   Declare requested deliverables and intermediate files required by the task or
-  tools, not incidental helper files. Inputs must be task data, with paths stated
-  in the question or discoverable through tools. Never supply reference answers,
-  completed solutions, generator scripts or grading material as evaluation inputs.
+  tools, not incidental helper files. Inputs must be task data discoverable through
+  the shared workspace or tools; do not add paths to questions merely to guide
+  retrieval. Never supply reference answers, completed solutions, generator scripts
+  or grading material as evaluation inputs.
 
 Keep source records and the profile current. If preparation changes, follow the
 selected environment policy and recheck the profile before using those changes.
@@ -104,7 +114,8 @@ evaluation starts without them. The harness records commands and tool activity,
 and the checker captures live MCP reads; do not write duplicate execution logs
 or verification receipts.
 
-Review each question and characteristic form together for unsupported claims,
+First read each question without its reference answer and remove hints inherited
+from the author's solution. Review the pair for unsupported claims,
 unrelated requirements and restrictions inherited from the author's solution.
 Where useful, try another valid approach to expose accidental method or format
 requirements. Resolve disagreements against source evidence. Do not select scenarios

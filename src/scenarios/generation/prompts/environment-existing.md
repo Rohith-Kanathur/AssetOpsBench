@@ -23,12 +23,13 @@ Use `kind: "fixture"`, `role: "data"`, a `repository:<revision>:<path>` URL and
 checksummed original fixture files from the protected environment baseline.
 Only verified original observations may use `kind: "observed"`.
 
-Lossless file representations of existing records are permitted for existing
-file-based tools. Preserve values, identifiers, units and timestamps; record a
-reproducible transformation with `kind: "derived"` and the fixture data roots.
-Declare such files as task inputs and exercise their exact paths. Invented values,
-new labels/channels, synthetic histories, interpolation and resampling extend
-the input surface and are unavailable under this policy.
+Cohorts evaluated against this environment use the same public input snapshot
+and discovery instructions. Do not supply scenario-specific filtered, exported
+or converted files prepared during authoring; the evaluated agent creates any
+needed representation from the shared inputs. Keep authoring copies as evidence,
+not in `execution.input_files`. Existing supplied documents remain valid inputs.
+Invented values, new labels/channels, synthetic histories, interpolation and
+resampling extend the input surface and are unavailable under this policy.
 
 Exercise normal task actions through existing MCP tools. Test mutations on a
 disposable database copy and restore initial inputs afterward; creating a proposed
