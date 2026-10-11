@@ -4,6 +4,9 @@ Begin after the profile checker passes. Read `request.json`, the final profile a
 the relevant domains in `references/examples.json`. These are adapted requests
 from the existing benchmark corpus, with source paths and row IDs for traceability.
 They illustrate operator phrasing, task intent and concrete reference answers.
+Use them to learn request and reference structure, not as a task distribution
+or a fixed solution template. Do not create new scenarios merely by substituting
+asset names and dates in an example.
 Rebuild their identifiers, windows, tools and reference results from this environment;
 original answers and assets are not evidence for a new scenario. Replace example
 placeholders with verified results. Apply the selected evaluation
@@ -37,27 +40,29 @@ interaction to establish the supported response and record it in characteristic_
 
 ## Write operator requests and expected behavior
 
-Each request must use evidence to assess a condition, justify a decision, produce
-a forecast for a stated need, or perform an authorized action. State the concrete
-question and requested result. Exclude standalone asset, sensor, model or failure-mode
-listings and record retrieval; these are supporting steps, including in the reference
-examples. A profile or statistics comparison must answer a concrete operational or
-analytical question; a checklist of tool outputs is insufficient. Additional lookups
-alone do not make a task substantive.
+Derive requests from the target asset's documented operating needs, failure
+mechanisms, maintenance practices and available evidence. Explore supported
+capabilities before choosing tasks, within the requested domain allocation.
+Include varied, realistic tasks at appropriate levels of difficulty. Retrieval,
+catalog queries, aggregation, recipe construction, analysis and recommendations
+can each be valid tasks when they serve an operator need. Avoid trivial paraphrases
+and do not append unrelated analysis or actions merely to increase difficulty.
 
-Use relevant constraints or conditional decisions where the task calls for them.
 Keep requests concise, allowing a few connected sentences for a complex decision.
-Put explicit user constraints in the request;
-put routine pagination, verification and default fallback mechanics in the rubric.
-Keep tool and API names in `characteristic_form`, while operator text names the
-real assets, sites, measurements and time windows needed to perform the task.
-Scope required checks to the assets, time windows and decision in each scenario.
-Review shared rubric text per case; additional asset lookups must contribute
-relevant evidence to that case.
+State the operator's goal, asset, relevant time window and requested result.
+Do not name tool/API methods, prescribe a call sequence or describe the author's
+solution. Let the evaluated agent determine how to solve the task. Include
+observations an operator could reasonably provide, but do not reveal conclusions
+or intermediate results the evaluated agent is expected to derive.
+Keep tool and API names in `characteristic_form`. Put necessary supporting evidence
+checks there, scoped to the task's assets, time windows and operational needs.
+Review shared rubric text per case; remove unrelated lookups, calculations and
+deliverables inherited from other tasks.
 
-Keep each primary domain substantive. Catalog discovery is different from applying
-a diagnostic or predicting failure. Statistical anomalies do not establish physical
-faults; forecast intervals require an actual supported method. Reuse the final
+Keep each task meaningful for its stated purpose. Distinguish catalog discovery,
+recipe construction, diagnosis and prediction; do not automatically turn one into
+another. Statistical anomalies do not establish physical faults; forecast intervals
+require an actual supported method. Reuse the final
 profile's cited relationships, applicable standards and verified capabilities.
 Apply the data access and tool reuse policy in `profile.md` to later extensions;
 update and recheck the profile before using them.
@@ -69,10 +74,13 @@ Save `output/scenarios.json` as a list of objects containing:
 - `text`: concise operator-facing request, without implementation tool names.
 - `category`: task category.
 - `characteristic_form`: one free-form string containing the verified reference
-  answer, followed by required reasoning, evidence, constraints and exact available
-  `server.tool` references. Discover tool names from the final capabilities.
-  Separate required results and evidence checks from the exercised workflow.
-  State task-specific method constraints and necessary ordering dependencies.
+  answer, required evidence, reasoning and task-specific constraints. Each requirement
+  must support the requested result, a necessary domain check or a verified dependency
+  in the environment. Document the verified or preferred workflow separately as a
+  reference implementation, including exact available `server.tool` references
+  discovered from the final capabilities. Its incidental steps are not additional
+  completion requirements. Require particular methods, tools or ordering only where
+  the task depends on them, not merely because the author used them.
   Keep structured rubric objects out of this field.
 - `source_ids`: evidence IDs from `sources.json`.
 - `grounding`: `scope` (`asset` or `class`) and applicable `asset_class`, `site`,
@@ -110,15 +118,18 @@ After exercising each scenario, write the actual expected results into
 `characteristic_form`. For deterministic tasks, include computed values, matching
 identifiers, dates, rankings and the resulting decision. State units (or unknown
 source units), precision/tolerances, interval boundaries and tie rules as applicable.
+Distinguish reference calculation precision from required reporting precision.
+Choose tolerances justified by the inputs, method and requested decision.
 Input thresholds and instructions to calculate a result are not reference results.
 
 For files, specify the required contents, row coverage, time coverage and key
-values. Include exact column names or layout requirements when the task or an
-actual consumer in the environment depends on them. Retain the exercised output
+values. Require exact column names, JSON keys or layout only when the task or a
+verified consumer in the environment depends on them. The author's serialization
+or helper script does not establish that dependency. Retain the exercised output
 for review and preserve required source values and timestamps. For writes, describe the verified
 postconditions while allowing newly assigned IDs to vary. For variable forecasts
 or recommendations, state supported outcomes and acceptance criteria, with exact
-values only where the requested method and inputs determine them. Qualitative
+values only where the task requirements and inputs determine them. Qualitative
 tasks need a concrete supported conclusion, not invented numerical precision.
 Where evidence is insufficient, include the verified supported results and the
 precise conclusion that cannot be established.
@@ -138,17 +149,24 @@ the operator request and evaluation inputs.
 
 - A single-asset maintenance review checks the relevant asset and orders. A shared
   rubric must not add an unrelated asset lookup.
-- A forecast comparison specifies the methods, evaluation window and expected
-  values. Its output requirements identify the needed contents and any actual file contract.
-- Research may motivate a fouling assessment. The scenario uses available failure
-  modes and measurements; its reference does not require explaining the motivating study.
+- A forecast question states the asset, horizon and intended use. Its reference
+  records verified results and necessary evidence without exposing a tool sequence
+  in the question or requiring an arbitrary output layout.
+- Research informs the asset profile. The scenario concerns available asset data
+  and capabilities, not the paper that motivated the task.
 
 ## Exercise, review and repair
 
 Exercise each scenario using the selected evaluation capabilities. Check the
 complete workflow, including intermediate transfers and unavailable-data responses.
 Finalize the reference answer from the exercised results before submitting the
-scenario. The harness records commands and tool activity automatically; the checker
+scenario. Review the question and its required results separately from the author's
+execution trace. Identify requirements introduced only by implementation choices.
+Where useful, exercise another valid approach to check for accidental method or
+format restrictions. Investigate disagreements against the source evidence; do not
+weaken the reference simply to obtain a successful execution. Do not select or reject
+scenarios based on the performance of evaluation models.
+The harness records commands and tool activity automatically; the checker
 captures its own live MCP reads. Keep source provenance and actual deliverables, without
 writing a parallel execution log or verification receipts.
 
