@@ -83,7 +83,7 @@ def test_cookie_authentication_is_also_scoped_and_revoked(gateway):
     assert session.get(url+'/workorder/doc').status_code == 401
 
 
-def test_memory_admission_reserves_startups_and_stops_on_paging():
+def test_memory_admission_reserves_startups_and_tolerates_tiny_paging():
     from benchmark.generated.admission import Admission
     clock = [0.]
     sample = {'host_available_mib': 4000, 'guest_available_mib': 4000,
@@ -93,12 +93,73 @@ def test_memory_admission_reserves_startups_and_stops_on_paging():
     assert admission.allow('judge')
     assert admission.allow('judge')
     assert not admission.allow('execution')
-    clock[0] = 11
+    clock[0] = 16
     assert admission.allow('judge')
     sample['swapout'] = 100
-    clock[0] = 17
+    clock[0] = 22
+    assert admission.allow('judge')
+    sample['swapout'] += 200 * 1048576
+    clock[0] = 28
     assert not admission.allow('judge')
     assert admission.reason == 'host_pressure_or_paging'
+
+
+def test_memory_admission_stops_sustained_paging_and_critical_pressure():
+    from benchmark.generated.admission import Admission
+    clock = [0.]
+    sample = {'host_available_mib': 16000, 'guest_available_mib': 16000,
+              'host_pressure': 1, 'swapout': 0}
+    admission = Admission(lambda: dict(sample), lambda: clock[0])
+    assert admission.allow('judge')
+    for index in (1, 2):
+        clock[0] = index * 5
+        sample['swapout'] += 25 * 1048576
+        assert admission.allow('judge') == (index == 1)
+    sample['host_pressure'] = 4
+    clock[0] = 20
+    assert not admission.allow('judge')
+
+
+def test_memory_admission_fails_closed_when_metrics_disappear(tmp_path):
+    from benchmark.generated.admission import Admission
+    def unavailable(): raise RuntimeError('Docker unavailable')
+    admission = Admission(unavailable, lambda: 0., tmp_path / 'state.json')
+    assert not admission.allow('execution')
+    assert json.loads((tmp_path / 'state.json').read_text())['reason'] == 'memory_unavailable'
+
+
+def test_startup_reserve_counts_only_uncommitted_judge_memory():
+    from benchmark.generated.admission import Admission
+    clock = [0.]
+    sample = {'host_available_mib': 6000, 'guest_available_mib': 6000,
+              'host_pressure': 1, 'swapout': 0, 'judge_memory_mib': {'old': 900}}
+    admission = Admission(lambda: dict(sample), lambda: clock[0])
+    assert admission.allow('judge') and admission.allow('judge')
+    assert admission._reserved() == 1280
+    clock[0] = 5
+    sample.update(host_available_mib=5500, guest_available_mib=5500,
+                  judge_memory_mib={'old': 950, 'new-a': 200, 'new-b': 300})
+    assert admission.allow('judge')
+    # 500 MiB is already reflected in available memory, and is not reserved twice.
+    # Growth of the old container never consumes a new worker's reservation.
+    assert admission._reserved() == 780 + 640
+    assert len({r['worker'] for r in admission.reservations if r['worker']}) == 2
+    clock[0] = 10
+    sample['judge_memory_mib'] = None
+    assert admission.allow('judge')
+    assert admission._reserved() == 2560  # Missing stats retain full reservations.
+
+
+def test_unstarted_workers_keep_their_entire_memory_reservation():
+    from benchmark.generated.admission import Admission
+    clock = [0.]
+    sample = {'host_available_mib': 3000, 'guest_available_mib': 3000,
+              'host_pressure': 1, 'swapout': 0, 'judge_memory_mib': {}}
+    admission = Admission(lambda: dict(sample), lambda: clock[0])
+    assert admission.allow('judge') and admission.allow('judge')
+    clock[0] = 5
+    assert not admission.allow('judge')
+    assert admission._reserved() == 1280
 
 
 def test_execution_queue_does_not_wait_for_judges(monkeypatch, tmp_path):
@@ -126,3 +187,22 @@ def test_execution_queue_does_not_wait_for_judges(monkeypatch, tmp_path):
     pipeline.run([(tmp_path/name,) for name in ['first','second','third']], execute, lambda:None,
                  execution_jobs=1, judge_jobs=5, admission=Admission(), pool=Pool())
     assert len(observed)==3 and first_judge_started.is_set()
+
+
+def test_resume_queues_saved_executions_without_running_them(monkeypatch, tmp_path):
+    from benchmark.generated import pipeline
+    observed = []
+    class Pool:
+        def preflight(self): return [{'health': 'ready', 'remaining': 90}] * 5
+    class Admission:
+        def allow(self, kind):
+            raise AssertionError('Saved executions must not consume execution admission')
+    def judges(cases, *, case_source, source_done, **kwargs):
+        while True:
+            observed.extend(case_source())
+            if source_done(): break
+    def execute(item): raise AssertionError('Existing model attempt was rerun')
+    monkeypatch.setattr(pipeline, 'judge_cases', judges)
+    pipeline.run([], execute, lambda: None, pool=Pool(), admission=Admission(),
+                 completed_cases=[tmp_path / 'saved'])
+    assert observed == [tmp_path / 'saved']

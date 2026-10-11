@@ -44,7 +44,8 @@ def export_success(directory, grade, model):
 
 def judge_cases(cases, *, model=MODEL, timeout=600, repeats=5, jobs=5, pool=None,
                 backend_factory=CodexJudge, export=export_success,
-                case_source=None, source_done=None, on_complete=None, admission=None, preflight=True):
+                case_source=None, source_done=None, on_complete=None, admission=None, preflight=True,
+                max_active=None):
     cases = [Path(c).resolve() for c in cases]
     if repeats < 1 or jobs < 1:
         raise ValueError('Repetitions and jobs must be positive')
@@ -192,8 +193,11 @@ def judge_cases(cases, *, model=MODEL, timeout=600, repeats=5, jobs=5, pool=None
                     add_case(candidate)
                     submit_case(candidate)
             # Scan beyond a blocked case: other cases may use the idle accounts.
+            # A live limit changes new admissions only. Existing sessions finish
+            # normally, including when the limit is reduced below their count.
+            active_limit = min(jobs, max(0, int(max_active()))) if max_active else jobs
             for item in list(pending):
-                if len(futures) >= jobs:
+                if len(futures) >= active_limit:
                     break
                 case, index = item['case'], item['index']
                 state = states[case]

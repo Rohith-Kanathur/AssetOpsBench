@@ -1,0 +1,142 @@
+{
+  "description": "Hash-only holdout guard. Do not copy evaluation questions or answers into generation references.",
+  "source_path": "data/scenarios/all_utterance.jsonl",
+  "source_file_sha256": "f01da3d49ad23371ad4c27e54a904f140e4eca48d7d93371223d6d9cbd55dc9c",
+  "normalization": "Casefold, replace non-word runs with a space, strip, then SHA-256 UTF-8.",
+  "asset_names": [
+    "Chiller 6",
+    "Chiller 9",
+    "Chiller 13"
+  ],
+  "asset_codes": [
+    "CWC04009",
+    "CWC04013"
+  ],
+  "rows": [
+    {
+      "id": 9,
+      "text_sha256": "09aa6e6a3a318d3d95dc9276f21330966c799f69e55b014804a50a2a6fb2d7b7",
+      "characteristic_form_sha256": "25a9c89501700d4d21d18bed9ef5f113214291180ff0fa83e9347c6285f2b226"
+    },
+    {
+      "id": 109,
+      "text_sha256": "35d3248377b2921c259665ec1c3d876651c9c414bdb3c923c9b2a48e57288383",
+      "characteristic_form_sha256": "ab164235dee97be72efa3f79ca27b59af9a737bf4c64b9ff370bd30fabd1848a"
+    },
+    {
+      "id": 116,
+      "text_sha256": "b6a24f160426b905c1961d90dfd9e2b4545989d502237affca0d0512382fbac0",
+      "characteristic_form_sha256": "7aa9819670bd06fce1f76a1b539f6224a3d4d465e2d02bf93507818c12505b25"
+    },
+    {
+      "id": 401,
+      "text_sha256": "3efba2a5f41db4686afba7d169bbb54e9a1acf344bf6fb6551254e8924c1318b",
+      "characteristic_form_sha256": "7d32f83f53a6518c1b59a94283492ddbd6ceddca6b0781d7c8ec8b312310c976"
+    },
+    {
+      "id": 404,
+      "text_sha256": "a599f5dcef4a9dcf755c67826f5cb3f78c006a96c57910dca4721d42dfacbba1",
+      "characteristic_form_sha256": "be82ef8c0902df59df0face1c1940a5fe283e04707bc1bfc296826dccdc2e410"
+    },
+    {
+      "id": 405,
+      "text_sha256": "041ae97308aa48a3be11ac5b0e6ad9bc6f3cf6862ac1ced8445bb74cfba73a74",
+      "characteristic_form_sha256": "25c632be2af41b09eeb103df553c6e1dbe77186737831ddfe540bc30355991ca"
+    },
+    {
+      "id": 407,
+      "text_sha256": "ebdfbb394d9d5fa6d22b8b88a7bdec4415c70fc92cc3d1188fda6a8126871be6",
+      "characteristic_form_sha256": "25e9bbf525a525082d7d583af41316c0b1e678695279a52d4d24c697b8c7fa9c"
+    },
+    {
+      "id": 409,
+      "text_sha256": "096eb684facfe165328ce0b0a094060052ba32600d5c78274a9f62df29c44ada",
+      "characteristic_form_sha256": "85719fa4222c2c02611e433a09f8aedcb8bc63b05a658e79133eaff717a5e6df"
+    },
+    {
+      "id": 412,
+      "text_sha256": "f4d9adba838c7ad7e0e9a7dec6e32d4b1c6ee3575cf7ebe773d9d4439643618a",
+      "characteristic_form_sha256": "52f6c81ea79b219867fc799df6b60f834a2ba7a153445fe988e7fc837e81f087"
+    },
+    {
+      "id": 418,
+      "text_sha256": "994d3fb70226bc8a80b133449c6b5a1b0f575f1a8d758d00b4511294ec165b99",
+      "characteristic_form_sha256": "dc2c0234e61cb0faa7673f27b428de6fe4b80be2cdf1c59acaea2ab17a8e7983"
+    },
+    {
+      "id": 419,
+      "text_sha256": "7d1ae6bb62f59a466db14c93c027f3b4079228e1da91a9421b1f34ccf75bff02",
+      "characteristic_form_sha256": "f06b7cf4cf11ae82f35409f555daf12685a4f8b4e279799013ce175aa3cca172"
+    },
+    {
+      "id": 420,
+      "text_sha256": "b16dd01ff80b884bfd6b16eaf6d86c88ed949c182ecd3465e2f009147dcb7783",
+      "characteristic_form_sha256": "4e0bf1e04571aedbe1a21fbddb1250bab696aca7c0eec5af53ebc350233a8ebe"
+    },
+    {
+      "id": 421,
+      "text_sha256": "9da6798666981dac12dde6b7193a748cfcdd519a41408fb4f299bc0ad1494d0c",
+      "characteristic_form_sha256": "c39a876fd96e83800d807f6f14d8d4bd894da81cbe5596c983ba87662212d3c7"
+    },
+    {
+      "id": 423,
+      "text_sha256": "59f3d0203203a23b8f0fedfebb0f5df6d5df8f71d1801daa65b233b91aa7dea6",
+      "characteristic_form_sha256": "f240484e495351d3fad4240e962744a80c4eccc5ab051e2673af32581252a9bd"
+    },
+    {
+      "id": 435,
+      "text_sha256": "de6e129a830b8ebfbd4279aed408e21ade1256ce32ee53747351f61c1c5faadc",
+      "characteristic_form_sha256": "917d605cc73c95e63885fc2c8585d1284f21cafdc9ae25eb704c10a2e87507d5"
+    },
+    {
+      "id": 437,
+      "text_sha256": "6c57ae0233c90a9c3cfd64f8e6ae997888b0c57070d6d68934bb30868ed8f397",
+      "characteristic_form_sha256": "6e498d4efabb257eb657c317d1c2fe494e2579fe96d4cf2cad3ecdf1b3bbe5e5"
+    },
+    {
+      "id": 438,
+      "text_sha256": "df5212829bab2e75b5999b4492325b758a05dd970778380e3e41a988b5d194ea",
+      "characteristic_form_sha256": "8166d58c35f99c4c29efd222e4cd869a35aa99eb5a99a2b38e8fb1753cbf5ce0"
+    },
+    {
+      "id": 439,
+      "text_sha256": "1932a725b183b2a6c2520dc272ab5c97b01c3e05e01a13823e49489eaaa526e2",
+      "characteristic_form_sha256": "1e7015326258056963c9d6df1cf7511b1df2884f747b49d92b68cac4ef636b56"
+    },
+    {
+      "id": 440,
+      "text_sha256": "1427d18a81c61f73d942b92c45c751defe80c58c79aaeaba94656f71b03add81",
+      "characteristic_form_sha256": "848732b365f3fc792f0371d23b2303bb9d9bd9bfa0f99741c586de2a7673d8aa"
+    },
+    {
+      "id": 441,
+      "text_sha256": "0d0adef2af9cab1a675df8d8e426b73c8432edd9503455054990cdd76715ce6f",
+      "characteristic_form_sha256": "24e6c264f64df7426f840435ed6d69eadf72e68f664ac942cfa4458a6b09bf1f"
+    },
+    {
+      "id": 442,
+      "text_sha256": "fcb879d9ebb5d39e5491bb438aa68699622ea9b2d3262c60d517fc0912a0eb3b",
+      "characteristic_form_sha256": "059e70aefdc2de667375002d8c8d956f6a603220f4e268e01329185d1233f982"
+    },
+    {
+      "id": 444,
+      "text_sha256": "4ad39efac51bdb80de3378931071dc950d16a4632c870458f52344b945772051",
+      "characteristic_form_sha256": "67a2bcfc3a17d6e0e6a5b5b79bf75642e981ea9b5f6ceddb1c563c4ca5800221"
+    },
+    {
+      "id": 446,
+      "text_sha256": "779fb940674679e9191eb8566284616c016f928d83fe2e7a4d06d48439e05bb2",
+      "characteristic_form_sha256": "68619fda6c8d5951847c20030d31bb3b8fa6838bdc4ec39aa6fe440823bd5781"
+    },
+    {
+      "id": 613,
+      "text_sha256": "33f454b395c0dc603b30715a43d8b239cf8bca30774fcda7e86653256e813088",
+      "characteristic_form_sha256": "de26a771ec7497ba1369278909cb9a6d724c0dfd3c99644ab536bc112b3bc7d1"
+    },
+    {
+      "id": 620,
+      "text_sha256": "39daa0d0e48734b8789e9aa0df01ce543090c5fc775811150c000c1b387a48d2",
+      "characteristic_form_sha256": "f3a8be89f63f8323f57ae675b488cca71ade0359d8f0ff814a624e4e359ab505"
+    }
+  ]
+}

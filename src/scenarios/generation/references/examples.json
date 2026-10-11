@@ -1,235 +1,278 @@
 {
-  "description": "Curated adaptations of existing benchmark utterances: operator phrasing and reference-answer patterns, with source-specific results identified for recalculation in each new environment.",
+  "description": "Original benchmark questions and characteristic forms, copied verbatim from the selected published source rows. Domain labels are normalized for lookup, including monitoring-rule tasks under iot. Source paths, row IDs, pinned revision and hashes preserve provenance.",
   "source_hash": "SHA-256 of the complete source row serialized as sorted compact JSON with UTF-8 and ensure_ascii=false.",
-  "source_snapshot": "source-rows.json contains the selected original rows preserved at commit 66bca546001a05f8132f6372fcf616afec540b06 on codex/reference-scenario-generator-20261002. Original rubrics are provenance, not validated answers for a new environment. Two additional examples retain human corpus rows 507 and 510 from the pinned Hugging Face revision in their source URLs; their rubrics describe insufficiency and are retained as ordinary examples of evidence-limited responses.",
-  "usage": "Examples illustrate request phrasing and reference-answer structure, not a required task distribution. Select task patterns appropriate to the target asset's operating needs and supported capabilities. Example tool sequences describe reference implementations; assess which steps are necessary for each new task. Replace placeholders with verified current results. Recompute source-specific answers rather than copying them. Source rows document the examples, not evidence for a new scenario.",
+  "source_snapshot": "source-rows.json preserves the selected original rows from ibm-research/AssetOpsBench revision 5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17. The published corpus contains 467 rows with text and characteristic_form across six files. These are historical reference examples, not a claim of execution validation in the current live environment.",
+  "usage": "Historical writing references for varied questions and expected responses. They need not run in the current environment. Follow generate.md when authoring new scenarios; do not treat this selection as a required template or task distribution.",
   "examples": [
     {
       "type": "iot",
       "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
-        "row_id": 6,
-        "sha256": "2203ccc380457730f4f9980dfd918d30f7f2160fcec07873acfc0210676dc470"
+        "path": "data/scenarios/all_utterance.jsonl",
+        "row_id": 41,
+        "sha256": "121e5ed49890a772fc9662fdd535bc6c5f3241a6a59e70ba0cfe08abbbec2134",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "1e015de054b6e4f493bbceca2d5ebd7b464c91b7271cb3804679e2d40b56770a",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/scenarios/all_utterance.jsonl"
       },
       "category": "Knowledge Query",
-      "text": "Get the asset details for <asset> at <site>.",
-      "characteristic_form": "Use iot.asset_detail; report the returned identity and attributes, with evidence references."
+      "text": "What was the latest supply humidity from CQPA AHU 1 at site MAIN on sept 3 2015? return in a file",
+      "characteristic_form": "The expected response should be the latest value for the supply humidity on asset CQPA AHU 1 at the MAIN site, on Septemer 3, 2015. The return value should reference a file containing the supply humidity data"
     },
     {
       "type": "iot",
       "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
-        "row_id": 44,
-        "sha256": "5ad11219e97e95e0aeb4caf729f39b19725dbbbc1578a1020733b5d13bea546e"
-      },
-      "category": "Knowledge Query",
-      "text": "Which measurements are monitored on <asset> at <site>?",
-      "characteristic_form": "Use iot.installed_sensors and iot.measured_sensors; distinguish configured channels from channels containing readings."
-    },
-    {
-      "type": "iot",
-      "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
+        "path": "data/scenarios/all_utterance.jsonl",
         "row_id": 46,
-        "sha256": "a4a67a26d9c3448111b96d76e34938d3897062968a65740f29c40f0796d05a62"
-      },
-      "category": "Data Retrieval",
-      "text": "Retrieve <sensor> readings for <asset> at <site> between <start> and <end>, and save them in a file.",
-      "characteristic_form": "Expected <verified_row_count> observations spanning <verified_first_timestamp> through <verified_last_timestamp>, with <verified_gaps> and <verified_key_values_and_units>. Use iot.stream_extent and iot.history with the same resolved window; return the complete data file and verify its contents."
-    },
-    {
-      "type": "fmsr",
-      "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
-        "row_id": 101,
-        "sha256": "7203545fb0eb8528353a77bb257752b256c5b9fbe40dd5e0525d45ed018bc8f0"
+        "sha256": "a4a67a26d9c3448111b96d76e34938d3897062968a65740f29c40f0796d05a62",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "1e015de054b6e4f493bbceca2d5ebd7b464c91b7271cb3804679e2d40b56770a",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/scenarios/all_utterance.jsonl"
       },
       "category": "Knowledge Query",
-      "text": "List the known failure modes for <asset-class>.",
-      "characteristic_form": "Use fmsr.get_failure_modes for the requested class; return the recorded modes, separating catalog knowledge from a diagnosis of any asset."
+      "text": "retrieve the supply temperature data recorded last week for Chiller 3 (MAIN site)?",
+      "characteristic_form": "The expected response should be the supply temperature for asset Chiller 3 for the site MAIN for last week.  The returned value should be a reference to a file listing the supply temperatures."
     },
     {
       "type": "fmsr",
       "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
-        "row_id": 109,
-        "sha256": "09ad61a3707511d1050958fe948561ba3c668fe4f714e9caae0bcb7bc5ea7c37"
+        "path": "data/task/failure_mapping_senarios.jsonl",
+        "row_id": 7,
+        "sha256": "672dbc2fdd40cc91547c20d7ef7470f3f46d33b639e21ca79a735ef2bc9aa2dc",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "ce2eb5ccc8596dca2efb777621a22be0e8e84101390e2b036d9469dccee0837b",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/task/failure_mapping_senarios.jsonl"
       },
       "category": "Recommendation",
-      "text": "Which failure modes of <asset> at <site> can we monitor using the installed sensors?",
-      "characteristic_form": "Use fmsr.get_failure_modes and iot.installed_sensors; link candidate modes only through cited, applicable sensor mappings and disclose uncovered modes."
+      "text": "List all failure modes of industrial gas turbine that can be detected by abnormal readings in speed, air flow, exhaust temperature, fuel pressure/fuel flow, compressor efficiency, and vibration.",
+      "characteristic_form": "the answer should contain one or more failure modes of industrial gas turbine. The failure modes of industrial gas turbine need to be from the list [burner blocked, compressor fouled, bearing wear, misalignment, unbalance, compressor damaged, power turbine damaged, combustion chamber holed, air inlet blockage, fuel filter blockage]"
     },
     {
       "type": "fmsr",
       "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
-        "row_id": 112,
-        "sha256": "0e24eefa3e5d9f52d3dd8c3fb82af31bee6c69af551935ef7da9dfb04641e018"
+        "path": "data/task/failure_mapping_senarios.jsonl",
+        "row_id": 26,
+        "sha256": "1549f71736fe5771e61f8c87d56eea21c975b13eb71347f099067ff3611fe612",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "ce2eb5ccc8596dca2efb777621a22be0e8e84101390e2b036d9469dccee0837b",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/task/failure_mapping_senarios.jsonl"
       },
       "category": "Recommendation",
-      "text": "If <failure-mode> is a concern for <asset> at <site>, which installed measurement should we monitor first, and why?",
-      "characteristic_form": "Prioritize <verified_sensor_names> because <cited_relationship_to_failure_mode>. Use fmsr.get_failure_modes and iot.installed_sensors to establish the applicable mapping and available channels; distinguish monitoring relevance from a validated diagnostic."
+      "text": "What are the possible failure modes of the pump that can be identified using the vibration sensor, flow rate sensor, and pressure sensor?",
+      "characteristic_form": "the answer should contain one or more failure modes of the pump. The failure modes of the pump need to be from the list [cavitation, bearing failure, impeller damage, seal leakage, motor overheating]"
     },
     {
-      "type": "tsfm",
+      "type": "fmsr",
       "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
-        "row_id": 513,
-        "sha256": "f4fedc035c93f3244a70ea12e73c2e6f6010cea065839cd10417b25c466ea940"
+        "path": "data/task/failure_mapping_senarios.jsonl",
+        "row_id": 50,
+        "sha256": "61a6b5e801d6bdc7fd07be81bae2158b0f7d6dde7a060131bf9907dfc7ac6f7a",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "ce2eb5ccc8596dca2efb777621a22be0e8e84101390e2b036d9469dccee0837b",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/task/failure_mapping_senarios.jsonl"
       },
-      "category": "Forecasting",
-      "text": "What is the forecast for <asset>'s <sensor> at <site> for <future-window>, based on <observed-window>?",
-      "characteristic_form": "Expected <verified_forecast_values_and_units> over <verified_horizon_and_timestamps>, supported by <verified_observed_values>. Use iot.history, tsfm.data_quality and tsfm.run_recipe; verify the selected method and inputs, state numeric tolerance where outputs are determined, and define acceptance criteria where valid methods can differ.",
-      "adaptation_note": "Source row 513 identifies a constant observed value of 45.5 and a forecast retaining 45.5. Recompute observed and forecast values for the new asset and method; constant history alone does not justify every model producing the same forecast."
+      "category": "Recommendation",
+      "text": "What are the most relevant sensors for detecting bearing wear, misalignment, and stator winding faults in an electric motor?",
+      "characteristic_form": "the answer should contain one or more sensors. The sensors must be relevant for detecting bearing wear, misalignment, and stator winding faults in an electric motor. Example sensors: [Vibration Sensor, Temperature Sensor, Current Sensor]"
     },
     {
-      "type": "tsfm",
+      "type": "fmsr",
       "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
-        "row_id": 217,
-        "sha256": "d462e4b398e030417233112a06d33f8b63780822043250bd74caa6510cc01ad3"
+        "path": "data/task/failure_mapping_senarios.jsonl",
+        "row_id": 54,
+        "sha256": "742f3aafa0943fd9c6221bee847ca18f72443934ade1c33c2d34a0f2afcfc944",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "ce2eb5ccc8596dca2efb777621a22be0e8e84101390e2b036d9469dccee0837b",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/task/failure_mapping_senarios.jsonl"
       },
-      "category": "Forecasting",
-      "text": "Forecast <sensor> for <asset> at <site> from <dataset-file>, using <timestamp-column> as the time axis and a horizon of <horizon>.",
-      "characteristic_form": "Use tsfm.data_quality and tsfm.run_recipe with a supported forecasting configuration; save the forecast and state its units, horizon, data coverage and limitations."
-    },
-    {
-      "type": "tsfm",
-      "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
-        "row_id": 222,
-        "sha256": "4b00a87544fe64726210861dee9d2d91d3114a44deebf7a01fb4b9f4777bdce8"
-      },
-      "category": "Anomaly Detection",
-      "text": "Find unusual changes in <sensor> for <asset> at <site> between <start> and <end>, and show when they occurred.",
-      "characteristic_form": "Use tsfm.data_quality and tsfm.run_recipe with a supported anomaly task; return the scored intervals and distinguish statistical anomalies from confirmed physical failures."
-    },
-    {
-      "type": "wo",
-      "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
-        "row_id": 402,
-        "sha256": "63590e469fb66cc7c01b73f8633d110d26971914b76c540a02fc5337ffeb5b5f"
-      },
-      "category": "Data Retrieval",
-      "text": "Show the preventive work orders for <asset> at <site> between <start> and <end>.",
-      "characteristic_form": "Expected <verified_count> preventive work orders with identifiers <verified_order_ids>. Use wo.list_workorders and wo.get_workorder to establish the matches for the requested asset, site, work type and interval.",
-      "adaptation_note": "Source row 402 specifies 31 matching preventive orders. Preserve this concrete-answer pattern and calculate the new count and identifiers from the prepared environment."
-    },
-    {
-      "type": "wo",
-      "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
-        "row_id": 423,
-        "sha256": "7252b593b228d74500d32ec90d9cdc66aa695dbd2a3c8795052a499692217627"
-      },
-      "category": "Decision Support",
-      "text": "Using the work-order history for <asset> at <site> up to <cutoff>, which maintenance tasks should I prioritize for <next-window>?",
-      "characteristic_form": "Use wo.list_workorders and wo.get_workorder; justify priorities from recorded status, priority and scheduling evidence, disclosing missing cost or risk information."
-    },
-    {
-      "type": "wo",
-      "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
-        "row_id": 424,
-        "sha256": "424269f85880cf40f82870065fa723c573acc0769c4ee3b89ffe7014f952057f"
-      },
-      "category": "Decision Support",
-      "text": "Can we bundle corrective work orders for <asset> at <site> between <start> and <end>? Each bundle should contain at least two orders within a two-week window; show the details.",
-      "characteristic_form": "A verified feasible solution has <verified_bundle_count> bundles with sizes <verified_bundle_sizes> and order membership <verified_order_ids_by_bundle>. Use wo.list_workorders and wo.get_schedule_calendar; check two-week windows, minimum sizes, complete membership and unbundled orders. Accept alternative bundles satisfying the same constraints when the request does not determine a unique grouping.",
-      "adaptation_note": "Source row 424 specifies three bundles with sizes 15, 6 and 2. Derive new memberships and sizes from the prepared records; distinguish a verified feasible solution from a uniquely required solution."
-    },
-    {
-      "type": "vibration",
-      "source": {
-        "path": "src/scenarios/local/vibration_utterance.json",
-        "row_id": 309,
-        "sha256": "822eda670e7bc98957c8e590efe1446cd6e631cc565a17983a5d65c9e95ba599"
-      },
-      "category": "Data Retrieval",
-      "text": "What vibration sensors are available for <asset> at <site>?",
-      "characteristic_form": "Use vibration.list_vibration_sensors; report the actual available channels rather than assuming names from an example."
-    },
-    {
-      "type": "vibration",
-      "source": {
-        "path": "src/scenarios/local/vibration_utterance.json",
-        "row_id": 322,
-        "sha256": "d5e782e4e34dba278f292e89eace2244e3d300bc6526e09e2cc7975afd5a95c0"
-      },
-      "category": "Diagnostic",
-      "text": "A technician reports that <asset> at <site> vibrates more than usual. Review <sensor> between <start> and <end>, show the five strongest frequency peaks, and explain what they suggest.",
-      "characteristic_form": "Expected the five frequency/amplitude pairs <verified_peaks_with_units>, with <supported_interpretation_and_limitations>. Use vibration.get_vibration_data and vibration.compute_fft_spectrum; verify sample rate, interval and frequency resolution, and interpret peaks only with applicable speed and machine information."
-    },
-    {
-      "type": "vibration",
-      "source": {
-        "path": "src/scenarios/local/vibration_utterance.json",
-        "row_id": 315,
-        "sha256": "a61f876728e344f5e655390d2b26737f0341a1e534e163e7adc7861cfb24bb9c"
-      },
-      "category": "Diagnostic",
-      "text": "Review the vibration signal for <asset> at <site> between <start> and <end>. I do not have a speed measurement; what can we still learn?",
-      "characteristic_form": "Use vibration.get_vibration_data and vibration.diagnose_vibration; report supported statistics and spectra, explicitly retain missing-speed warnings and omit unsupported shaft or severity conclusions."
+      "category": "Recommendation",
+      "text": "What are the sensors that can be used to detect combustion instability and high pressure turbine blade failure in an aero gas turbine?",
+      "characteristic_form": "the answer should contain one or more sensors. The sensors must be relevant for detecting combustion instability and high pressure turbine blade failure in an aero gas turbine. Example sensors: [Exhaust Gas Temperature, Compressor Discharge Pressure, Fuel Flow]"
     },
     {
       "type": "multiagent",
       "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
-        "row_id": 621,
-        "sha256": "9ac9d6e46d565821c958b3f397ee6d24d0523d14bf029583e73652bcf6d220e2"
+        "path": "data/asset/compressor_utterance.jsonl",
+        "row_id": 1002,
+        "sha256": "dad6cda6b6c077a6ab0e1454b7f572c5a3cda0444faf1180423e97ac941486b8",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "3858e35ba9cbd08687ccbd8c7cf04766db30df8c6f9420729d43b72689f54407",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/asset/compressor_utterance.jsonl"
       },
-      "category": "Decision Support",
-      "text": "Check <sensor> on <asset> at <site> between <start> and <end> for anomalies. After reviewing the evidence and existing work, should I open a work order?",
-      "characteristic_form": "Expected unusual intervals <verified_intervals_and_values>, existing relevant work <verified_order_ids_or_empty_result>, and recommendation <supported_decision_and_reason>. Use iot.history, a supported tsfm.run_recipe and wo.list_workorders to establish these findings; keep a recommendation distinct from authorization to create an order."
+      "category": "24-Hour Imminent Failure Warning",
+      "text": "Consider asset mp_1. Looking at the compressor data collected on April 17, 2020, can we determine whether an air leak failure is imminent within the next 24 hours? What immediate actions should be planned?",
+      "characteristic_form": "The response should detect rapid onset anomalies, such as spikes or correlated irregularities in pressure, motor current, and valve signals, processed by IoT and TSFM Agents. The FMSR Agent should infer probable air leak causes from these anomalies, and the WO Agent should propose immediate maintenance or operational responses. Effectiveness depends on timely and accurate prediction minimizing false positives."
     },
     {
       "type": "multiagent",
       "source": {
-        "path": "src/scenarios/huggingface/asset/compressor_utterance.jsonl",
-        "row_id": 1007,
-        "sha256": "a23bd50576137389da135e3a89c8a3df49beca6ca3393a54a6d0acf02897ef66"
+        "path": "data/asset/compressor_utterance.jsonl",
+        "row_id": 1009,
+        "sha256": "d66f8f57712462342d7faea434ff463279874687af376b66000b36fb1642560d",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "3858e35ba9cbd08687ccbd8c7cf04766db30df8c6f9420729d43b72689f54407",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/asset/compressor_utterance.jsonl"
       },
-      "category": "Predictive Maintenance",
-      "text": "Based on readings for <asset> at <site> between <start> and <end>, is <failure-mode> a concern for the coming week, and should I schedule preventive maintenance?",
-      "characteristic_form": "Use iot.history, tsfm.profile_series, fmsr.get_failure_modes and wo.list_workorders; weigh observed trends and cited mechanisms without using later failure labels or inventing calibrated failure probabilities."
+      "category": "Post-Maintenance Health Assessment",
+      "text": "Consider asset mp_1. How has the compressor’s sensor profile changed between June 8 and June 14, 2020, following maintenance on June 8 at 16:00? Is there evidence the air leak repair was successful or is further follow-up necessary?",
+      "characteristic_form": "Expected outcome distinguishes persistent anomalies from resolved faults, with actionable follow-up maintenance recommendations when needed, or confirmation of repair success."
     },
     {
       "type": "multiagent",
       "source": {
-        "path": "src/scenarios/huggingface/asset/hydrolicpump_utterance.jsonl",
+        "path": "data/asset/compressor_utterance.jsonl",
+        "row_id": 1015,
+        "sha256": "b96434837023ccd76f128beb96eb7c340487e661eec1d54cc34f07166fc54580",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "3858e35ba9cbd08687ccbd8c7cf04766db30df8c6f9420729d43b72689f54407",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/asset/compressor_utterance.jsonl"
+      },
+      "category": "Healthy Operation - Post-Maintenance Monitoring",
+      "text": "Consider asset mp_1. Does the compressor data from July 23 to August 5, 2020, reflect stable and healthy operation, supporting continued service without urgent maintenance requirements?",
+      "characteristic_form": "Expected is an assessment confirming sensor stability and absence of anomaly flags. The failure mode analysis corroborates no fault activation, and the maintenance agent recommends continuation of routine monitoring without action. This supports operational decision-making by confirming equipment readiness."
+    },
+    {
+      "type": "multiagent",
+      "source": {
+        "path": "data/asset/hydrolicpump_utterance.jsonl",
+        "row_id": 2002,
+        "sha256": "a846e295893e514fa24006a92afdc52ccb7b18c600986fcad3a7f689385ce8f3",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "654ff0181dc3a8ef586585db45da16a6b36c618ac933279c90ec5aa923a0fa30",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/asset/hydrolicpump_utterance.jsonl"
+      },
+      "category": "Fixed-Window Condition Detection (50 days)",
+      "text": "For asset hp_1, using sensor data from the last 50 days leading up to and including 2024-03-13, can we detect the valve nearing total failure? Which sensor patterns over this window support this diagnosis?",
+      "characteristic_form": "Detection is based on multi-day feature trends including pressure sensors PS1–PS6, flow sensors FS1/FS2, and vibration VS1. The agents jointly identify and confirm progressive valve degeneration in dates 2024-01-24 to 2024-03-13."
+    },
+    {
+      "type": "multiagent",
+      "source": {
+        "path": "data/asset/hydrolicpump_utterance.jsonl",
         "row_id": 2005,
-        "sha256": "83eb639c589dcd0e3d08d85b289bd039b53a5439b4c8c6d5023b188dd12b4662"
+        "sha256": "83eb639c589dcd0e3d08d85b289bd039b53a5439b4c8c6d5023b188dd12b4662",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "654ff0181dc3a8ef586585db45da16a6b36c618ac933279c90ec5aa923a0fa30",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/asset/hydrolicpump_utterance.jsonl"
       },
-      "category": "Condition Assessment",
-      "text": "Could <failure-mode> explain the changes in <asset> at <site> between <start> and <end>? Identify the strongest sensor evidence and suggest the next maintenance step.",
-      "characteristic_form": "Use iot.history, tsfm.data_quality, fmsr.get_failure_modes and wo.list_workorders; assess cited mechanisms against the available records, distinguish independent samples from a time series, and state what would confirm the suspected cause."
+      "category": "Fixed-Window Condition Detection (100 days)",
+      "text": "For asset hp_1, using sensor data from the last 100 days leading up to and including 2023-06-09, can severe internal pump leakage be detected? What sensor evidence within this window is most critical for diagnosis?",
+      "characteristic_form": "Multi-sensor signatures of pump leakage are tracked and interpreted from a 100-days historical window ending at 2023-06-09, supporting confident fault detection and prioritization of corrective action."
     },
     {
       "type": "multiagent",
       "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
-        "row_id": 510,
-        "sha256": "76fa2512e0bb6acfe4eb4a30ec6748ab40a016b83e36f27441077c6758a530cc",
-        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/scenarios/all_utterance.jsonl"
+        "path": "data/asset/hydrolicpump_utterance.jsonl",
+        "row_id": 2008,
+        "sha256": "8e00d1d4fc9bff00d4e904e475821082287a5fe165811b7a803b5c60209946a2",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "654ff0181dc3a8ef586585db45da16a6b36c618ac933279c90ec5aa923a0fa30",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/asset/hydrolicpump_utterance.jsonl"
       },
-      "category": "Missing history",
-      "text": "What are the anomaly detection results for <asset>'s <sensor-a> and <sensor-b> between <start> and <end> at <site>?",
-      "characteristic_form": "Use iot.measured_sensors, iot.stream_extent and iot.history to establish whether both channels cover the requested interval. When the required data is absent, explain the exact gap, report supported observations and request the necessary coverage instead of inventing anomaly results.",
-      "adaptation_note": "The human rubric for row 510 explicitly expects absent history for the requested interval. Establish that absence anew in this environment."
+      "category": "Fixed-Window Condition Detection (50-day window)",
+      "text": "For asset hp_1, is the hydraulic accumulator’s pressure near total failure detectable in sensor data from the prior 50 days leading up to and including 2024-01-22? What temporal sensor features indicate critical pressure decline?",
+      "characteristic_form": "Agents detect significant pressure decrease alongside corroborative anomalies in temperature and flow across 50 days, confirming the accumulator’s critical condition and enabling timely maintenance decision-making."
     },
     {
-      "type": "multiagent",
+      "type": "iot",
       "source": {
-        "path": "src/scenarios/huggingface/scenarios/all_utterance.jsonl",
-        "row_id": 507,
-        "sha256": "4dcd4ceefbd028ce0ad32a923adc19881c34f0665cd61b026f9be53399d74576",
-        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/scenarios/all_utterance.jsonl"
+        "path": "data/task/rule_monitoring_scenarios.jsonl",
+        "row_id": 1003,
+        "sha256": "f0c4bbb2296cbd6ff8cf5ce721275a026f1a72c5406ca54e841dba3bacb295fb",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "5538767248ef6cce7cf44c095910201bda8680f3d64039f7e962d51449c05ad7",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/task/rule_monitoring_scenarios.jsonl"
       },
-      "category": "Insufficient predictive evidence",
-      "text": "What is the predicted <measurement> for <asset> at <site> next week, based on the readings between <start> and <end>?",
-      "characteristic_form": "Expected observed coverage <verified_interval_and_count> and values <verified_range_or_constant_value>; the unsupported conclusion is <specific_prediction_claim_and_reason>. Use iot.history and tsfm.profile_series to establish those findings and check the selected method prerequisites. Report any defensible baseline and its verified values separately.",
-      "adaptation_note": "Human row 507 expects an insufficiency response from idle-period power readings. Zero-valued data alone is not proof that forecasting is impossible; verify the particular requested claim and model prerequisites before concluding that the requested result cannot be supported."
+      "category": "Analysis & Inference",
+      "text": "Please find anomalies for asset AHU 5044 between 2020-02-13T10:15:00.000Z and 2020-02-13T12:30:00.000Z according to: The condition has 6 parts. (1) The AHU is running. (2) The subtype is not VAV. (3) The outdoor air temperature minus the supply air temperature setpoint is greater than 5°F; or, if the supply air temperature setpoint is not reporting, the outdoor air temperature minus the supply air temperature is greater than 5°F. (4) Either the heating valve percentage is greater than 10 percent or the preheat valve percentage is greater than 10 percent. (5) The heating drained flag is equal to 1 if reporting. (6) The rule is triggered when all six parts of the condition are met for 2 hours.",
+      "characteristic_form": "The expected response should be either a json string containing a time interval where the anomaly is present or a pointer to a jsonfile containing the anomaly period. This anomaly is identified between 2020-02-13T10:15:00.000Z and 2020-02-13T12:30:00.000Z"
+    },
+    {
+      "type": "iot",
+      "source": {
+        "path": "data/task/rule_monitoring_scenarios.jsonl",
+        "row_id": 1056,
+        "sha256": "e92726636e44a87099c0e5fda4cae915170c9d38521e4ea2df1a11e3d368c9fa",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "5538767248ef6cce7cf44c095910201bda8680f3d64039f7e962d51449c05ad7",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/task/rule_monitoring_scenarios.jsonl"
+      },
+      "category": "Analysis & Inference",
+      "text": "Please find anomalies for asset Boiler BR02607 between 2019-02-20T14:17:00.000Z and 2019-02-21T04:59:00.000Z according to: An anomaly is detected when the boiler is running and the flue gas oxygen percentage is higher than expected, based on the type of fuel being used. Specifically, the flue gas oxygen is: >3% when natural gas flow is above 5, >5% when fuel oil or propane flow is above 5, or simply >3% if no fuel flow data is available. These conditions must persist for at least 2 hours.",
+      "characteristic_form": "The expected response should be either a json string containing a time interval where the anomaly is present or a pointer to a jsonfile containing the anomaly period. This anomaly is identified between 2019-02-20T14:17:00.000Z and 2019-02-21T04:59:00.000Z"
+    },
+    {
+      "type": "iot",
+      "source": {
+        "path": "data/task/rule_monitoring_scenarios.jsonl",
+        "row_id": 1077,
+        "sha256": "cc443568c83e60b4ea99f52a1ebddaf6850d3c6e9aa4a737c3ba2940e89e650d",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "5538767248ef6cce7cf44c095910201bda8680f3d64039f7e962d51449c05ad7",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/task/rule_monitoring_scenarios.jsonl"
+      },
+      "category": "Analysis & Inference",
+      "text": "Please find anomalies for asset Chiller CU02006 between 2019-02-18T17:00:00.000Z and 2019-03-04T14:45:00.000Z according to: An alert needs to be raised in chase the chiller is running and the difference between supply and setpoint temperatures is greater than 5F for a consecutive period of 2 hours or more.",
+      "characteristic_form": "The expected response should be either a json string containing a time interval where the anomaly is present or a pointer to a jsonfile containing the anomaly period. This anomaly is identified between 2019-02-18T17:00:00.000Z and 2019-03-04T14:45:00.000Z"
+    },
+    {
+      "type": "iot",
+      "source": {
+        "path": "data/task/rule_monitoring_scenarios.jsonl",
+        "row_id": 1089,
+        "sha256": "75ecd6ab892e7f49bdb490e1891e226ea95295c7b1cb0e518e5dba3a5c819cf2",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "5538767248ef6cce7cf44c095910201bda8680f3d64039f7e962d51449c05ad7",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/task/rule_monitoring_scenarios.jsonl"
+      },
+      "category": "Analysis & Inference",
+      "text": "Please find anomalies for asset Chiller 343137 between 2022-12-08T17:30:00.000Z and 2022-12-09T21:30:00.000Z according to: The condition has 3 parts. (1) The chiller is running. (2) The absolute difference between the coolant pressure difference and its setpoint is greater than 4 PSI; or, if coolant pressure difference is not reporting, the absolute difference between supply coolant pressure minus return coolant pressure and the setpoint is greater than 4 PSI. (3) The rule is triggered when all three parts of the condition are met for 3 hours.",
+      "characteristic_form": "The expected response should be either a json string containing a time interval where the anomaly is present or a pointer to a jsonfile containing the anomaly period. This anomaly is identified between 2022-12-08T17:30:00.000Z and 2022-12-09T21:30:00.000Z"
+    },
+    {
+      "type": "iot",
+      "source": {
+        "path": "data/task/rule_monitoring_scenarios.jsonl",
+        "row_id": 1096,
+        "sha256": "235b8a18923d245f3cbaa27979d348b4704d8ad4d23ac1db3a488c4f645d4c1c",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "5538767248ef6cce7cf44c095910201bda8680f3d64039f7e962d51449c05ad7",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/task/rule_monitoring_scenarios.jsonl"
+      },
+      "category": "Analysis & Inference",
+      "text": "Please find anomalies for asset Cooling Tower 2021010CTME06 between 2022-07-30T22:30:00.000Z and 2022-07-31T16:00:00.000Z according to: It's anomalous that in days where the outside temp is less than 80 the difference between the temp of the condenser water supply to the chiller and its setpoint is greater than 6 for more than 2 consecutive hours",
+      "characteristic_form": "The expected response should be either a json string containing a time interval where the anomaly is present or a pointer to a jsonfile containing the anomaly period. This anomaly is identified between 2022-07-30T22:30:00.000Z and 2022-07-31T16:00:00.000Z"
+    },
+    {
+      "type": "iot",
+      "source": {
+        "path": "data/task/rule_monitoring_scenarios.jsonl",
+        "row_id": 1111,
+        "sha256": "1905ad10088a8414ca5db5c204e9caf6fd78dc39221dccf9bb31b3d8702f77a0",
+        "dataset": "ibm-research/AssetOpsBench",
+        "revision": "5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17",
+        "file_sha256": "5538767248ef6cce7cf44c095910201bda8680f3d64039f7e962d51449c05ad7",
+        "url": "https://huggingface.co/datasets/ibm-research/AssetOpsBench/resolve/5e25bb7f2cd37fb68b9a9e1f99d170ca5be7ce17/data/task/rule_monitoring_scenarios.jsonl"
+      },
+      "category": "Analysis & Inference",
+      "text": "Please find anomalies for asset Pump NEASCHWP3 between 2020-03-27T16:45:00.000Z and 2020-03-28T01:45:00.000Z according to: The condition for the rule has three parts. (1) The Pump Status is 1 or the Pump Current in Amps is greater than 1.  (2) The Pump Occupied flag is 0.  (3) The OAT is greater than 55 degrees F.  The rule is triggered when all three parts of the condition are met for two hours.",
+      "characteristic_form": "The expected response should be either a json string containing a time interval where the anomaly is present or a pointer to a jsonfile containing the anomaly period. This anomaly is identified between 2020-03-27T16:45:00.000Z and 2020-03-28T01:45:00.000Z"
     }
   ]
 }

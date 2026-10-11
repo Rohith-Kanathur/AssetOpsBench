@@ -50,6 +50,7 @@ class CodexJudge(LLMBackend):
                     return shutil.copy2(source, destination)
             shutil.copytree(evidence, evidence_home, copy_function=link_or_copy)
             command = ['docker', 'run', '--rm', '--init', '-i', '--name', name,
+                       '--label', f'assetops.admission-owner={os.getpid()}',
                        '--user', f'{os.getuid()}:{os.getgid()}', '--read-only',
                        '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges:true',
                        '--tmpfs', '/tmp', '--workdir', '/evidence',

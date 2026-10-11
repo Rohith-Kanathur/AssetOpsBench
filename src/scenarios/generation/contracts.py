@@ -132,8 +132,6 @@ def validate_scenarios(scenarios, source_ids, profile, tools=None):
             texts.append((sid, normalized))
         if isinstance(rubric, str):
             names = set(TOOL.findall(rubric)) if tools is None else tool_refs(rubric, tools)
-            if not names:
-                errors.append(f"{label}: characteristic_form must name concrete qualified tools")
             if tools is not None:
                 errors.extend(f"{label}: unavailable rubric tool {n}" for n in sorted(names - set(tools)))
         for obsolete in ("positive", "negative", "missing_evidence"):
@@ -172,9 +170,4 @@ def validate_scenarios(scenarios, source_ids, profile, tools=None):
             other = [a.get("asset_id") for a in assets if isinstance(a, dict) and string(a.get("asset_id")) and a["asset_id"] != ground["asset_id"] and a["asset_id"].casefold() in text.casefold()]
             if other and ground["asset_id"].casefold() not in text.casefold():
                 errors.append(f"{label}: text references {other} instead of grounded asset")
-        if row.get("type") == "multiagent":
-            names = tool_refs(rubric, tools) if isinstance(rubric, str) else set()
-            servers = {name.split(".")[0] for name in names}
-            if len(servers & (set(DOMAINS) - {"multiagent"})) < 2:
-                errors.append(f"{label}: multiagent rubric must span at least two domain servers")
     return errors, warnings

@@ -122,20 +122,18 @@ def test_contract_preserves_source_and_checksum_checks(tmp_path):
     assert report["scenario_count"] == 1
 
 
-@pytest.mark.parametrize("tools, valid", [
-    (("iot.asset_detail", "iot.installed_sensors"), False),
-    (("iot.asset_detail", "utilities.current_time"), False),
-    (("iot.asset_detail", "fmsr.list_failure_modes"), True),
-])
-def test_multiagent_rubric_requires_two_domain_servers(tmp_path, tools, valid):
+@pytest.mark.parametrize("tools", [None, ["iot.asset_detail", "fmsr.list_failure_modes"]])
+def test_multiagent_expected_answer_does_not_require_tool_instructions(tmp_path, tools):
     allocation = {"multiagent": 1}
     save_contract(tmp_path, {"scenario_plan": allocation},
-                  [{"id": 1, "type": "multiagent"}], allocation, tools)
-    errors = check_contract(tmp_path)["errors"]
-    if valid:
-        assert errors == []
-    else:
-        assert errors == ["Scenario 1: multiagent rubric must span at least two domain servers"]
+                  [{"id": 1, "type": "multiagent"}], allocation)
+    rows = json.loads((tmp_path / "output/scenarios.json").read_text())
+    rows[0].update(
+        text="Which catalogued T1 failure modes can be investigated using its installed sensors at S1?",
+        characteristic_form="Oil temperature supports investigating overheating. The available sensor inventory does not support vibration-based diagnosis.",
+    )
+    replace_artifact(tmp_path, "scenarios", rows)
+    assert check_contract(tmp_path, tools=tools)["errors"] == []
 
 
 @pytest.mark.parametrize("domain", ["vibration", "Vibration"])

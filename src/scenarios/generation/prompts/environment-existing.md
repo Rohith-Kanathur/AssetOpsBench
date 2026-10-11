@@ -7,7 +7,7 @@ Keep that input surface fixed throughout preparation and scenario generation.
 
 Continue academic research, reading papers and learning the asset's physics,
 failure mechanisms, maintenance practices and task needs. Save literature and
-research evidence for the profile and reference answers. Use research to interpret
+research evidence in the profile and source records. Use research to interpret
 the supplied records and expose limits; it does not supply new operational data.
 
 Inspect and exercise the existing tools, supported recipes and parameters. Server

@@ -72,6 +72,15 @@ def test_unknown_rubric_tools_rejected_after_discovery(tmp_path):
     assert "Scenario 1: unavailable rubric tool iot.invented_diagnostic" in check_contract(tmp_path, tools=["iot.asset_detail"])["errors"]
 
 
+@pytest.mark.parametrize("tools", [None, ["iot.asset_detail"]])
+def test_expected_answer_without_tool_instructions_is_valid(tmp_path, tools):
+    one_contract(tmp_path)
+    scenario = json.loads((tmp_path / "output/scenarios.json").read_text())[0]
+    scenario["characteristic_form"] = "The response should identify T1 at S1 as a transformer and report its recorded attributes."
+    replace_artifact(tmp_path, "scenarios", [scenario])
+    assert check_contract(tmp_path, tools=tools)["errors"] == []
+
+
 def test_near_duplicate_requests_are_rejected(tmp_path):
     allocation = {"iot": 2}
     save_contract(tmp_path, {"scenario_plan": allocation}, [{"id": 1, "type": "iot"},

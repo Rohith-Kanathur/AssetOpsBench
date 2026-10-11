@@ -323,13 +323,16 @@ def test_lease_rechecks_exclusion_before_account_access(tmp_path, monkeypatch):
             pytest.fail('Excluded account leased')
 
 
-def test_two_sessions_per_account_exclude_serial_writers(tmp_path, monkeypatch):
-    pool = Pool(tmp_path, sessions_per_account=2)
+@pytest.mark.parametrize('sessions', [2, 3, 4])
+def test_concurrent_sessions_exclude_serial_writers(tmp_path, monkeypatch, sessions):
+    from contextlib import ExitStack
+    pool = Pool(tmp_path, sessions_per_account=sessions)
     account = {'id': 'a', 'home': str(tmp_path), 'health': 'ready', 'remaining': 90}
     pool.accounts = [account]
     monkeypatch.setattr(pool, 'inspect', lambda *a, **k: {'remaining': 90})
-    with pool.lease() as first, pool.lease() as second:
-        assert first['id'] == second['id']
+    with ExitStack() as stack:
+        leases = [stack.enter_context(pool.lease()) for _ in range(sessions)]
+        assert {lease['id'] for lease in leases} == {'a'}
         assert pool._session_lock(account) is None
         assert pool._lock(account) is None
         assert pool.reset_if_exhausted(account) is None
@@ -352,14 +355,15 @@ def test_concurrent_refresh_does_not_overwrite_new_credentials(tmp_path):
     assert json.loads((tmp_path / 'auth.json').read_text()) == newer
 
 
-def test_fourteen_sessions_keep_five_distinct_accounts_and_resume_cleanly(case, tmp_path, monkeypatch):
+@pytest.mark.parametrize('sessions', [2, 3, 4])
+def test_parallel_sessions_keep_five_distinct_accounts_and_resume_cleanly(case, tmp_path, monkeypatch, sessions):
     import shutil
     cases = [case]
     for i in range(1, 8):
         target = case.parent / f'case-{i}'
         shutil.copytree(case, target)
         cases.append(target)
-    pool = Pool(tmp_path / 'pool', sessions_per_account=2)
+    pool = Pool(tmp_path / 'pool', sessions_per_account=sessions)
     for i in range(7):
         home = pool.root / str(i)
         home.mkdir(parents=True)
@@ -387,18 +391,57 @@ def test_fourteen_sessions_keep_five_distinct_accounts_and_resume_cleanly(case, 
                     cls.active -= 1
                     cls.per_account[key] -= 1
 
-    results = judge_cases(cases, pool=pool, jobs=14, backend_factory=TrackingJudge, export=fake_export)
+    jobs = 7 * sessions
+    results = judge_cases(cases, pool=pool, jobs=jobs, backend_factory=TrackingJudge, export=fake_export)
     assert all(r['status'] == 'completed' for r in results)
-    assert 7 < TrackingJudge.peak <= 14
-    assert max(TrackingJudge.account_peak.values()) == 2
+    assert 7 * (sessions - 1) < TrackingJudge.peak <= jobs
+    assert max(TrackingJudge.account_peak.values()) == sessions
     for target in cases:
         grades = [json.loads(p.read_text()) for p in target.glob('judging/repeats/*/judge.json')]
         assert len(grades) == len({g['account_ref'] for g in grades}) == 5
         assert len(list(target.glob('judging/repeats/*/trajectory.json'))) == 5
         assert not list(target.glob('judging/inflight/*'))
     count = len(TrackingJudge.calls)
-    judge_cases(cases, pool=pool, jobs=14, backend_factory=TrackingJudge, export=fake_export)
+    judge_cases(cases, pool=pool, jobs=jobs, backend_factory=TrackingJudge, export=fake_export)
     assert len(TrackingJudge.calls) == count
+
+
+def test_live_judge_limit_can_pause_then_resume_without_interrupting_sessions(case):
+    started, release = threading.Event(), threading.Event()
+    limit = [2]
+    active = [0]
+    guard = threading.Lock()
+    counts = []
+
+    class ControlledJudge(FakeJudge):
+        def generate(self, prompt, temperature=0):
+            with guard:
+                active[0] += 1
+                counts.append(active[0])
+                if active[0] == 2:
+                    started.set()
+            assert release.wait(3)
+            try:
+                return super().generate(prompt, temperature)
+            finally:
+                with guard:
+                    active[0] -= 1
+
+    def adjust():
+        assert started.wait(3)
+        limit[0] = 0
+        release.set()
+        time.sleep(.15)
+        assert len(counts) == 2
+        limit[0] = 5
+
+    controller = threading.Thread(target=adjust)
+    controller.start()
+    results = judge_cases([case], pool=FakePool(), jobs=5,
+        backend_factory=ControlledJudge, export=fake_export, max_active=lambda: limit[0])
+    controller.join()
+    assert results[0]['status'] == 'completed'
+    assert len(counts) == 5 and max(counts) == 3
 
 
 def test_rolling_queue_admits_new_case_before_previous_case_finishes(case):

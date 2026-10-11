@@ -11,9 +11,13 @@ from .repeated_judge import judge_cases
 
 
 def run(planned, execute, report, *, execution_jobs=12, judge_jobs=14,
-        judge=True, admission=shared_admission, pool=None):
+        judge=True, admission=shared_admission, pool=None, completed_cases=(), judge_capacity=None):
     """Execution workers never wait for judges; each queue keeps its own cap."""
     ready = queue.Queue()
+    # A resumed grading queue must not re-execute or reserve execution memory
+    # for model attempts whose evidence has already been saved.
+    for case in completed_cases:
+        ready.put(case)
     executions_done = threading.Event()
 
     def completed_cases():
@@ -27,7 +31,7 @@ def run(planned, execute, report, *, execution_jobs=12, judge_jobs=14,
     def grade():
         return judge_cases([], pool=pool, jobs=judge_jobs, preflight=False,
             case_source=completed_cases, source_done=executions_done.is_set,
-            on_complete=lambda *_: report(), admission=admission)
+            on_complete=lambda *_: report(), admission=admission, max_active=judge_capacity)
 
     if judge:
         pool = pool or Pool(sessions_per_account=2)

@@ -7,6 +7,6 @@ is optional; include it when it serves the operator's task.
 
 Exercise the complete workflow. Classify a helper that serializes IoT observations
 as general execution; an IoT tool returning observations is not a file export.
-The evaluator receives only declared input files, normal tool descriptions and the
-operator request, never completed exports, rubrics, generator scripts or evidence.
+The evaluated agent receives declared task data, normal tool descriptions and the
+operator request, not reference answers, completed solutions or authoring artifacts.
 Ground any calculations in retrieved observations and document their limitations.

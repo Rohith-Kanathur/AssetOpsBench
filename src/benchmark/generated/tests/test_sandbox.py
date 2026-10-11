@@ -115,6 +115,8 @@ def test_source_symlinks_rejected_before_copy_and_failed_export_leaves_no_partia
 
 
 def test_every_case_drops_prior_database_before_restore_and_cleans_up_on_failure(tmp_path, monkeypatch):
+    from contextlib import nullcontext
+    monkeypatch.setattr('benchmark.generated.network.isolated_network', lambda _: nullcontext())
     monkeypatch.setenv("ASSETOPS_DATABASE_MODE", "dedicated")
     monkeypatch.setenv("ASSETOPS_CACHE_RUNTIME_IMAGE", "0")
     generation, scenario = generated(tmp_path, monkeypatch)
@@ -134,6 +136,19 @@ def test_every_case_drops_prior_database_before_restore_and_cleans_up_on_failure
     assert calls[0][:3] == ("down", "--volumes", "--remove-orphans")
     assert calls[-1][:3] == ("down", "--volumes", "--remove-orphans")
     assert any(args[0] == "logs" for args in calls)
+
+
+def test_docker_startup_error_keeps_original_stderr(tmp_path, monkeypatch):
+    import subprocess
+    def fail(command, **kwargs):
+        assert kwargs['stderr'] == subprocess.PIPE
+        raise subprocess.CalledProcessError(1, command, stderr=b'all predefined address pools have been fully subnetted')
+    monkeypatch.setattr(sandbox.subprocess, 'run', fail)
+    with pytest.raises(subprocess.CalledProcessError):
+        sandbox.compose(tmp_path, 'up', '-d', 'tools', stderr=subprocess.DEVNULL)
+    saved = json.loads((tmp_path / 'docker-error.json').read_text())
+    assert saved['command'] == ['up', '-d', 'tools']
+    assert 'fully subnetted' in saved['stderr']
 
 
 def test_interrupted_case_is_archived_before_fresh_execution(tmp_path, monkeypatch):
@@ -212,7 +227,7 @@ def test_zcode_selection_uses_distinct_image_and_only_coding_plan_key(tmp_path, 
         config = json.loads((case / "compose.json").read_text())
         assert config["services"]["agent"]["image"] == "assetops-zcode-evaluation:local"
         assert "private-plan-test-key" not in json.dumps(config) + " ".join(args)
-        assert kwargs["env"]["ZAI_API_KEY"] == "private-plan-test-key"
+        assert kwargs["env"]["ZAI_API_KEY"] == "private-plan-test-key"  # pragma: allowlist secret
         assert args[args.index("--harness") + 1] == "zcode"
         assert args[args.index("--reasoning-effort") + 1] == "high"
         assert (case / "auth").is_dir() and not list((case / "auth").rglob("*"))

@@ -174,8 +174,16 @@ def import_snapshot(source, destination):
 
 
 def compose(case, *args, **kwargs):
-    return subprocess.run(["docker", "compose", "-f", str(case / "compose.json"), *args],
-                          check=True, **kwargs)
+    command = ["docker", "compose", "-f", str(case / "compose.json"), *args]
+    if kwargs.get("stderr") == subprocess.DEVNULL and not kwargs.get("capture_output"):
+        kwargs["stderr"] = subprocess.PIPE
+    try:
+        return subprocess.run(command, check=True, **kwargs)
+    except subprocess.CalledProcessError as exc:
+        stderr = exc.stderr.decode(errors="replace") if isinstance(exc.stderr, bytes) else exc.stderr
+        private_json(case / "docker-error.json", {"command": list(args), "returncode": exc.returncode,
+                                                 "stderr": stderr or ""})
+        raise
 
 
 def prepare_case(root, case, scenario, *, database=None, image=IMAGE):
@@ -253,6 +261,7 @@ def prepare_case(root, case, scenario, *, database=None, image=IMAGE):
 def environment(root, case, scenario):
     from .runtime_image import prepared_image
     from .shared_database import case_database
+    from .network import isolated_network
     mode = os.environ.get("ASSETOPS_DATABASE_MODE", "shared")
     if mode not in {"shared", "dedicated"}:
         raise ValueError("ASSETOPS_DATABASE_MODE must be shared or dedicated")
@@ -260,8 +269,9 @@ def environment(root, case, scenario):
     context = case_database(root / "database") if mode == "shared" else nullcontext(None)
     with context as database:
         prepare_case(root, case, scenario, database=database, image=image)
-        with _running_environment(root, case, database) as endpoints:
-            yield endpoints
+        with isolated_network(case):
+            with _running_environment(root, case, database) as endpoints:
+                yield endpoints
 
 
 @contextmanager

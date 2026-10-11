@@ -164,9 +164,9 @@ The profile describes verified capabilities after preparation. Sensor coverage a
 relevant tools can grow as the agent adds support. Human examples guide voice and
 complexity; their identities and answers do not establish facts in the new environment.
 
-Scenarios require a concrete analysis, decision, forecast for a stated need, or
-authorized action. Lookups are supporting steps, never complete scenarios. Profiling
-and statistics comparisons must answer an operational or analytical question.
+Scenarios serve a concrete operator or manager need. Retrieval, catalog queries,
+analysis, forecasts, recommendations and authorized actions can each be complete
+tasks. Let the need determine their scope and complexity.
 
 Each characteristic form includes a reference answer grounded in exercised results:
 actual values, identifiers and decisions where determined, with units and tolerances
